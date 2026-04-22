@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/profileLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/white"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="24dp">
+
+        <!-- Ảnh đại diện -->
+        <ImageView
+            android:id="@+id/profileAvatar"
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:src="@drawable/ic_account_circle"
+            android:scaleType="centerCrop"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Tên người dùng -->
+        <TextView
+            android:id="@+id/profileName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="User Name"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- Email -->
+        <TextView
+            android:id="@+id/profileEmail"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="user@email.com"
+            android:textSize="14sp"
+            android:textColor="@android:color/darker_gray"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- Thống kê -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="24dp">
+
+            <TextView
+                android:id="@+id/songCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Songs: 25"
+                android:textSize="16sp"
+                android:layout_marginEnd="32dp"/>
+
+            <TextView
+                android:id="@+id/playlistCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Playlists: 5"
+                android:textSize="16sp"/>
+        </LinearLayout>
+
+        <!-- Danh sách nhạc cá nhân -->
+        <TextView
+            android:id="@+id/myMusicLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="My Music"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/profileMusicList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="vertical"
+            android:padding="8dp"
+            android:nestedScrollingEnabled="false"
+            tools:listitem="@layout/item_song"/>
+    </LinearLayout>
+</ScrollView>

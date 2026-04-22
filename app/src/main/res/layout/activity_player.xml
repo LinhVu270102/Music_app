@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/playerLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#111111"
+    android:padding="16dp">
+
+    <!-- Ảnh bìa bài hát -->
+    <ImageView
+        android:id="@+id/playerCover"
+        android:layout_width="match_parent"
+        android:layout_height="280dp"
+        android:scaleType="centerCrop"
+        android:layout_alignParentTop="true"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- Tên bài hát -->
+    <TextView
+        android:id="@+id/playerSongTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Come My Way"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:gravity="center"
+        android:layout_below="@id/playerCover"
+        android:layout_marginTop="12dp"/>
+
+    <!-- Nghệ sĩ -->
+    <TextView
+        android:id="@+id/playerArtist"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Skz Prxnce"
+        android:textSize="16sp"
+        android:textColor="@android:color/darker_gray"
+        android:gravity="center"
+        android:layout_below="@id/playerSongTitle"
+        android:layout_marginTop="4dp"/>
+
+    <!-- Thanh tiến trình -->
+    <SeekBar
+        android:id="@+id/playerSeekBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/playerArtist"
+        android:layout_marginTop="24dp"
+        android:progress="8"
+        android:max="127"/>
+
+    <!-- Thời gian -->
+    <LinearLayout
+        android:id="@+id/playerTimeLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_below="@id/playerSeekBar"
+        android:layout_marginTop="4dp"
+        android:weightSum="2">
+
+        <TextView
+            android:id="@+id/playerCurrentTime"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="0:08"
+            android:textColor="@android:color/white"/>
+
+        <TextView
+            android:id="@+id/playerTotalTime"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="2:07"
+            android:gravity="end"
+            android:textColor="@android:color/white"/>
+    </LinearLayout>
+
+    <!-- Các nút điều khiển -->
+    <LinearLayout
+        android:id="@+id/playerControls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_below="@id/playerTimeLayout"
+        android:layout_marginTop="32dp">
+
+        <ImageButton
+            android:id="@+id/btnPrev"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:src="@android:drawable/ic_media_previous"
+            android:background="@android:color/transparent"
+            android:tint="@android:color/white"/>
+
+        <ImageButton
+            android:id="@+id/btnPlayPause"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@android:drawable/ic_media_play"
+            android:background="@android:color/transparent"
+            android:tint="@android:color/white"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"/>
+
+        <ImageButton
+            android:id="@+id/btnNext"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:src="@android:drawable/ic_media_next"
+            android:background="@android:color/transparent"
+            android:tint="@android:color/white"/>
+    </LinearLayout>
+</RelativeLayout>

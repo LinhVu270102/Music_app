@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@drawable/omusic_bg"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="24dp">
+
+    <!-- Logo -->
+    <ImageView
+        android:id="@+id/logoImage"
+        android:layout_width="119dp"
+        android:layout_height="117dp"
+        android:layout_marginBottom="10dp"
+        android:contentDescription="OMusic"
+        android:src="@drawable/Music_Orange" />
+
+    <TextView
+        android:id="@+id/appTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Orange Music"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="@color/orange"
+        android:gravity="center"
+        android:layout_marginBottom="32dp"/>
+
+    <EditText
+        android:id="@+id/emailInput"
+        android:hint="Email"
+        android:inputType="textEmailAddress"
+        android:backgroundTint="#FF5500"
+        android:background="@drawable/edittext_border_black"
+        android:textColor="@color/black"
+        android:hintTextColor="@color/darker_gray"
+        android:padding="12dp"
+        android:textSize="14sp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"/>
+
+    <EditText
+        android:id="@+id/passwordInput"
+        android:hint="Password"
+        android:inputType="textPassword"
+        android:backgroundTint="#FF5500"
+        android:background="@drawable/edittext_border_black"
+        android:textColor="@color/black"
+        android:hintTextColor="@color/darker_gray"
+        android:padding="12dp"
+        android:textSize="14sp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"/>
+
+
+
+
+   
+    <Button
+        android:id="@+id/loginButton"
+        android:layout_width="180dp"
+        android:layout_height="48dp"
+        android:background="@drawable/button_orange_border"
+        android:text="LOG IN"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@color/white"
+        android:gravity="center"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"/>
+
+
+    <!-- Sign up link -->
+    <TextView
+        android:id="@+id/signupLink"
+        android:text="Don't have an account? Sign up"
+        android:textColor="@color/orange"
+        android:layout_marginTop="16dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="16sp"/>
+</LinearLayout>
