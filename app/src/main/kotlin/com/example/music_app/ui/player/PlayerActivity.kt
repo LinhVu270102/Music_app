@@ -35,7 +35,7 @@ class PlayerActivity : AppCompatActivity() {
 
         // Gán dữ liệu giả
         cover.setImageResource(R.drawable.ic_music_note)
-        title.text = "Demo Song"
+        title.text = "Demo Song" asd
         artist.text = "Demo Artist"
 
         // Demo dữ liệu comment
