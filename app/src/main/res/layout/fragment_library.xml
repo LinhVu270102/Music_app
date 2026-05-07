@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/libraryFragment"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- HEADER -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:background="@color/black"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:text="Library"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/white"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"/>
+
+        <ImageButton
+            android:id="@+id/btnSetting"
+            android:src="@drawable/ic_setting"
+            android:background="@android:color/transparent"
+            android:layout_width="40dp"
+            android:layout_height="40dp"/>
+    </LinearLayout>
+    <!-- MIDDLE: RecyclerView để hiển thị danh sách nhạc -->
+
+    <!-- MIDDLE -->
+    <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/musicfeed"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="12dp">
+
+            <Button
+                android:id="@+id/btnYourLikes"
+                android:text="Your likes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/black"
+                android:textColor="@android:color/white"
+                android:padding="12dp"
+                android:gravity="start|center_vertical"
+                android:drawableEnd="@drawable/ic_arrow_right"
+                android:drawablePadding="8dp"/>
+
+
+            <Button
+                android:id="@+id/btnPlaylists"
+                android:text="Playlists"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/black"
+                android:textColor="@android:color/white"
+                android:padding="12dp"
+                android:gravity="start|center_vertical"
+                android:drawableEnd="@drawable/ic_arrow_right"
+                android:drawablePadding="8dp"/>
+
+            <Button
+                android:id="@+id/btnAlbums"
+                android:text="Albums"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/black"
+                android:textColor="@android:color/white"
+                android:padding="12dp"
+                android:gravity="start|center_vertical"
+                android:drawableEnd="@drawable/ic_arrow_right"
+                android:drawablePadding="8dp"/>
+
+            <Button
+                android:id="@+id/btnFollowing"
+                android:text="Following"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/black"
+                android:textColor="@android:color/white"
+                android:padding="12dp"
+                android:gravity="start|center_vertical"
+                android:drawableEnd="@drawable/ic_arrow_right"
+                android:drawablePadding="8dp"/>
+
+            <Button
+                android:id="@+id/btnYourUpload"
+                android:text="Your Upload"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@color/black"
+                android:textColor="@android:color/white"
+                android:padding="12dp"
+                android:gravity="start|center_vertical"
+                android:drawableEnd="@drawable/ic_arrow_right"
+                android:drawablePadding="8dp"/>
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical">
+
+                <!-- Tiêu đề -->
+                <TextView
+                    android:text="Recently played"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@android:color/white"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="8dp"
+                    android:paddingTop="20dp"
+                    android:layout_weight="1"/>
+
+                <!-- Nút See all -->
+                <Button
+                    android:id="@+id/btnSeeAllLib1"
+                    android:text="See all"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="60dp"
+                    android:minHeight="0dp"
+                    android:backgroundTint="@color/gray"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold"
+                    android:textSize="10sp"
+                    android:padding="0dp"/>
+            </LinearLayout>
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/albumHorizontalList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"/>
+
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical">
+
+                <!-- Tiêu đề -->
+                <TextView
+                    android:text="Listening history"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@android:color/white"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="8dp"
+                    android:paddingTop="20dp"
+                    android:layout_weight="1"/>
+
+                <!-- Nút See all -->
+                <Button
+                    android:id="@+id/btnSeeAllLib2"
+                    android:text="See all"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="60dp"
+                    android:minHeight="0dp"
+                    android:backgroundTint="@color/gray"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold"
+                    android:textSize="10sp"
+                    android:padding="0dp"/>
+            </LinearLayout>
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/albumHorizontalList1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"/>
+        </LinearLayout>
+
+    </ScrollView>
+
+
+</LinearLayout>

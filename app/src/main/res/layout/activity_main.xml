@@ -1,0 +1,77 @@
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/mainLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Container để chứa fragment -->
+    <FrameLayout
+        android:id="@+id/fragmentContainer"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/appFooter"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- MINI PLAYER -->
+    <include
+        android:id="@+id/miniPlayer"
+        layout="@layout/item_now_playing"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/appFooter"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Footer cố định -->
+    <LinearLayout
+        android:id="@+id/appFooter"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:background="@color/gray"
+        android:gravity="center_vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageButton
+            android:id="@+id/btnHome"
+            android:src="@drawable/ic_home"
+            android:background="@drawable/footer_button_selector"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:alpha="0.5"/>
+
+        <ImageButton
+            android:id="@+id/btnSearch"
+            android:src="@drawable/ic_search"
+            android:background="@drawable/footer_button_selector"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:alpha="0.5"/>
+
+        <ImageButton
+            android:id="@+id/btnLibrary"
+            android:src="@drawable/ic_library"
+            android:background="@drawable/footer_button_selector"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:alpha="0.5"/>
+
+        <ImageButton
+            android:id="@+id/btnProfile"
+            android:src="@drawable/ic_profile"
+            android:background="@drawable/footer_button_selector"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:alpha="0.5"/>
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>

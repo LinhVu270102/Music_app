@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/homeFragment"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- HEADER -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:background="@color/black"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:text="Home"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="@color/white"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"/>
+
+        <ImageButton
+            android:src="@drawable/ic_upload"
+            android:background="@android:color/transparent"
+            android:layout_width="40dp"
+            android:layout_height="40dp"/>
+
+        <ImageButton
+            android:src="@drawable/ic_notification"
+            android:background="@android:color/transparent"
+            android:layout_width="40dp"
+            android:layout_height="40dp"/>
+    </LinearLayout>
+    <!-- MIDDLE: RecyclerView để hiển thị danh sách nhạc -->
+
+    <!-- MIDDLE -->
+    <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/musicfeed"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="12dp">
+
+            <!-- Tiêu đề -->
+            <TextView
+                android:id="@+id/sectionTitle"
+                android:text="Get back to it"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/white"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:paddingBottom="8dp"/>
+
+            <!-- Grid 4 album -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/albumGrid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="8dp"
+                android:clipToPadding="false"/>
+
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical">
+
+                <!-- Tiêu đề -->
+                <TextView
+                    android:text="More of what you like"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@android:color/white"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="8dp"
+                    android:paddingTop="16dp"
+                    android:layout_weight="1"/>
+
+                <!-- Nút See all -->
+                <Button
+                    android:id="@+id/btnSeeAll"
+                    android:text="See all"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minWidth="60dp"
+                    android:minHeight="0dp"
+                    android:backgroundTint="@color/gray"
+                    android:textColor="@android:color/white"
+                    android:textStyle="bold"
+                    android:textSize="10sp"
+                    android:padding="0dp"/>
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/albumHorizontalList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:scrollbars="none"/>
+
+        </LinearLayout>
+    </ScrollView>
+    <include
+        android:id="@+id/nowPlayingBar"
+        layout ="@layout/item_now_playing"
+        android:visibility="gone"/>
+</LinearLayout>

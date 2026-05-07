@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/settingFragment"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@color/black">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <ImageButton
+            android:id="@+id/btnReturn"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_return"
+            android:background="@android:color/transparent"
+            android:tint="@color/white"
+            android:layout_gravity="start"/>
+
+        <!-- Ngôn ngữ -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:text="Ngôn ngữ"
+                android:textSize="16sp"
+                android:textColor="@color/white"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"/>
+
+            <Spinner
+                android:id="@+id/languageSpinner"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:entries="@array/language_options"
+                android:backgroundTint="@color/white" />
+        </LinearLayout>
+
+        <!-- Clear Data -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:text="Xoá dữ liệu"
+                android:textSize="16sp"
+                android:textColor="@color/white"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"/>
+
+            <Button
+                android:id="@+id/clearDataButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Clear"
+                android:backgroundTint="@color/darker_gray"
+                android:textColor="@color/white"/>
+        </LinearLayout>
+
+        <!-- Account (Expandable) -->
+        <LinearLayout
+            android:id="@+id/accountSection"
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="12dp">
+
+            <!-- Header -->
+            <TextView
+                android:id="@+id/accountHeader"
+                android:text="Tài khoản"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/white"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:drawableEnd="@drawable/ic_arrow_right"/>
+
+            <!-- Nội dung mở rộng -->
+            <LinearLayout
+                android:id="@+id/accountOptions"
+                android:orientation="vertical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:layout_marginTop="8dp">
+
+                <Button
+                    android:id="@+id/btnLogout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Đăng xuất"
+                    android:backgroundTint="@color/darker_gray"
+                    android:textColor="@color/white"
+                    android:layout_marginBottom="8dp"/>
+
+                <Button
+                    android:id="@+id/deleteAccountButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Xoá tài khoản"
+                    android:backgroundTint="@color/darker_gray"
+                    android:textColor="@color/white"/>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

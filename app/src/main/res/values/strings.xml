@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tên ứng dụng -->
+    <string name="app_name">Orange Music</string>
+    <string name="logo_desc">Orange Music Logo</string>
+
+    <!-- Login screen -->
+    <string name="login_button">LOG IN</string>
+    <string name="signup_link">Don\'t have an account? Sign up</string>
+    <string name="email_hint">Email</string>
+    <string name="password_hint">Password</string>
+
+    <!-- Register screen -->
+    <string name="register_title">Register</string>
+    <string name="confirm_password_hint">Confirm Password</string>
+    <string name="register_button">COMFIRM</string>
+
+    <!-- Home screen -->
+    <string name="home_title">Trending Music</string>
+    <string name="search_hint">Search songs, artists...</string>
+
+    <!-- Thông báo -->
+    <string name="error_password_mismatch">Passwords do not match</string>
+    <string name="register_success">Đăng ký thành công!</string>
+    <string name="login_success">Đăng nhập thành công!</string>
+
+
+    <string name="song_cover_desc">Ảnh bìa bài hát</string>
+    <string name="view_comments">Xem bình luận</string>
+    <string name="like_button_desc">Nút thích bài hát</string>
+
+</resources>

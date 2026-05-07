@@ -2,5 +2,11 @@
 <resources>
     <color name="orange">#FF5500</color>
     <color name="white">#FFFFFF</color>
+    <color name="whiter">#AAAAAA</color>
     <color name="black">#000000</color>
+    <color name="darker_gray">#333333</color>
+    <color name="gray">#696969</color>
+    <color name="orange_dark">#F57C00</color>
+    <color name="gray_light">#B0B0B0</color>
 </resources>
+

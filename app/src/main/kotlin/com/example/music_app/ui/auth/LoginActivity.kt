@@ -1,47 +1,58 @@
-package com.example.music_app
+package com.example.music_app.ui.auth
 
 import android.content.Intent
-import android.os.Bundle
-import android.util.Log
-import android.widget.Button
-import android.widget.EditText
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.auth.FirebaseAuth
+import androidx.activity.viewModels
+import com.example.music_app.databinding.ActivityLoginBinding
+import com.example.music_app.base.BaseActivity
+import com.example.music_app.main.MainActivity
+import com.example.music_app.ui.auth.AuthViewModel
 
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : BaseActivity<ActivityLoginBinding>() {
 
-    private lateinit var auth: FirebaseAuth
+    private val viewModel: AuthViewModel by viewModels()
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_login) // layout login của bạn
+    override fun getViewBinding(): ActivityLoginBinding {
+        return ActivityLoginBinding.inflate(layoutInflater)
+    }
 
-        auth = FirebaseAuth.getInstance()
+    override fun initListeners() {
+        // Nút đăng nhập
+        binding.loginButton.setOnClickListener {
+            val email = binding.emailInput.text.toString()
+            val password = binding.passwordInput.text.toString()
+            viewModel.login(email, password)
+        }
+        // Link sang RegisterActivity
+        binding.signupLink.setOnClickListener {
+            startActivity(Intent(this, RegisterActivity::class.java))
+        }
+    }
 
-        val emailField = findViewById<EditText>(R.id.emailField)
-        val passwordField = findViewById<EditText>(R.id.passwordField)
-        val loginButton = findViewById<Button>(R.id.loginButton)
+    override fun initObservers() {
+        // Quan sát kết quả đăng nhập
+        viewModel.authSuccess.observe(this) { success ->
+            if (success) {
+                // Lưu trạng thái đăng nhập
+                val prefs = getSharedPreferences("AppPrefs", MODE_PRIVATE)
+                prefs.edit().putBoolean("isLoggedIn", true).apply()
 
-        loginButton.setOnClickListener {
-            val email = emailField.text.toString()
-            val password = passwordField.text.toString()
+                // Mở MainActivity
+                val intent = Intent(this, MainActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
+                finish()
+            }
+        }
 
-            auth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        Log.d("LOGIN", "Đăng nhập thành công")
-                        Toast.makeText(this, "Login OK", Toast.LENGTH_SHORT).show()
+        // Quan sát lỗi từ BaseViewModel
+        viewModel.errorMessage.observe(this) { msg ->
+            msg?.let { showToast(it) }
+        }
 
-                        // Chuyển sang HomeActivity
-                        val intent = Intent(this, HomeActivity::class.java)
-                        startActivity(intent)
-                        finish() // đóng LoginActivity để không quay lại khi bấm back
-                    } else {
-                        Log.e("LOGIN", "Lỗi: ${task.exception?.message}")
-                        Toast.makeText(this, "Login thất bại", Toast.LENGTH_SHORT).show()
-                    }
-                }
+        // Quan sát trạng thái loading từ BaseViewModel
+        viewModel.isLoading.observe(this) { loading ->
+            if (loading) showLoading(binding.progressBar)
+            else hideLoading(binding.progressBar)
         }
     }
 }

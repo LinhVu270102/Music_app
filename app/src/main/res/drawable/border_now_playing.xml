@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <!-- Nền hơi trong suốt (đen với alpha) -->
+    <solid android:color="#AA000000"/>
+    <!-- #AA = độ trong suốt (alpha), bạn có thể chỉnh:
+         FF = không trong suốt,
+         99 = trong suốt hơn,
+         55 = rất trong suốt -->
+
+    <!-- Viền trắng -->
+    <stroke
+        android:width="2dp"
+        android:color="@android:color/white"/>
+
+    <!-- Bo góc cong tròn -->
+    <corners android:radius="16dp"/>
+</shape>

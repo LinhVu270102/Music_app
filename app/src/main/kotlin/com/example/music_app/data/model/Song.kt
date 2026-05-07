@@ -1,10 +1,13 @@
 package com.example.music_app.data.model
 
 data class Song(
-    val id: String,            // ID duy nhất
-    val title: String,         // Tên bài hát
-    val artist: String,        // Nghệ sĩ
-    val coverResId: Int,       // Ảnh bìa (drawable resource)
-    val duration: Int,         // Thời lượng (ms)
-    var likes: Int = 0         // Số lượt thích (mặc định 0)
+    val id: String = "",       // ID duy nhất
+    val title: String = "",    // Tên bài hát
+    val artist: String = "",   // Nghệ sĩ
+    val coverUrl: String = "", // URL ảnh bìa
+    val duration: Int = 0,     // Thời lượng (ms)
+    val songUrl: String = "",  // URL file nhạc
+    val plays: Long = 0,       // Số lượt nghe
+    val likes: Long = 0,       // Số lượt thích
+    val uploaderId: String = "" // ID người upload
 )

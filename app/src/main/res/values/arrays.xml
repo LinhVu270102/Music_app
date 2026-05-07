@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Danh sách ngôn ngữ cho Spinner -->
+    <string-array name="language_options">
+        <item>Tiếng Việt</item>
+        <item>English</item>
+        <item>日本語</item>
+        <item>한국어</item>
+        <item>Français</item>
+        <item>Deutsch</item>
+    </string-array>
+</resources>

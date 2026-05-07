@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/nowPlayingBar"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
+    android:orientation="horizontal"
+    android:padding="8dp"
+    android:background="@drawable/border_now_playing"
+    android:gravity="center_vertical">
+
+    <!-- Ảnh cover bài hát -->
+    <ImageButton
+        android:id="@+id/btnPlayPause"
+        android:src="@drawable/ic_play_button_circle"
+        android:background="@android:color/transparent"
+        android:layout_width="40dp"
+        android:layout_height="40dp"/>
+
+    <!-- Thông tin bài hát -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/trackTitle"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="Tên bài hát"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:textSize="16sp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+
+        <TextView
+            android:id="@+id/trackArtist"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="Tên nghệ sĩ"
+            android:textColor="@android:color/darker_gray"
+            android:textSize="14sp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+
+
+    <!-- Nút điều khiển -->
+    <ImageButton
+        android:id="@+id/btnFollow"
+        android:src="@drawable/ic_follow"
+        android:background="@android:color/transparent"
+        android:layout_width="40dp"
+        android:layout_height="40dp" />
+
+    <ImageButton
+        android:id="@+id/btnLike"
+        android:src="@drawable/ic_like"
+        android:background="@android:color/transparent"
+        android:layout_width="40dp"
+        android:layout_height="40dp" />
+</LinearLayout>
