@@ -8,12 +8,16 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.Toast
+import androidx.annotation.OptIn
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.media3.common.util.UnstableApi
 import com.example.music_app.R
 import com.example.music_app.databinding.FragmentSettingBinding
 import com.example.music_app.ui.auth.LoginActivity
 import com.google.firebase.auth.FirebaseAuth
+import com.example.music_app.player.PlayerManager
+import com.example.music_app.service.MusicService
 
 class SettingFragment : Fragment() {
 
@@ -37,8 +41,7 @@ class SettingFragment : Fragment() {
     }
 
     private fun observeViewModel() {
-        viewModel.selectedLanguage.observe(viewLifecycleOwner) { lang ->
-            showToast("Ngôn ngữ hiện tại: $lang")
+        viewModel.selectedLanguage.observe(viewLifecycleOwner) {
         }
     }
 
@@ -104,8 +107,14 @@ class SettingFragment : Fragment() {
         )
     }
 
+    @OptIn(UnstableApi::class)
     private fun logout() {
         FirebaseAuth.getInstance().signOut()
+
+        PlayerManager.release()
+
+        val serviceIntent = Intent(requireContext(), MusicService::class.java)
+        requireContext().stopService(serviceIntent)
 
         val prefs = requireContext()
             .getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)

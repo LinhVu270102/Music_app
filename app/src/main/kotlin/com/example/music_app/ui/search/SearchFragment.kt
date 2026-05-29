@@ -10,10 +10,13 @@ import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
 import com.example.music_app.databinding.FragmentSearchBinding
+import com.example.music_app.player.PlayerManager
+import com.example.music_app.ui.player.PlayerFragment
 
 class SearchFragment : Fragment() {
 
@@ -38,15 +41,18 @@ class SearchFragment : Fragment() {
         setupSearchFocus()
         setupSearchInput()
         setupButtons()
+
+        viewModel.loadSuggestions()
     }
 
     private fun setupRecyclerView() {
-        adapter = SearchAdapter { result ->
-            Toast.makeText(
-                requireContext(),
-                "Bạn chọn: $result",
-                Toast.LENGTH_SHORT
-            ).show()
+        adapter = SearchAdapter { song ->
+            PlayerManager.play(song)
+
+            parentFragmentManager.commit {
+                replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
+                addToBackStack(null)
+            }
         }
 
         binding.searchResults.layoutManager = LinearLayoutManager(requireContext())
@@ -54,8 +60,8 @@ class SearchFragment : Fragment() {
     }
 
     private fun observeViewModel() {
-        viewModel.results.observe(viewLifecycleOwner) { results ->
-            adapter.setData(results)
+        viewModel.results.observe(viewLifecycleOwner) { songs ->
+            adapter.setData(songs)
         }
 
         viewModel.showReturn.observe(viewLifecycleOwner) { visible ->
@@ -68,11 +74,7 @@ class SearchFragment : Fragment() {
 
         viewModel.errorMessage.observe(viewLifecycleOwner) { error ->
             error?.let {
-                Toast.makeText(
-                    requireContext(),
-                    "Lỗi: $it",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(requireContext(), "Lỗi: $it", Toast.LENGTH_SHORT).show()
             }
         }
     }

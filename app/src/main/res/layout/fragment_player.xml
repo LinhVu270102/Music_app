@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/playerLayout"
+    android:id="@+id/playerRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/black"
@@ -13,44 +13,44 @@
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
         android:background="@android:color/transparent"
-        android:src="@drawable/ic_return"
-        android:contentDescription="Back" />
+        android:contentDescription="Back"
+        android:src="@drawable/ic_return" />
 
-    <!-- Ảnh bìa bài hát -->
     <ImageView
         android:id="@+id/playerCover"
         android:layout_width="match_parent"
         android:layout_height="280dp"
-        android:contentDescription="@string/logo_desc"
-        android:scaleType="centerCrop"
         android:layout_alignParentTop="true"
         android:layout_marginTop="56dp"
-        android:layout_marginBottom="16dp"/>
+        android:layout_marginBottom="16dp"
+        android:contentDescription="@string/logo_desc"
+        android:scaleType="centerCrop" />
 
-    <!-- Tên bài hát -->
     <TextView
         android:id="@+id/playerSongTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:textColor="@color/white"
-        android:gravity="center"
         android:layout_below="@id/playerCover"
-        android:layout_marginTop="12dp"/>
+        android:layout_marginTop="12dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:singleLine="true"
+        android:textColor="@color/white"
+        android:textSize="22sp"
+        android:textStyle="bold" />
 
-    <!-- Nghệ sĩ -->
     <TextView
         android:id="@+id/playerArtist"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="16sp"
-        android:textColor="@color/gray_light"
-        android:gravity="center"
         android:layout_below="@id/playerSongTitle"
-        android:layout_marginTop="4dp"/>
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:singleLine="true"
+        android:textColor="@color/gray_light"
+        android:textSize="16sp" />
 
-    <!-- Thanh tiến trình -->
     <SeekBar
         android:id="@+id/playerSeekBar"
         android:layout_width="match_parent"
@@ -58,16 +58,15 @@
         android:layout_below="@id/playerArtist"
         android:layout_marginTop="24dp"
         android:progressTint="@color/orange"
-        android:thumbTint="@color/orange"/>
+        android:thumbTint="@color/orange" />
 
-    <!-- Thời gian -->
     <LinearLayout
         android:id="@+id/playerTimeLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
         android:layout_below="@id/playerSeekBar"
         android:layout_marginTop="4dp"
+        android:orientation="horizontal"
         android:weightSum="2">
 
         <TextView
@@ -75,7 +74,8 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textColor="@color/white"/>
+            android:text="00:00"
+            android:textColor="@color/white" />
 
         <TextView
             android:id="@+id/playerTotalTime"
@@ -83,41 +83,41 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:gravity="end"
-            android:textColor="@color/white"/>
+            android:text="00:00"
+            android:textColor="@color/white" />
     </LinearLayout>
 
-    <!-- Các nút điều khiển -->
     <LinearLayout
         android:id="@+id/playerControls"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center"
         android:layout_below="@id/playerTimeLayout"
-        android:layout_marginTop="32dp">
+        android:layout_marginTop="32dp"
+        android:gravity="center"
+        android:orientation="horizontal">
 
         <ImageButton
             android:id="@+id/btnPrev"
             android:layout_width="56dp"
             android:layout_height="56dp"
-            android:src="@drawable/ic_back"
-            android:background="@android:color/transparent" />
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_back" />
 
         <ImageButton
             android:id="@+id/btnPlayPause"
             android:layout_width="72dp"
             android:layout_height="72dp"
-            android:src="@drawable/ic_play"
-            android:background="@android:color/transparent"
             android:layout_marginStart="24dp"
-            android:layout_marginEnd="24dp"/>
-
+            android:layout_marginEnd="24dp"
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_play" />
 
         <ImageButton
             android:id="@+id/btnNext"
             android:layout_width="56dp"
             android:layout_height="56dp"
-            android:src="@drawable/ic_next"
-            android:background="@android:color/transparent"/>
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_next" />
     </LinearLayout>
+
 </RelativeLayout>

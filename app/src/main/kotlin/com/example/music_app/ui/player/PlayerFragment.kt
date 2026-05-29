@@ -17,6 +17,9 @@ import com.example.music_app.databinding.FragmentPlayerBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
 import java.util.concurrent.TimeUnit
+import android.graphics.Bitmap
+import android.graphics.drawable.GradientDrawable
+import androidx.palette.graphics.Palette
 
 class PlayerFragment : Fragment() {
 
@@ -143,15 +146,49 @@ class PlayerFragment : Fragment() {
             updatePlayPauseIcon()
         }
     }
+    private fun applyGradientBackground(color: Int) {
 
+        val gradient = GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            intArrayOf(
+                color,
+                requireContext().getColor(R.color.black)
+            )
+        )
+
+        gradient.cornerRadius = 0f
+
+        binding.playerRoot.background = gradient
+    }
     private fun updateUI(song: Song) {
         binding.playerSongTitle.text = song.title
         binding.playerArtist.text = song.artist
 
         Glide.with(this)
+            .asBitmap()
             .load(song.coverUrl)
             .placeholder(R.drawable.music_orange)
-            .into(binding.playerCover)
+            .into(object : com.bumptech.glide.request.target.CustomTarget<Bitmap>() {
+
+                override fun onResourceReady(
+                    resource: Bitmap,
+                    transition: com.bumptech.glide.request.transition.Transition<in Bitmap>?
+                ) {
+
+                    binding.playerCover.setImageBitmap(resource)
+
+                    Palette.from(resource).generate { palette ->
+
+                        val dominantColor = palette?.getDominantColor(
+                            requireContext().getColor(R.color.black)
+                        ) ?: requireContext().getColor(R.color.black)
+
+                        applyGradientBackground(dominantColor)
+                    }
+                }
+
+                override fun onLoadCleared(placeholder: android.graphics.drawable.Drawable?) {}
+            })
 
         updatePlayPauseIcon()
     }

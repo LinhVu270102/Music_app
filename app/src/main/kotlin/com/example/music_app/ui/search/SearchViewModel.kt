@@ -1,24 +1,22 @@
 package com.example.music_app.ui.search
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.music_app.data.model.Song
+import com.example.music_app.data.repository.SongRepository
+import kotlinx.coroutines.launch
 
 class SearchViewModel : ViewModel() {
 
-    private val suggestions = listOf(
-        "Sơn Tùng M-TP",
-        "Đen Vâu",
-        "MONO",
-        "HIEUTHUHAI",
-        "Chill music",
-        "Lofi",
-        "Rap Việt",
-        "US-UK"
-    )
+    private val repository = SongRepository()
 
-    private val _results = MutableLiveData<List<String>>(emptyList())
-    val results: LiveData<List<String>> = _results
+    private var allSongs: List<Song> = emptyList()
+
+    private val _results = MutableLiveData<List<Song>>(emptyList())
+    val results: LiveData<List<Song>> = _results
 
     private val _query = MutableLiveData("")
     val query: LiveData<String> = _query
@@ -38,25 +36,37 @@ class SearchViewModel : ViewModel() {
     }
 
     fun loadSuggestions() {
-        _results.value = suggestions
+        viewModelScope.launch {
+            try {
+                allSongs = repository.getAllSongs()
+                _results.value = allSongs.take(10)
+            } catch (e: Exception) {
+                _errorMessage.value = e.message
+                Log.e("SearchViewModel", "Load suggestions error: ${e.message}", e)
+            }
+        }
     }
 
     fun updateQuery(newQuery: String) {
         _query.value = newQuery
         _showCancel.value = newQuery.isNotEmpty()
 
-        _results.value = if (newQuery.isEmpty()) {
-            suggestions
-        } else {
-            suggestions.filter {
-                it.contains(newQuery, ignoreCase = true)
-            }
+        if (newQuery.isBlank()) {
+            _results.value = allSongs.take(10)
+            return
         }
+
+        val filtered = allSongs.filter { song ->
+            song.title.contains(newQuery, ignoreCase = true) ||
+                    song.artist.contains(newQuery, ignoreCase = true)
+        }
+
+        _results.value = filtered
     }
 
     fun clearQuery() {
         _query.value = ""
         _showCancel.value = false
-        _results.value = suggestions
+        _results.value = allSongs.take(10)
     }
 }

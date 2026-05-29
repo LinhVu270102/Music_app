@@ -8,7 +8,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
-import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.GridLayoutManager
 import com.example.music_app.R
 import com.example.music_app.databinding.FragmentHomeBinding
 import com.example.music_app.player.PlayerManager
@@ -34,13 +34,14 @@ class HomeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         setupRecyclerView()
-        initObservers()
-        viewModel.loadPlaylist()
+        observeViewModel()
+        viewModel.loadHomeData()
     }
 
     private fun setupRecyclerView() {
         adapter = SongAdapter { song ->
             PlayerManager.play(song)
+            viewModel.saveRecentlyPlayed(song)
 
             parentFragmentManager.commit {
                 replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
@@ -48,15 +49,18 @@ class HomeFragment : Fragment() {
             }
         }
 
-        binding.albumGrid.layoutManager = LinearLayoutManager(requireContext())
+        binding.albumGrid.layoutManager = GridLayoutManager(requireContext(), 2)
         binding.albumGrid.adapter = adapter
         binding.albumGrid.isNestedScrollingEnabled = false
     }
 
-    private fun initObservers() {
+    private fun observeViewModel() {
         viewModel.playlist.observe(viewLifecycleOwner) { songs ->
-            adapter.setData(songs)
             PlayerManager.setPlaylist(songs)
+        }
+
+        viewModel.recentSongs.observe(viewLifecycleOwner) { songs ->
+            adapter.setData(songs)
         }
 
         viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
@@ -65,6 +69,7 @@ class HomeFragment : Fragment() {
             }
         }
     }
+
 
     override fun onDestroyView() {
         super.onDestroyView()

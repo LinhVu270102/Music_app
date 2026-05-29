@@ -1,10 +1,15 @@
 package com.example.music_app.main
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.music_app.R
 import com.example.music_app.databinding.ActivityMainBinding
@@ -17,10 +22,18 @@ import com.example.music_app.ui.player.PlayerFragment
 import com.example.music_app.ui.profile.ProfileFragment
 import com.example.music_app.ui.search.SearchFragment
 import com.google.firebase.auth.FirebaseAuth
+import androidx.media3.common.util.UnstableApi
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+
+    private val requestNotificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                startMusicService()
+            }
+        }
 
     enum class FooterTab {
         HOME, SEARCH, LIBRARY, PROFILE
@@ -41,10 +54,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         PlayerManager.init(this)
-        startMusicService()
 
         setupFooter()
         setupMiniPlayer()
+        requestNotificationPermissionIfNeeded()
 
         if (savedInstanceState == null) {
             openFragment(HomeFragment())
@@ -52,6 +65,26 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (granted) {
+                startMusicService()
+            } else {
+                requestNotificationPermissionLauncher.launch(
+                    Manifest.permission.POST_NOTIFICATIONS
+                )
+            }
+        } else {
+            startMusicService()
+        }
+    }
+
+    @OptIn(UnstableApi::class)
     private fun startMusicService() {
         val intent = Intent(this, MusicService::class.java)
 

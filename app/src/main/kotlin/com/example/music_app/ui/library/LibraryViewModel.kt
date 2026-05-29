@@ -1,37 +1,47 @@
 package com.example.music_app.ui.library
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-
-data class MusicItem(
-    val id: String,
-    val title: String,
-    val artist: String,
-    val coverUrl: String
-)
+import androidx.lifecycle.viewModelScope
+import com.example.music_app.data.model.Song
+import com.example.music_app.data.repository.SongRepository
+import kotlinx.coroutines.launch
 
 class LibraryViewModel : ViewModel() {
 
-    private val _recentlyPlayed = MutableLiveData<List<MusicItem>>()
-    val recentlyPlayed: LiveData<List<MusicItem>> = _recentlyPlayed
+    private val repository = SongRepository()
 
-    private val _listeningHistory = MutableLiveData<List<MusicItem>>()
-    val listeningHistory: LiveData<List<MusicItem>> = _listeningHistory
+    private val _recentlyPlayed = MutableLiveData<List<Song>>()
+    val recentlyPlayed: LiveData<List<Song>> = _recentlyPlayed
 
     private val _navigateEvent = MutableLiveData<String>()
     val navigateEvent: LiveData<String> = _navigateEvent
 
-    init {
-        _recentlyPlayed.value = listOf(
-            MusicItem("1", "Song A", "Artist A", "https://example.com/coverA.jpg"),
-            MusicItem("2", "Song B", "Artist B", "https://example.com/coverB.jpg")
-        )
+    private val _errorMessage = MutableLiveData<String?>()
+    val errorMessage: LiveData<String?> = _errorMessage
 
-        _listeningHistory.value = listOf(
-            MusicItem("3", "Song C", "Artist C", "https://example.com/coverC.jpg"),
-            MusicItem("4", "Song D", "Artist D", "https://example.com/coverD.jpg")
-        )
+    init {
+        loadRecentlyPlayed()
+    }
+
+    fun loadRecentlyPlayed() {
+        viewModelScope.launch {
+            try {
+                _recentlyPlayed.value =
+                    repository.getRecentlyPlayedSongs()
+
+            } catch (e: Exception) {
+                _errorMessage.value = e.message
+
+                Log.e(
+                    "LibraryViewModel",
+                    "Error loading recently played: ${e.message}",
+                    e
+                )
+            }
+        }
     }
 
     fun onSettingClicked() {

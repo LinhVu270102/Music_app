@@ -16,16 +16,39 @@ class HomeViewModel : ViewModel() {
     private val _playlist = MutableLiveData<List<Song>>()
     val playlist: LiveData<List<Song>> = _playlist
 
+    private val _recentSongs = MutableLiveData<List<Song>>()
+    val recentSongs: LiveData<List<Song>> = _recentSongs
+
     private val _errorMessage = MutableLiveData<String?>()
     val errorMessage: LiveData<String?> = _errorMessage
 
-    fun loadPlaylist() {
+    fun loadHomeData() {
         viewModelScope.launch {
             try {
-                _playlist.value = repository.getAllSongs()
+                val allSongs = repository.getAllSongs()
+                val recentlyPlayed = repository.getRecentlyPlayedSongs()
+
+                _playlist.value = allSongs
+
+                _recentSongs.value = if (recentlyPlayed.isNotEmpty()) {
+                    recentlyPlayed
+                } else {
+                    allSongs.take(4)
+                }
+
             } catch (e: Exception) {
                 _errorMessage.value = e.message
-                Log.e("HomeViewModel", "Error loading playlist: ${e.message}", e)
+                Log.e("HomeViewModel", "Error loading home data: ${e.message}", e)
+            }
+        }
+    }
+
+    fun saveRecentlyPlayed(song: Song) {
+        viewModelScope.launch {
+            try {
+                repository.saveRecentlyPlayed(song)
+            } catch (e: Exception) {
+                Log.e("HomeViewModel", "Error saving recently played: ${e.message}", e)
             }
         }
     }
