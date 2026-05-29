@@ -1,117 +1,214 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/homeFragment"
-    android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/black"
+    android:orientation="vertical">
 
-    <!-- HEADER -->
+    <!-- HEADER: GIỮ LẠI HEADER HIỆN TẠI -->
     <LinearLayout
+        android:id="@+id/headerContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp"
         android:background="@color/black"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp">
 
         <TextView
-            android:text="Home"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="@color/white"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"/>
+            android:layout_weight="1"
+            android:text="Home"
+            android:textColor="@color/white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
 
         <ImageButton
-            android:src="@drawable/ic_upload"
-            android:background="@android:color/transparent"
             android:layout_width="40dp"
-            android:layout_height="40dp"/>
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_upload" />
 
         <ImageButton
-            android:src="@drawable/ic_notification"
-            android:background="@android:color/transparent"
             android:layout_width="40dp"
-            android:layout_height="40dp"/>
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:src="@drawable/ic_notification" />
+
     </LinearLayout>
-    <!-- MIDDLE: RecyclerView để hiển thị danh sách nhạc -->
 
-    <!-- MIDDLE -->
-    <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-        android:id="@+id/musicfeed"
+    <!-- BODY -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/homeScrollView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:paddingBottom="140dp">
 
         <LinearLayout
-            android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="12dp">
+            android:orientation="vertical">
 
-            <!-- Tiêu đề -->
-            <TextView
-                android:id="@+id/sectionTitle"
-                android:text="Get back to it"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@android:color/white"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:paddingBottom="8dp"/>
-
-            <!-- Grid 4 album -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/albumGrid"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="8dp"
-                android:clipToPadding="false"/>
-
+            <!-- YOUR LIKES -->
             <LinearLayout
-                android:orientation="horizontal"
+                android:id="@+id/sectionYourLikes"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical">
+                android:layout_height="88dp"
+                android:layout_marginStart="20dp"
+                android:layout_marginTop="18dp"
+                android:layout_marginEnd="20dp"
+                android:background="@drawable/bg_your_likes"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="22dp"
+                android:paddingEnd="18dp">
 
-                <!-- Tiêu đề -->
                 <TextView
-                    android:text="More of what you like"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:textColor="@android:color/white"
+                    android:layout_weight="1"
+                    android:text="Your likes"
+                    android:textColor="#FFFFFF"
                     android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:paddingBottom="8dp"
-                    android:paddingTop="16dp"
-                    android:layout_weight="1"/>
+                    android:textStyle="bold" />
 
-                <!-- Nút See all -->
-                <Button
-                    android:id="@+id/btnSeeAll"
-                    android:text="See all"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="60dp"
-                    android:minHeight="0dp"
-                    android:backgroundTint="@color/gray"
-                    android:textColor="@android:color/white"
-                    android:textStyle="bold"
-                    android:textSize="10sp"
-                    android:padding="0dp"/>
             </LinearLayout>
 
+            <!-- RELATED TRACKS: 4 TRACK -->
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/albumHorizontalList"
+                android:id="@+id/rvRelatedTracks"
+                android:layout_width="match_parent"
+                android:layout_height="170dp"
+                android:layout_marginTop="18dp"
+                android:clipToPadding="false"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp" />
+
+            <!-- MORE OF WHAT YOU LIKE -->
+            <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:scrollbars="none"/>
+                android:layout_marginTop="26dp"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:text="More of what you like"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvMoreLike"
+                android:layout_width="match_parent"
+                android:layout_height="240dp"
+                android:layout_marginTop="16dp"
+                android:clipToPadding="false"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp" />
+
+            <!-- HOT FOR YOU -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:text="Hot For You 🔥"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvHotForYou"
+                android:layout_width="match_parent"
+                android:layout_height="240dp"
+                android:layout_marginTop="16dp"
+                android:clipToPadding="false"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp" />
+
+            <!-- TRENDING BY GENRE -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:text="Trending by genre"
+                android:textColor="#FFFFFF"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/genreChipContainer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp">
+
+                    <TextView
+                        android:id="@+id/chipHipHop"
+                        style="@style/GenreChipSelected"
+                        android:text="Hip Hop &amp; Rap" />
+
+                    <TextView
+                        android:id="@+id/chipSoundCloud"
+                        style="@style/GenreChip"
+                        android:text="SoundCloud" />
+
+                    <TextView
+                        android:id="@+id/chipRnB"
+                        style="@style/GenreChip"
+                        android:text="R&amp;B" />
+
+                    <TextView
+                        android:id="@+id/chipPop"
+                        style="@style/GenreChip"
+                        android:text="Pop" />
+
+                    <TextView
+                        android:id="@+id/chipElectronic"
+                        style="@style/GenreChip"
+                        android:text="Electronic" />
+
+                    <TextView
+                        android:id="@+id/chipChill"
+                        style="@style/GenreChip"
+                        android:text="Chill" />
+
+                </LinearLayout>
+
+            </HorizontalScrollView>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvTrendingByGenre"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                android:nestedScrollingEnabled="false"
+                android:paddingStart="20dp"
+                android:paddingEnd="20dp"
+                android:paddingBottom="40dp" />
 
         </LinearLayout>
-    </ScrollView>
+
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- MINI PLAYER HIỆN TẠI -->
     <include
         android:id="@+id/nowPlayingBar"
-        layout ="@layout/item_now_playing"
-        android:visibility="gone"/>
+        layout="@layout/item_now_playing"
+        android:visibility="gone" />
+
 </LinearLayout>

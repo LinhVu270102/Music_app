@@ -1,30 +1,48 @@
 package com.example.music_app.ui.search
 
 import android.content.Context
+import android.graphics.Color
+import android.graphics.Rect
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
+import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
-import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
+import com.example.music_app.data.model.Song
+import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.databinding.FragmentSearchBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.player.PlayerFragment
+import com.example.music_app.ui.song.SongAdapter
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class SearchFragment : Fragment() {
 
     private var _binding: FragmentSearchBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var adapter: SearchAdapter
-    private val viewModel: SearchViewModel by viewModels()
+    private lateinit var adapter: SongAdapter
+
+    private val repository = SongRepository()
+
+    private var allSongs: List<Song> = emptyList()
+    private var recentSongs: List<Song> = emptyList()
+
+    private var keyboardListener: ViewTreeObserver.OnGlobalLayoutListener? = null
+    private var isKeyboardVisible = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -37,97 +55,188 @@ class SearchFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         setupRecyclerView()
-        observeViewModel()
-        setupSearchFocus()
-        setupSearchInput()
-        setupButtons()
-
-        viewModel.loadSuggestions()
+        setupSearchActions()
+        setupTabs()
+        setupKeyboardListener()
+        loadSongs()
     }
 
     private fun setupRecyclerView() {
-        adapter = SearchAdapter { song ->
-            PlayerManager.play(song)
+        adapter = SongAdapter { song ->
+            playSong(song)
+        }
 
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                addToBackStack(null)
+        binding.rvSearchSongs.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvSearchSongs.adapter = adapter
+    }
+
+    private fun setupSearchActions() {
+        binding.btnCancel.setOnClickListener {
+            binding.edtSearch.text?.clear()
+            binding.btnCancel.visibility = View.GONE
+            showRecentlySearched()
+            hideKeyboard()
+        }
+
+        binding.edtSearch.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                val query = binding.edtSearch.text.toString().trim()
+                searchSongs(query, showTabs = true)
+                hideKeyboard()
+                true
+            } else {
+                false
             }
         }
 
-        binding.searchResults.layoutManager = LinearLayoutManager(requireContext())
-        binding.searchResults.adapter = adapter
-    }
-
-    private fun observeViewModel() {
-        viewModel.results.observe(viewLifecycleOwner) { songs ->
-            adapter.setData(songs)
-        }
-
-        viewModel.showReturn.observe(viewLifecycleOwner) { visible ->
-            binding.btnReturn.visibility = if (visible) View.VISIBLE else View.GONE
-        }
-
-        viewModel.showCancel.observe(viewLifecycleOwner) { visible ->
-            binding.btnCancel.visibility = if (visible) View.VISIBLE else View.GONE
-        }
-
-        viewModel.errorMessage.observe(viewLifecycleOwner) { error ->
-            error?.let {
-                Toast.makeText(requireContext(), "Lỗi: $it", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun setupSearchFocus() {
-        binding.edtSearch.setOnFocusChangeListener { _, hasFocus ->
-            viewModel.onFocusChanged(hasFocus)
-
-            val footer = requireActivity().findViewById<View>(R.id.appFooter)
-            footer.visibility = if (hasFocus) View.GONE else View.VISIBLE
-
-            if (hasFocus) {
-                viewModel.loadSuggestions()
-            }
-        }
-    }
-
-    private fun setupSearchInput() {
         binding.edtSearch.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                viewModel.updateQuery(s.toString().trim())
-            }
-
             override fun beforeTextChanged(
                 s: CharSequence?,
                 start: Int,
                 count: Int,
                 after: Int
-            ) {}
+            ) {
+            }
 
             override fun onTextChanged(
                 s: CharSequence?,
                 start: Int,
                 before: Int,
                 count: Int
-            ) {}
+            ) {
+                val query = s?.toString()?.trim().orEmpty()
+
+                binding.btnCancel.visibility =
+                    if (query.isNotEmpty()) View.VISIBLE else View.GONE
+
+                if (query.isEmpty()) {
+                    showRecentlySearched()
+                } else {
+                    searchSongs(query, showTabs = false)
+                }
+            }
+
+            override fun afterTextChanged(s: Editable?) {}
         })
     }
 
-    private fun setupButtons() {
-        binding.btnCancel.setOnClickListener {
-            viewModel.clearQuery()
-            binding.edtSearch.text.clear()
+    private fun setupTabs() {
+        val tabs = listOf(
+            binding.tabAll,
+            binding.tabTracks,
+            binding.tabProfiles,
+            binding.tabPlaylists,
+            binding.tabAlbums
+        )
+
+        tabs.forEach { tab ->
+            tab.setOnClickListener {
+                selectTab(tab, tabs)
+            }
+        }
+    }
+
+    private fun selectTab(selectedTab: TextView, tabs: List<TextView>) {
+        tabs.forEach { tab ->
+            tab.setTextColor(Color.parseColor("#AFAFAF"))
         }
 
-        binding.btnReturn.setOnClickListener {
-            binding.edtSearch.clearFocus()
-            hideKeyboard()
+        selectedTab.setTextColor(Color.WHITE)
 
-            val currentQuery = viewModel.query.value
-            if (!currentQuery.isNullOrEmpty()) {
-                viewModel.updateQuery(currentQuery)
+        val query = binding.edtSearch.text.toString().trim()
+        searchSongs(query, showTabs = true)
+    }
+
+    private fun setupKeyboardListener() {
+        val rootView = binding.root
+
+        keyboardListener = ViewTreeObserver.OnGlobalLayoutListener {
+            val rect = Rect()
+            rootView.getWindowVisibleDisplayFrame(rect)
+
+            val screenHeight = rootView.rootView.height
+            val keyboardHeight = screenHeight - rect.bottom
+
+            val keyboardNowVisible = keyboardHeight > screenHeight * 0.15
+
+            if (keyboardNowVisible != isKeyboardVisible) {
+                isKeyboardVisible = keyboardNowVisible
+
+                if (isKeyboardVisible) {
+                    hideFooter()
+                } else {
+                    showFooter()
+                }
             }
+        }
+
+        rootView.viewTreeObserver.addOnGlobalLayoutListener(keyboardListener)
+    }
+
+    private fun loadSongs() {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val songs = repository.getAllSongs()
+
+                withContext(Dispatchers.Main) {
+                    allSongs = songs
+                    recentSongs = songs.take(6)
+                    showRecentlySearched()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Không tải được dữ liệu tìm kiếm",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun showRecentlySearched() {
+        binding.tabContainer.visibility = View.GONE
+        binding.tvSearchSectionTitle.visibility = View.VISIBLE
+        binding.tvSearchSectionTitle.text = "Recently searched"
+
+        adapter.setData(recentSongs)
+    }
+
+    private fun searchSongs(query: String, showTabs: Boolean) {
+        if (query.isBlank()) {
+            showRecentlySearched()
+            return
+        }
+
+        binding.tabContainer.visibility =
+            if (showTabs) View.VISIBLE else View.GONE
+
+        binding.tvSearchSectionTitle.visibility = View.VISIBLE
+        binding.tvSearchSectionTitle.text =
+            if (showTabs) "Top Result" else "Search results"
+
+        val result = allSongs.filter { song ->
+            song.title.contains(query, ignoreCase = true) ||
+                    song.artist.contains(query, ignoreCase = true)
+        }
+
+        adapter.setData(result)
+    }
+
+    private fun playSong(song: Song) {
+        PlayerManager.play(song)
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            repository.saveRecentlyPlayed(song)
+        }
+
+        hideKeyboard()
+        showFooter()
+
+        parentFragmentManager.commit {
+            replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
+            addToBackStack(null)
         }
     }
 
@@ -136,15 +245,29 @@ class SearchFragment : Fragment() {
             requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
         inputMethodManager.hideSoftInputFromWindow(binding.edtSearch.windowToken, 0)
+        binding.edtSearch.clearFocus()
+    }
+
+    private fun hideFooter() {
+        requireActivity().findViewById<View>(R.id.appFooter).visibility = View.GONE
+        requireActivity().findViewById<View>(R.id.miniPlayer).visibility = View.GONE
+    }
+
+    private fun showFooter() {
+        requireActivity().findViewById<View>(R.id.appFooter).visibility = View.VISIBLE
+
+        if (PlayerManager.currentSong.value != null) {
+            requireActivity().findViewById<View>(R.id.miniPlayer).visibility = View.VISIBLE
+        }
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
+        keyboardListener?.let {
+            binding.root.viewTreeObserver.removeOnGlobalLayoutListener(it)
+        }
 
-        requireActivity()
-            .findViewById<View>(R.id.appFooter)
-            ?.visibility = View.VISIBLE
-
+        showFooter()
         _binding = null
+        super.onDestroyView()
     }
 }
