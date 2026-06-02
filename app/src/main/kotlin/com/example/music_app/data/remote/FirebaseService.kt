@@ -1,10 +1,11 @@
 package com.example.music_app.data.remote
 
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.model.User
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
-import com.example.music_app.data.model.User
 
 class FirebaseService(
     private val firestore: FirebaseFirestore
@@ -74,6 +75,7 @@ class FirebaseService(
             getSongById(songId)
         }
     }
+
     suspend fun getUserById(userId: String): User? {
         if (userId.isBlank()) return null
 
@@ -95,6 +97,83 @@ class FirebaseService(
 
         return snapshot.documents.mapNotNull { doc ->
             doc.toObject(Song::class.java)?.copy(id = doc.id)
+        }
+    }
+
+    suspend fun likeSong(userId: String, songId: String) {
+        if (userId.isBlank() || songId.isBlank()) return
+
+        val likedRef = firestore.collection("users")
+            .document(userId)
+            .collection("likedSongs")
+            .document(songId)
+
+        val songRef = firestore.collection("songs")
+            .document(songId)
+
+        val likedDoc = likedRef.get().await()
+
+        if (likedDoc.exists()) return
+
+        val data = mapOf(
+            "songId" to songId,
+            "likedAt" to System.currentTimeMillis()
+        )
+
+        likedRef.set(data).await()
+
+        songRef.update("likes", FieldValue.increment(1)).await()
+    }
+
+    suspend fun unlikeSong(userId: String, songId: String) {
+        if (userId.isBlank() || songId.isBlank()) return
+
+        val likedRef = firestore.collection("users")
+            .document(userId)
+            .collection("likedSongs")
+            .document(songId)
+
+        val songRef = firestore.collection("songs")
+            .document(songId)
+
+        val likedDoc = likedRef.get().await()
+
+        if (!likedDoc.exists()) return
+
+        likedRef.delete().await()
+
+        songRef.update("likes", FieldValue.increment(-1)).await()
+    }
+
+    suspend fun isSongLiked(userId: String, songId: String): Boolean {
+        if (userId.isBlank() || songId.isBlank()) return false
+
+        val doc = firestore.collection("users")
+            .document(userId)
+            .collection("likedSongs")
+            .document(songId)
+            .get()
+            .await()
+
+        return doc.exists()
+    }
+
+    suspend fun getLikedSongs(userId: String): List<Song> {
+        if (userId.isBlank()) return emptyList()
+
+        val snapshot = firestore.collection("users")
+            .document(userId)
+            .collection("likedSongs")
+            .orderBy("likedAt", Query.Direction.DESCENDING)
+            .get()
+            .await()
+
+        val songIds = snapshot.documents.mapNotNull { doc ->
+            doc.getString("songId")
+        }
+
+        return songIds.mapNotNull { songId ->
+            getSongById(songId)
         }
     }
 }

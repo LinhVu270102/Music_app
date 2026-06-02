@@ -1,18 +1,18 @@
-package com.example.music_app.ui.library
+package com.example.music_app.ui.following
 
 import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
 import com.example.music_app.R
-import com.example.music_app.databinding.FragmentYourLikesBinding
+import com.example.music_app.databinding.FragmentFollowingBinding
 
-class YourLikesFragment : Fragment(R.layout.fragment_your_likes) {
+class FollowingFragment : Fragment(R.layout.fragment_following) {
 
-    private var _binding: FragmentYourLikesBinding? = null
+    private var _binding: FragmentFollowingBinding? = null
     private val binding get() = _binding!!
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        _binding = FragmentYourLikesBinding.bind(view)
+        _binding = FragmentFollowingBinding.bind(view)
 
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()

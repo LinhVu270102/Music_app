@@ -1,18 +1,18 @@
-package com.example.music_app.ui.library
+package com.example.music_app.ui.albums
 
 import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
 import com.example.music_app.R
-import com.example.music_app.databinding.FragmentFollowingBinding
+import com.example.music_app.databinding.FragmentAlbumsBinding
 
-class FollowingFragment : Fragment(R.layout.fragment_following) {
+class AlbumsFragment : Fragment(R.layout.fragment_albums) {
 
-    private var _binding: FragmentFollowingBinding? = null
+    private var _binding: FragmentAlbumsBinding? = null
     private val binding get() = _binding!!
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        _binding = FragmentFollowingBinding.bind(view)
+        _binding = FragmentAlbumsBinding.bind(view)
 
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()

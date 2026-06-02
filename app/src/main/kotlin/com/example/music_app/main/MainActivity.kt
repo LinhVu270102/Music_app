@@ -6,13 +6,17 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import com.example.music_app.R
+import com.example.music_app.data.model.Song
+import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.databinding.ActivityMainBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.service.MusicService
@@ -23,10 +27,17 @@ import com.example.music_app.ui.player.PlayerFragment
 import com.example.music_app.ui.profile.ProfileFragment
 import com.example.music_app.ui.search.SearchFragment
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+
+    private val songRepository = SongRepository()
+    private var currentMiniSong: Song? = null
+    private var isCurrentSongLiked = false
 
     private val requestNotificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -127,16 +138,23 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupMiniPlayer() {
         binding.miniPlayer.root.visibility = View.GONE
+        updateMiniPlayerLikeIcon()
 
         PlayerManager.currentSong.observe(this) { song ->
             if (song == null) {
+                currentMiniSong = null
+                isCurrentSongLiked = false
                 binding.miniPlayer.root.visibility = View.GONE
+                updateMiniPlayerLikeIcon()
                 return@observe
             }
+
+            currentMiniSong = song
 
             binding.miniPlayer.trackTitle.text = song.title
             binding.miniPlayer.trackArtist.text = song.artist
 
+            loadMiniPlayerLikeState(song.id)
             updateMiniPlayerVisibility()
 
             binding.miniPlayer.root.setOnClickListener {
@@ -158,6 +176,64 @@ class MainActivity : AppCompatActivity() {
         binding.miniPlayer.btnPlayPause.setOnClickListener {
             PlayerManager.toggle()
         }
+
+        binding.miniPlayer.btnLike.setOnClickListener {
+            toggleMiniPlayerLike()
+        }
+    }
+
+    private fun loadMiniPlayerLikeState(songId: String) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val liked = songRepository.isSongLiked(songId)
+
+                withContext(Dispatchers.Main) {
+                    isCurrentSongLiked = liked
+                    updateMiniPlayerLikeIcon()
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    isCurrentSongLiked = false
+                    updateMiniPlayerLikeIcon()
+                }
+            }
+        }
+    }
+
+    private fun toggleMiniPlayerLike() {
+        val song = currentMiniSong ?: return
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val liked = songRepository.toggleLikeSong(song)
+
+                withContext(Dispatchers.Main) {
+                    isCurrentSongLiked = liked
+                    updateMiniPlayerLikeIcon()
+
+                    val message = if (liked) {
+                        "Đã thêm vào Your likes"
+                    } else {
+                        "Đã bỏ khỏi Your likes"
+                    }
+
+                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        e.message ?: "Không thể cập nhật like",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun updateMiniPlayerLikeIcon() {
+        binding.miniPlayer.btnLike.alpha =
+            if (isCurrentSongLiked) 1f else 0.4f
     }
 
     private fun openMainFragment(fragment: Fragment) {
