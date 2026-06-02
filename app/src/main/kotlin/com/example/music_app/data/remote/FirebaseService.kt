@@ -481,4 +481,22 @@ class FirebaseService(
             .update("commentsCount", FieldValue.increment(-1))
             .await()
     }
+    suspend fun getFollowingUsers(userId: String): List<User> {
+        if (userId.isBlank()) return emptyList()
+
+        val snapshot = firestore.collection("users")
+            .document(userId)
+            .collection("following")
+            .orderBy("followedAt", Query.Direction.DESCENDING)
+            .get()
+            .await()
+
+        val userIds = snapshot.documents.mapNotNull { doc ->
+            doc.getString("userId")
+        }
+
+        return userIds.mapNotNull { targetUserId ->
+            getUserById(targetUserId)
+        }
+    }
 }

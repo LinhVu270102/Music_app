@@ -199,4 +199,8 @@ class SongRepository {
     ) {
         firebaseService.deleteComment(songId, commentId)
     }
+    suspend fun getFollowingUsers(): List<User> {
+        val userId = auth.currentUser?.uid ?: return emptyList()
+        return firebaseService.getFollowingUsers(userId)
+    }
 }
