@@ -78,7 +78,7 @@ class SettingFragment : Fragment() {
             logout()
         }
 
-        binding.deleteAccountButton.setOnClickListener {
+        binding.updateAccountButton.setOnClickListener {
             viewModel.deleteAccount()
             showToast("Tài khoản đã bị xoá")
         }

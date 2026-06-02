@@ -23,14 +23,21 @@ class AuthViewModel(
     val isLoading: LiveData<Boolean> = _isLoading
 
     fun login(email: String, password: String) {
-        if (email.isBlank() || password.isBlank()) {
+        val cleanEmail = email.trim()
+
+        if (cleanEmail.isBlank() || password.isBlank()) {
             _errorMessage.value = "Vui lòng nhập email và mật khẩu"
+            return
+        }
+
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches()) {
+            _errorMessage.value = "Email không hợp lệ"
             return
         }
 
         _isLoading.value = true
 
-        repository.login(email, password)
+        repository.login(cleanEmail, password)
             .addOnSuccessListener {
                 _authSuccess.value = true
                 _currentUser.value = repository.getCurrentUser()
@@ -43,9 +50,26 @@ class AuthViewModel(
             }
     }
 
-    fun register(email: String, password: String) {
-        if (email.isBlank() || password.isBlank()) {
+    fun register(
+        displayName: String,
+        email: String,
+        password: String
+    ) {
+        val cleanDisplayName = displayName.trim()
+        val cleanEmail = email.trim()
+
+        if (cleanDisplayName.isBlank()) {
+            _errorMessage.value = "Vui lòng nhập tên hiển thị"
+            return
+        }
+
+        if (cleanEmail.isBlank() || password.isBlank()) {
             _errorMessage.value = "Vui lòng nhập email và mật khẩu"
+            return
+        }
+
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches()) {
+            _errorMessage.value = "Email không hợp lệ"
             return
         }
 
@@ -56,17 +80,19 @@ class AuthViewModel(
 
         _isLoading.value = true
 
-        repository.register(email, password)
-            .addOnSuccessListener {
-                _authSuccess.value = true
-                _currentUser.value = repository.getCurrentUser()
-                _isLoading.value = false
-            }
-            .addOnFailureListener { e ->
-                _authSuccess.value = false
-                _errorMessage.value = e.message ?: "Đăng ký thất bại"
-                _isLoading.value = false
-            }
+        repository.register(
+            displayName = cleanDisplayName,
+            email = cleanEmail,
+            password = password
+        ).addOnSuccessListener {
+            _authSuccess.value = true
+            _currentUser.value = repository.getCurrentUser()
+            _isLoading.value = false
+        }.addOnFailureListener { e ->
+            _authSuccess.value = false
+            _errorMessage.value = e.message ?: "Đăng ký thất bại"
+            _isLoading.value = false
+        }
     }
 
     fun logout() {

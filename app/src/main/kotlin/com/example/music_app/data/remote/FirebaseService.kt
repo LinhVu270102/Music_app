@@ -4,6 +4,7 @@ import com.example.music_app.data.model.Song
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
+import com.example.music_app.data.model.User
 
 class FirebaseService(
     private val firestore: FirebaseFirestore
@@ -71,6 +72,29 @@ class FirebaseService(
 
         return songIds.mapNotNull { songId ->
             getSongById(songId)
+        }
+    }
+    suspend fun getUserById(userId: String): User? {
+        if (userId.isBlank()) return null
+
+        val doc = firestore.collection("users")
+            .document(userId)
+            .get()
+            .await()
+
+        return doc.toObject(User::class.java)?.copy(uid = doc.id)
+    }
+
+    suspend fun getSongsByUploaderId(userId: String): List<Song> {
+        if (userId.isBlank()) return emptyList()
+
+        val snapshot = firestore.collection("songs")
+            .whereEqualTo("uploaderId", userId)
+            .get()
+            .await()
+
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Song::class.java)?.copy(id = doc.id)
         }
     }
 }

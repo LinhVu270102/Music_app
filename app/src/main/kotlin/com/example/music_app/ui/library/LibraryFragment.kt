@@ -75,27 +75,45 @@ class LibraryFragment : Fragment() {
 
     private fun setupListeners() {
         binding.btnSetting.setOnClickListener {
-            viewModel.onSettingClicked()
+            parentFragmentManager.commit {
+                replace(R.id.fragmentContainer, SettingFragment())
+                addToBackStack(null)
+            }
         }
 
         binding.btnYourLikes.setOnClickListener {
-            showToast("Bạn chọn Your Likes")
+            parentFragmentManager.commit {
+                replace(R.id.fragmentContainer, YourLikesFragment())
+                addToBackStack(null)
+            }
         }
 
         binding.btnPlaylists.setOnClickListener {
-            showToast("Bạn chọn Playlists")
+            parentFragmentManager.commit {
+                replace(R.id.fragmentContainer, PlaylistsFragment())
+                addToBackStack(null)
+            }
         }
 
         binding.btnAlbums.setOnClickListener {
-            showToast("Bạn chọn Albums")
+            parentFragmentManager.commit {
+                replace(R.id.fragmentContainer, AlbumsFragment())
+                addToBackStack(null)
+            }
         }
 
         binding.btnFollowing.setOnClickListener {
-            showToast("Bạn chọn Following")
+            parentFragmentManager.commit {
+                replace(R.id.fragmentContainer, FollowingFragment())
+                addToBackStack(null)
+            }
         }
 
         binding.btnYourUpload.setOnClickListener {
-            showToast("Bạn chọn Your Upload")
+            parentFragmentManager.commit {
+                replace(R.id.fragmentContainer, YourUploadFragment())
+                addToBackStack(null)
+            }
         }
     }
 

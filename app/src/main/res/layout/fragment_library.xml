@@ -1,188 +1,233 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/libraryFragment"
-    android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@color/black"
+    android:orientation="vertical">
 
     <!-- HEADER -->
     <LinearLayout
+        android:id="@+id/libraryHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp"
         android:background="@color/black"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:padding="12dp">
 
         <TextView
-            android:text="Library"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="@color/white"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"/>
+            android:layout_weight="1"
+            android:text="Library"
+            android:textColor="@color/white"
+            android:textSize="20sp"
+            android:textStyle="bold" />
 
         <ImageButton
             android:id="@+id/btnSetting"
-            android:src="@drawable/ic_setting"
-            android:background="@android:color/transparent"
             android:layout_width="40dp"
-            android:layout_height="40dp"/>
-    </LinearLayout>
-    <!-- MIDDLE: RecyclerView để hiển thị danh sách nhạc -->
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:padding="8dp"
+            android:src="@drawable/ic_setting"
+            app:tint="@color/white" />
 
-    <!-- MIDDLE -->
-    <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    </LinearLayout>
+
+    <!-- CONTENT -->
+    <ScrollView
         android:id="@+id/musicfeed"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:fillViewport="true">
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:paddingBottom="120dp">
 
         <LinearLayout
-            android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="12dp">
+            android:orientation="vertical"
+            android:paddingStart="12dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="24dp">
 
+            <!-- YOUR LIKES -->
             <Button
                 android:id="@+id/btnYourLikes"
-                android:text="Your likes"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="52dp"
                 android:backgroundTint="@color/black"
-                android:textColor="@android:color/white"
-                android:padding="12dp"
-                android:gravity="start|center_vertical"
                 android:drawableEnd="@drawable/ic_arrow_right"
-                android:drawablePadding="8dp"/>
+                android:drawablePadding="8dp"
+                android:gravity="start|center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="Your likes"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="16sp" />
 
-
+            <!-- PLAYLISTS -->
             <Button
                 android:id="@+id/btnPlaylists"
-                android:text="Playlists"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="52dp"
                 android:backgroundTint="@color/black"
-                android:textColor="@android:color/white"
-                android:padding="12dp"
-                android:gravity="start|center_vertical"
                 android:drawableEnd="@drawable/ic_arrow_right"
-                android:drawablePadding="8dp"/>
+                android:drawablePadding="8dp"
+                android:gravity="start|center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="Playlists"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="16sp" />
 
+            <!-- ALBUMS -->
             <Button
                 android:id="@+id/btnAlbums"
-                android:text="Albums"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="52dp"
                 android:backgroundTint="@color/black"
-                android:textColor="@android:color/white"
-                android:padding="12dp"
-                android:gravity="start|center_vertical"
                 android:drawableEnd="@drawable/ic_arrow_right"
-                android:drawablePadding="8dp"/>
+                android:drawablePadding="8dp"
+                android:gravity="start|center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="Albums"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="16sp" />
 
+            <!-- FOLLOWING -->
             <Button
                 android:id="@+id/btnFollowing"
-                android:text="Following"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="52dp"
                 android:backgroundTint="@color/black"
-                android:textColor="@android:color/white"
-                android:padding="12dp"
-                android:gravity="start|center_vertical"
                 android:drawableEnd="@drawable/ic_arrow_right"
-                android:drawablePadding="8dp"/>
+                android:drawablePadding="8dp"
+                android:gravity="start|center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="Following"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="16sp" />
 
+            <!-- YOUR UPLOAD -->
             <Button
                 android:id="@+id/btnYourUpload"
-                android:text="Your Upload"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="52dp"
                 android:backgroundTint="@color/black"
-                android:textColor="@android:color/white"
-                android:padding="12dp"
-                android:gravity="start|center_vertical"
                 android:drawableEnd="@drawable/ic_arrow_right"
-                android:drawablePadding="8dp"/>
+                android:drawablePadding="8dp"
+                android:gravity="start|center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:text="Your Upload"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="16sp" />
+
+            <!-- RECENTLY PLAYED HEADER -->
             <LinearLayout
-                android:orientation="horizontal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical">
+                android:layout_marginTop="24dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-                <!-- Tiêu đề -->
                 <TextView
-                    android:text="Recently played"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Recently played"
                     android:textColor="@android:color/white"
                     android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:paddingBottom="8dp"
-                    android:paddingTop="20dp"
-                    android:layout_weight="1"/>
+                    android:textStyle="bold" />
 
-                <!-- Nút See all -->
                 <Button
                     android:id="@+id/btnSeeAllLib1"
-                    android:text="See all"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="60dp"
-                    android:minHeight="0dp"
+                    android:layout_height="32dp"
                     android:backgroundTint="@color/gray"
+                    android:minWidth="64dp"
+                    android:minHeight="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="See all"
+                    android:textAllCaps="false"
                     android:textColor="@android:color/white"
-                    android:textStyle="bold"
-                    android:textSize="10sp"
-                    android:padding="0dp"/>
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
             </LinearLayout>
+
+            <!-- RECENTLY PLAYED LIST -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/albumHorizontalList"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:scrollbars="none"/>
+                android:layout_height="220dp"
+                android:layout_marginTop="12dp"
+                android:clipToPadding="false"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="never"
+                android:scrollbars="none" />
 
+            <!-- LISTENING HISTORY HEADER -->
             <LinearLayout
-                android:orientation="horizontal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical">
+                android:layout_marginTop="24dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
 
-                <!-- Tiêu đề -->
                 <TextView
-                    android:text="Listening history"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Listening history"
                     android:textColor="@android:color/white"
                     android:textSize="20sp"
-                    android:textStyle="bold"
-                    android:paddingBottom="8dp"
-                    android:paddingTop="20dp"
-                    android:layout_weight="1"/>
+                    android:textStyle="bold" />
 
-                <!-- Nút See all -->
                 <Button
                     android:id="@+id/btnSeeAllLib2"
-                    android:text="See all"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="60dp"
-                    android:minHeight="0dp"
+                    android:layout_height="32dp"
                     android:backgroundTint="@color/gray"
+                    android:minWidth="64dp"
+                    android:minHeight="0dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:text="See all"
+                    android:textAllCaps="false"
                     android:textColor="@android:color/white"
-                    android:textStyle="bold"
-                    android:textSize="10sp"
-                    android:padding="0dp"/>
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
             </LinearLayout>
+
+            <!-- LISTENING HISTORY LIST -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/albumHorizontalList1"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:scrollbars="none"/>
+                android:layout_height="220dp"
+                android:layout_marginTop="12dp"
+                android:clipToPadding="false"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="never"
+                android:scrollbars="none" />
+
         </LinearLayout>
 
     </ScrollView>
-
 
 </LinearLayout>

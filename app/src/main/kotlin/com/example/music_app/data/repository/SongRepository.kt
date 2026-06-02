@@ -4,6 +4,7 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.remote.FirebaseService
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.example.music_app.data.model.User
 
 class SongRepository {
 
@@ -30,5 +31,14 @@ class SongRepository {
     suspend fun getRecentlyPlayedSongs(): List<Song> {
         val userId = auth.currentUser?.uid ?: return emptyList()
         return firebaseService.getRecentlyPlayedSongs(userId)
+    }
+    suspend fun getCurrentUserProfile(): User? {
+        val userId = auth.currentUser?.uid ?: return null
+        return firebaseService.getUserById(userId)
+    }
+
+    suspend fun getMyUploadedSongs(): List<Song> {
+        val userId = auth.currentUser?.uid ?: return emptyList()
+        return firebaseService.getSongsByUploaderId(userId)
     }
 }

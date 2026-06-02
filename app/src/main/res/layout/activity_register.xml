@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/registerLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -13,8 +14,8 @@
         android:layout_height="40dp"
         android:src="@drawable/ic_return"
         android:background="@android:color/transparent"
-        android:tint="@color/black"
-        android:layout_gravity="start"/>
+        android:layout_gravity="start"
+        app:tint="@color/black" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -37,8 +38,23 @@
             android:layout_width="match_parent"
             android:gravity="center"/>
         <EditText
+            android:id="@+id/regDisplayName"
+            android:autofillHints="name"
+            android:hint="Tên hiển thị"
+            android:inputType="textPersonName"
+            android:backgroundTint="#FF5500"
+            android:background="@drawable/edittext_border_black"
+            android:textColor="@color/black"
+            android:textColorHint="@color/darker_gray"
+            android:padding="12dp"
+            android:textSize="14sp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp" />
+
+        <EditText
             android:id="@+id/regEmail"
-            android:autofillHints="EmailAddress"
+            android:autofillHints="emailAddress"
             android:hint="@string/email_hint"
             android:inputType="textEmailAddress"
             android:backgroundTint="#FF5500"
@@ -49,11 +65,11 @@
             android:textSize="14sp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="16dp" />
 
         <EditText
             android:id="@+id/regPassword"
-            android:autofillHints="Password"
+            android:autofillHints="password"
             android:hint="@string/password_hint"
             android:inputType="textPassword"
             android:backgroundTint="#FF5500"
@@ -64,11 +80,11 @@
             android:textSize="14sp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="16dp" />
 
         <EditText
             android:id="@+id/regConfirmPassword"
-            android:autofillHints="Password"
+            android:autofillHints="password"
             android:hint="@string/confirm_password_hint"
             android:inputType="textPassword"
             android:backgroundTint="#FF5500"
@@ -79,7 +95,7 @@
             android:textSize="14sp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"/>
+            android:layout_marginBottom="16dp" />
 
         <Button
             android:id="@+id/registerButton"
