@@ -16,7 +16,7 @@ import com.example.music_app.ui.albums.AlbumsFragment
 import com.example.music_app.ui.player.PlayerFragment
 import com.example.music_app.ui.settings.SettingFragment
 import com.example.music_app.ui.song.SongAdapter
-import com.example.music_app.ui.yourupload.YourUploadFragment
+
 
 class LibraryFragment : Fragment() {
 
