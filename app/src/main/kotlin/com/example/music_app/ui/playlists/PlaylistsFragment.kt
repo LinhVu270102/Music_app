@@ -6,6 +6,7 @@ import android.view.View
 import android.widget.EditText
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
@@ -38,11 +39,16 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
     private fun setupRecyclerView() {
         adapter = PlaylistAdapter(
             onItemClick = { playlist ->
-                Toast.makeText(
-                    requireContext(),
-                    "Playlist: ${playlist.name}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                parentFragmentManager.commit {
+                    replace(
+                        R.id.fragmentContainer,
+                        PlaylistDetailFragment.newInstance(
+                            playlistId = playlist.id,
+                            playlistName = playlist.name
+                        )
+                    )
+                    addToBackStack(null)
+                }
             },
             onDeleteClick = { playlist ->
                 confirmDeletePlaylist(playlist.id)
