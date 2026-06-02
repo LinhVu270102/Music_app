@@ -13,6 +13,7 @@ data class Song(
     // Thống kê
     val plays: Long = 0L,
     val likes: Long = 0L,
+    val commentsCount: Long = 0L,
 
     // Người đăng
     val uploaderId: String = "",

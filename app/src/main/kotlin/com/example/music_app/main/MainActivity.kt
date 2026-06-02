@@ -21,6 +21,7 @@ import com.example.music_app.databinding.ActivityMainBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.service.MusicService
 import com.example.music_app.ui.auth.LoginActivity
+import com.example.music_app.ui.comment.CommentFragment
 import com.example.music_app.ui.home.HomeFragment
 import com.example.music_app.ui.library.LibraryFragment
 import com.example.music_app.ui.player.PlayerFragment
@@ -68,11 +69,32 @@ class MainActivity : AppCompatActivity() {
 
         setupFooter()
         setupMiniPlayer()
+
+        supportFragmentManager.addOnBackStackChangedListener {
+            updateMainChromeVisibility()
+        }
+
         requestNotificationPermissionIfNeeded()
 
         if (savedInstanceState == null) {
             openMainFragment(HomeFragment())
             highlightFooter(FooterTab.HOME)
+        }
+    }
+
+    fun updateMainChromeVisibility() {
+        val currentFragment =
+            supportFragmentManager.findFragmentById(binding.fragmentContainer.id)
+
+        val shouldHideMainChrome =
+            currentFragment is PlayerFragment || currentFragment is CommentFragment
+
+        if (shouldHideMainChrome) {
+            binding.appFooter.visibility = View.GONE
+            binding.miniPlayer.root.visibility = View.GONE
+        } else {
+            binding.appFooter.visibility = View.VISIBLE
+            updateMiniPlayerVisibility()
         }
     }
 
@@ -240,6 +262,10 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .replace(binding.fragmentContainer.id, fragment)
             .commit()
+
+        binding.fragmentContainer.post {
+            updateMainChromeVisibility()
+        }
     }
 
     private fun openPlayerFragment(songId: String) {
@@ -248,8 +274,9 @@ class MainActivity : AppCompatActivity() {
             .addToBackStack(null)
             .commit()
 
-        setMiniPlayerVisible(false)
-        setFooterVisible(false)
+        binding.fragmentContainer.post {
+            updateMainChromeVisibility()
+        }
     }
 
     private fun updateMiniPlayerVisibility() {

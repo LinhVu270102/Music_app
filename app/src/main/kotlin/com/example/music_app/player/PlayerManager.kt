@@ -217,4 +217,7 @@ object PlayerManager {
         _isShuffleEnabled.value = false
         _loopMode.value = LoopMode.OFF
     }
+    fun getCurrentPlaylist(): List<Song> {
+        return playlist.toList()
+    }
 }

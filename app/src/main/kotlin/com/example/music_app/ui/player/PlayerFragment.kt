@@ -1,5 +1,6 @@
 package com.example.music_app.ui.player
 
+import android.app.AlertDialog
 import android.graphics.Bitmap
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -12,14 +13,21 @@ import android.widget.SeekBar
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.palette.graphics.Palette
 import com.bumptech.glide.Glide
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.databinding.FragmentPlayerBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
+import androidx.fragment.app.commit
+import com.example.music_app.ui.comment.CommentFragment
 
 class PlayerFragment : Fragment() {
 
@@ -27,7 +35,12 @@ class PlayerFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: PlayerViewModel by viewModels()
+    private val songRepository = SongRepository()
+
     private val handler = Handler(Looper.getMainLooper())
+
+    private var isCurrentSongLiked = false
+    private var isCurrentArtistFollowed = false
 
     private val updateSeekBarRunnable = object : Runnable {
         override fun run() {
@@ -117,6 +130,33 @@ class PlayerFragment : Fragment() {
             updatePlayPauseIcon()
         }
 
+        binding.btnLike.setOnClickListener {
+            toggleLikeCurrentSong()
+        }
+
+        binding.btnFollow.setOnClickListener {
+            toggleFollowCurrentArtist()
+        }
+
+        binding.btnComment.setOnClickListener {
+            val song = PlayerManager.currentSong.value
+
+            if (song == null) {
+                showToast("Chưa có bài hát")
+            } else {
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.fragmentContainer, CommentFragment.newInstance(song.id))
+                    .addToBackStack(null)
+                    .commit()
+
+                (requireActivity() as? MainActivity)?.updateMainChromeVisibility()
+            }
+        }
+
+        binding.btnCurrentPlaylist.setOnClickListener {
+            showCurrentPlaylistDialog()
+        }
+
         binding.playerSeekBar.setOnSeekBarChangeListener(
             object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(
@@ -171,6 +211,12 @@ class PlayerFragment : Fragment() {
         binding.playerSongTitle.text = song.title
         binding.playerArtist.text = song.artist
 
+        binding.tvLikeCount.text = formatCount(song.likes)
+        binding.tvCommentCount.text = formatCount(song.commentsCount)
+
+        loadLikeState(song)
+        loadFollowState(song)
+
         Glide.with(this)
             .asBitmap()
             .load(song.coverUrl)
@@ -201,6 +247,217 @@ class PlayerFragment : Fragment() {
         updatePlayPauseIcon()
     }
 
+    private fun loadLikeState(song: Song) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val liked = songRepository.isSongLiked(song.id)
+
+                withContext(Dispatchers.Main) {
+                    isCurrentSongLiked = liked
+                    updateLikeIcon()
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    isCurrentSongLiked = false
+                    updateLikeIcon()
+                }
+            }
+        }
+    }
+
+    private fun toggleLikeCurrentSong() {
+        val song = PlayerManager.currentSong.value ?: return
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val liked = songRepository.toggleLikeSong(song)
+
+                withContext(Dispatchers.Main) {
+                    isCurrentSongLiked = liked
+                    updateLikeIcon()
+
+                    val currentCount =
+                        binding.tvLikeCount.text.toString().replace("K", "000")
+                            .replace("M", "000000")
+                            .toLongOrNull() ?: song.likes
+
+                    val newCount = if (liked) {
+                        currentCount + 1
+                    } else {
+                        (currentCount - 1).coerceAtLeast(0)
+                    }
+
+                    binding.tvLikeCount.text = formatCount(newCount)
+
+                    showToast(
+                        if (liked) "Đã thêm vào Your likes"
+                        else "Đã bỏ khỏi Your likes"
+                    )
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    showToast(e.message ?: "Không thể cập nhật like")
+                }
+            }
+        }
+    }
+
+    private fun updateLikeIcon() {
+        binding.btnLike.alpha = if (isCurrentSongLiked) 1f else 0.4f
+    }
+
+    private fun loadFollowState(song: Song) {
+        binding.tvFollowCount.text = "0"
+
+        if (song.uploaderId.isBlank()) {
+            isCurrentArtistFollowed = false
+            updateFollowIcon()
+            return
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val followed = songRepository.isFollowing(song.uploaderId)
+
+                withContext(Dispatchers.Main) {
+                    isCurrentArtistFollowed = followed
+                    updateFollowIcon()
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    isCurrentArtistFollowed = false
+                    updateFollowIcon()
+                }
+            }
+        }
+    }
+
+    private fun toggleFollowCurrentArtist() {
+        val song = PlayerManager.currentSong.value ?: return
+
+        if (song.uploaderId.isBlank()) {
+            showToast("Bài hát chưa có uploaderId")
+            return
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val followed = songRepository.toggleFollowUser(song.uploaderId)
+
+                withContext(Dispatchers.Main) {
+                    isCurrentArtistFollowed = followed
+                    updateFollowIcon()
+
+                    val currentCount = binding.tvFollowCount.text.toString().toLongOrNull() ?: 0L
+                    val newCount = if (followed) {
+                        currentCount + 1
+                    } else {
+                        (currentCount - 1).coerceAtLeast(0)
+                    }
+
+                    binding.tvFollowCount.text = formatCount(newCount)
+
+                    showToast(
+                        if (followed) "Đã follow nghệ sĩ"
+                        else "Đã bỏ follow"
+                    )
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    showToast(e.message ?: "Không thể follow")
+                }
+            }
+        }
+    }
+
+    private fun updateFollowIcon() {
+        binding.btnFollow.alpha = if (isCurrentArtistFollowed) 1f else 0.4f
+    }
+
+    private fun showCurrentPlaylistDialog() {
+        val songs = PlayerManager.getCurrentPlaylist()
+
+        if (songs.isEmpty()) {
+            showToast("Playlist hiện tại đang trống")
+            return
+        }
+
+        val songTitles = songs.mapIndexed { index, song ->
+            "${index + 1}. ${song.title} - ${song.artist}"
+        }.toTypedArray()
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Playlist hiện tại")
+            .setItems(songTitles) { _, which ->
+                val selectedSong = songs[which]
+                PlayerManager.play(selectedSong)
+                updateUI(selectedSong)
+            }
+            .setPositiveButton("Thêm bài hiện tại vào playlist") { _, _ ->
+                val currentSong = PlayerManager.currentSong.value
+
+                if (currentSong != null) {
+                    showAddToPlaylistDialog(currentSong)
+                } else {
+                    showToast("Chưa có bài hát hiện tại")
+                }
+            }
+            .setNegativeButton("Đóng", null)
+            .show()
+    }
+
+    private fun showAddToPlaylistDialog(song: Song) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val playlists = songRepository.getMyPlaylists()
+
+                withContext(Dispatchers.Main) {
+                    if (playlists.isEmpty()) {
+                        showToast("Bạn chưa có playlist nào")
+                        return@withContext
+                    }
+
+                    val playlistNames = playlists.map { it.name }.toTypedArray()
+
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("Thêm vào playlist")
+                        .setItems(playlistNames) { _, which ->
+                            val selectedPlaylist = playlists[which]
+                            addSongToSelectedPlaylist(selectedPlaylist.id, song)
+                        }
+                        .setNegativeButton("Huỷ", null)
+                        .show()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    showToast(e.message ?: "Không tải được playlist")
+                }
+            }
+        }
+    }
+
+    private fun addSongToSelectedPlaylist(
+        playlistId: String,
+        song: Song
+    ) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                songRepository.addSongToPlaylist(
+                    playlistId = playlistId,
+                    song = song
+                )
+
+                withContext(Dispatchers.Main) {
+                    showToast("Đã thêm vào playlist")
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    showToast(e.message ?: "Không thêm được bài hát")
+                }
+            }
+        }
+    }
+
     private fun applyGradientBackground(color: Int) {
         val gradient = GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
@@ -226,12 +483,7 @@ class PlayerFragment : Fragment() {
 
     private fun updateShuffleIcon() {
         val enabled = PlayerManager.isShuffleEnabled.value == true
-
-        binding.btnShuffle.alpha = if (enabled) {
-            1f
-        } else {
-            0.4f
-        }
+        binding.btnShuffle.alpha = if (enabled) 1f else 0.4f
     }
 
     private fun updateLoopIcon() {
@@ -269,14 +521,10 @@ class PlayerFragment : Fragment() {
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
-
         handler.removeCallbacks(updateSeekBarRunnable)
 
-        (requireActivity() as? MainActivity)?.setMiniPlayerVisible(true)
-        (requireActivity() as? MainActivity)?.setFooterVisible(true)
-
         _binding = null
+        super.onDestroyView()
     }
 
     private fun showToast(message: String) {
@@ -287,5 +535,13 @@ class PlayerFragment : Fragment() {
         val minutes = TimeUnit.MILLISECONDS.toMinutes(ms)
         val seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60
         return String.format("%02d:%02d", minutes, seconds)
+    }
+
+    private fun formatCount(count: Long): String {
+        return when {
+            count >= 1_000_000 -> "${count / 1_000_000}M"
+            count >= 1_000 -> "${count / 1_000}K"
+            else -> count.toString()
+        }
     }
 }
