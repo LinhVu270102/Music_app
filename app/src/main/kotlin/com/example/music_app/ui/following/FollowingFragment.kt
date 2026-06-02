@@ -8,6 +8,8 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
 import com.example.music_app.databinding.FragmentFollowingBinding
+import androidx.fragment.app.commit
+import com.example.music_app.ui.profile.ArtistProfileFragment
 
 class FollowingFragment : Fragment(R.layout.fragment_following) {
 
@@ -35,11 +37,13 @@ class FollowingFragment : Fragment(R.layout.fragment_following) {
 
     private fun setupRecyclerView() {
         adapter = FollowingAdapter { user ->
-            Toast.makeText(
-                requireContext(),
-                "Artist: ${user.displayName.ifBlank { user.email }}",
-                Toast.LENGTH_SHORT
-            ).show()
+            parentFragmentManager.commit {
+                replace(
+                    R.id.fragmentContainer,
+                    ArtistProfileFragment.newInstance(user.uid)
+                )
+                addToBackStack(null)
+            }
         }
 
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())

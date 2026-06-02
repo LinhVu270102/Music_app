@@ -203,4 +203,11 @@ class SongRepository {
         val userId = auth.currentUser?.uid ?: return emptyList()
         return firebaseService.getFollowingUsers(userId)
     }
+    suspend fun getUserById(userId: String): User? {
+        return firebaseService.getUserById(userId)
+    }
+
+    suspend fun getSongsByUserId(userId: String): List<Song> {
+        return firebaseService.getSongsByUploaderId(userId)
+    }
 }
