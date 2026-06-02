@@ -11,6 +11,7 @@ import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.media3.common.util.UnstableApi
 import com.example.music_app.R
 import com.example.music_app.databinding.ActivityMainBinding
 import com.example.music_app.player.PlayerManager
@@ -22,7 +23,6 @@ import com.example.music_app.ui.player.PlayerFragment
 import com.example.music_app.ui.profile.ProfileFragment
 import com.example.music_app.ui.search.SearchFragment
 import com.google.firebase.auth.FirebaseAuth
-import androidx.media3.common.util.UnstableApi
 
 class MainActivity : AppCompatActivity() {
 
@@ -60,7 +60,7 @@ class MainActivity : AppCompatActivity() {
         requestNotificationPermissionIfNeeded()
 
         if (savedInstanceState == null) {
-            openFragment(HomeFragment())
+            openMainFragment(HomeFragment())
             highlightFooter(FooterTab.HOME)
         }
     }
@@ -97,23 +97,31 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupFooter() {
         binding.btnHome.setOnClickListener {
-            openFragment(HomeFragment())
+            openMainFragment(HomeFragment())
             highlightFooter(FooterTab.HOME)
+            setFooterVisible(true)
+            updateMiniPlayerVisibility()
         }
 
         binding.btnSearch.setOnClickListener {
-            openFragment(SearchFragment())
+            openMainFragment(SearchFragment())
             highlightFooter(FooterTab.SEARCH)
+            setFooterVisible(true)
+            updateMiniPlayerVisibility()
         }
 
         binding.btnLibrary.setOnClickListener {
-            openFragment(LibraryFragment())
+            openMainFragment(LibraryFragment())
             highlightFooter(FooterTab.LIBRARY)
+            setFooterVisible(true)
+            updateMiniPlayerVisibility()
         }
 
         binding.btnProfile.setOnClickListener {
-            openFragment(ProfileFragment())
+            openMainFragment(ProfileFragment())
             highlightFooter(FooterTab.PROFILE)
+            setFooterVisible(true)
+            updateMiniPlayerVisibility()
         }
     }
 
@@ -129,16 +137,10 @@ class MainActivity : AppCompatActivity() {
             binding.miniPlayer.trackTitle.text = song.title
             binding.miniPlayer.trackArtist.text = song.artist
 
-            val isPlayerScreen =
-                supportFragmentManager.findFragmentById(binding.fragmentContainer.id) is PlayerFragment
-
-            binding.miniPlayer.root.visibility =
-                if (isPlayerScreen) View.GONE else View.VISIBLE
+            updateMiniPlayerVisibility()
 
             binding.miniPlayer.root.setOnClickListener {
-                openFragment(PlayerFragment.newInstance(song.id))
-                setMiniPlayerVisible(false)
-                setFooterVisible(false)
+                openPlayerFragment(song.id)
             }
         }
 
@@ -150,6 +152,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             binding.miniPlayer.btnPlayPause.setImageResource(icon)
+            updateMiniPlayerVisibility()
         }
 
         binding.miniPlayer.btnPlayPause.setOnClickListener {
@@ -157,23 +160,56 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun openMainFragment(fragment: Fragment) {
+        supportFragmentManager.beginTransaction()
+            .replace(binding.fragmentContainer.id, fragment)
+            .commit()
+    }
+
+    private fun openPlayerFragment(songId: String) {
+        supportFragmentManager.beginTransaction()
+            .replace(binding.fragmentContainer.id, PlayerFragment.newInstance(songId))
+            .addToBackStack(null)
+            .commit()
+
+        setMiniPlayerVisible(false)
+        setFooterVisible(false)
+    }
+
+    private fun updateMiniPlayerVisibility() {
+        val hasSong = PlayerManager.currentSong.value != null
+
+        val currentFragment =
+            supportFragmentManager.findFragmentById(binding.fragmentContainer.id)
+
+        val isPlayerScreen = currentFragment is PlayerFragment
+
+        binding.miniPlayer.root.visibility =
+            if (hasSong && !isPlayerScreen) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+    }
+
     fun setMiniPlayerVisible(visible: Boolean) {
         val hasSong = PlayerManager.currentSong.value != null
 
         binding.miniPlayer.root.visibility =
-            if (visible && hasSong) View.VISIBLE else View.GONE
+            if (visible && hasSong) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
     }
 
     fun setFooterVisible(visible: Boolean) {
         binding.appFooter.visibility =
-            if (visible) View.VISIBLE else View.GONE
-    }
-
-    private fun openFragment(fragment: Fragment) {
-        supportFragmentManager.beginTransaction()
-            .replace(binding.fragmentContainer.id, fragment)
-            .addToBackStack(null)
-            .commit()
+            if (visible) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
     }
 
     private fun highlightFooter(activeTab: FooterTab) {

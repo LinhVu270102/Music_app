@@ -10,6 +10,12 @@ import com.example.music_app.data.model.Song
 
 object PlayerManager {
 
+    enum class LoopMode {
+        OFF,
+        PLAYLIST,
+        ONE
+    }
+
     private var exoPlayer: ExoPlayer? = null
 
     private val playlist = mutableListOf<Song>()
@@ -20,6 +26,12 @@ object PlayerManager {
 
     private val _isPlaying = MutableLiveData(false)
     val isPlaying: LiveData<Boolean> = _isPlaying
+
+    private val _isShuffleEnabled = MutableLiveData(false)
+    val isShuffleEnabled: LiveData<Boolean> = _isShuffleEnabled
+
+    private val _loopMode = MutableLiveData(LoopMode.OFF)
+    val loopMode: LiveData<LoopMode> = _loopMode
 
     fun init(context: Context) {
         if (exoPlayer == null) {
@@ -40,8 +52,22 @@ object PlayerManager {
                         _currentSong.value = it
                     }
                 }
+
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_ENDED) {
+                        _isPlaying.value = false
+
+                        if (_loopMode.value == LoopMode.OFF) {
+                            currentIndex = -1
+                            _currentSong.value = null
+                        }
+                    }
+                }
             })
         }
+
+        applyShuffleMode()
+        applyLoopMode()
     }
 
     fun setPlaylist(songs: List<Song>) {
@@ -57,6 +83,9 @@ object PlayerManager {
 
         exoPlayer?.setMediaItems(mediaItems, false)
         exoPlayer?.prepare()
+
+        applyShuffleMode()
+        applyLoopMode()
     }
 
     fun play(song: Song) {
@@ -113,7 +142,40 @@ object PlayerManager {
     }
 
     fun toggle() {
-        if (isCurrentlyPlaying()) pause() else resume()
+        if (isCurrentlyPlaying()) {
+            pause()
+        } else {
+            resume()
+        }
+    }
+
+    fun toggleShuffle() {
+        val newValue = !(_isShuffleEnabled.value ?: false)
+        _isShuffleEnabled.value = newValue
+        applyShuffleMode()
+    }
+
+    fun toggleLoopMode() {
+        val nextMode = when (_loopMode.value ?: LoopMode.OFF) {
+            LoopMode.OFF -> LoopMode.PLAYLIST
+            LoopMode.PLAYLIST -> LoopMode.ONE
+            LoopMode.ONE -> LoopMode.OFF
+        }
+
+        _loopMode.value = nextMode
+        applyLoopMode()
+    }
+
+    private fun applyShuffleMode() {
+        exoPlayer?.shuffleModeEnabled = _isShuffleEnabled.value == true
+    }
+
+    private fun applyLoopMode() {
+        exoPlayer?.repeatMode = when (_loopMode.value ?: LoopMode.OFF) {
+            LoopMode.OFF -> Player.REPEAT_MODE_OFF
+            LoopMode.PLAYLIST -> Player.REPEAT_MODE_ALL
+            LoopMode.ONE -> Player.REPEAT_MODE_ONE
+        }
     }
 
     fun seekTo(position: Long) {
@@ -136,12 +198,23 @@ object PlayerManager {
         return exoPlayer
     }
 
-    fun release() {
-        exoPlayer?.release()
-        exoPlayer = null
-        playlist.clear()
+    fun stop() {
+        exoPlayer?.stop()
         currentIndex = -1
         _currentSong.value = null
         _isPlaying.value = false
+    }
+
+    fun release() {
+        exoPlayer?.release()
+        exoPlayer = null
+
+        playlist.clear()
+        currentIndex = -1
+
+        _currentSong.value = null
+        _isPlaying.value = false
+        _isShuffleEnabled.value = false
+        _loopMode.value = LoopMode.OFF
     }
 }
