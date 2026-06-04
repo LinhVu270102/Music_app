@@ -27,4 +27,22 @@ class PlaylistDetailViewModel : ViewModel() {
             }
         }
     }
+
+    fun removeSongFromPlaylist(
+        playlistId: String,
+        songId: String
+    ) {
+        viewModelScope.launch {
+            try {
+                repository.removeSongFromPlaylist(
+                    playlistId = playlistId,
+                    songId = songId
+                )
+
+                loadPlaylistSongs(playlistId)
+            } catch (e: Exception) {
+                _errorMessage.value = e.message ?: "Không xoá được bài hát khỏi playlist"
+            }
+        }
+    }
 }

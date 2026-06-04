@@ -10,6 +10,7 @@ import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
+import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentLibraryBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.albums.AlbumsFragment
@@ -24,6 +25,8 @@ class LibraryFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: LibraryViewModel by viewModels()
+
+    private var currentRecentlySongs: List<Song> = emptyList()
 
     private lateinit var recentlyAdapter: SongAdapter
     private lateinit var historyAdapter: SongAdapter
@@ -46,23 +49,35 @@ class LibraryFragment : Fragment() {
     }
 
     private fun setupRecyclerViews() {
-        recentlyAdapter = SongAdapter { song ->
-            PlayerManager.play(song)
+        recentlyAdapter = SongAdapter(
+            onItemClick = { song ->
+                if (currentRecentlySongs.isNotEmpty()) {
+                    PlayerManager.setPlaylist(currentRecentlySongs)
+                }
 
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                addToBackStack(null)
+                PlayerManager.play(song)
+
+                parentFragmentManager.commit {
+                    replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
+                    addToBackStack(null)
+                }
             }
-        }
+        )
 
-        historyAdapter = SongAdapter { song ->
-            PlayerManager.play(song)
+        historyAdapter = SongAdapter(
+            onItemClick = { song ->
+                if (currentRecentlySongs.isNotEmpty()) {
+                    PlayerManager.setPlaylist(currentRecentlySongs)
+                }
 
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                addToBackStack(null)
+                PlayerManager.play(song)
+
+                parentFragmentManager.commit {
+                    replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
+                    addToBackStack(null)
+                }
             }
-        }
+        )
 
         binding.albumHorizontalList.layoutManager =
             LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)

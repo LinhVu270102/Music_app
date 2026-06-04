@@ -26,6 +26,8 @@ class ProfileFragment : Fragment() {
 
     private lateinit var adapter: SongAdapter
 
+    private var currentSongs: List<Song> = emptyList()
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -42,13 +44,19 @@ class ProfileFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        adapter = SongAdapter { song ->
-            playSong(song)
-        }
+        adapter = SongAdapter(
+            onItemClick = { song ->
+                PlayerManager.play(song)
+
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
+                    .addToBackStack(null)
+                    .commit()
+            }
+        )
 
         binding.profileMusicList.layoutManager = LinearLayoutManager(requireContext())
         binding.profileMusicList.adapter = adapter
-        binding.profileMusicList.isNestedScrollingEnabled = false
     }
 
     private fun observeViewModel() {

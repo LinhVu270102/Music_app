@@ -1,5 +1,6 @@
 package com.example.music_app.ui.library
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -65,18 +66,19 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
     }
 
     private fun setupRecyclerView() {
-        adapter = SongAdapter { song ->
-            if (currentSongs.isNotEmpty()) {
-                PlayerManager.setPlaylist(currentSongs)
-            }
+        adapter = SongAdapter(
+            onItemClick = { song ->
+                PlayerManager.play(song)
 
-            PlayerManager.play(song)
-
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                addToBackStack(null)
+                parentFragmentManager.commit {
+                    replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
+                    addToBackStack(null)
+                }
+            },
+            onItemLongClick = { song ->
+                confirmRemoveSong(song)
             }
-        }
+        )
 
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
@@ -102,6 +104,20 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
                 Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun confirmRemoveSong(song: Song) {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Xoá khỏi playlist")
+            .setMessage("Bạn muốn xoá \"${song.title}\" khỏi playlist này?")
+            .setPositiveButton("Xoá") { _, _ ->
+                viewModel.removeSongFromPlaylist(
+                    playlistId = playlistId,
+                    songId = song.id
+                )
+            }
+            .setNegativeButton("Huỷ", null)
+            .show()
     }
 
     override fun onDestroyView() {

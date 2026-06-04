@@ -9,6 +9,7 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.example.music_app.R
+import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentArtistProfileBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.player.PlayerFragment
@@ -23,6 +24,8 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
 
     private lateinit var adapter: SongAdapter
     private var artistId: String = ""
+
+    private var currentSongs: List<Song> = emptyList()
 
     companion object {
         fun newInstance(userId: String): ArtistProfileFragment {
@@ -47,14 +50,20 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
     }
 
     private fun setupRecyclerView() {
-        adapter = SongAdapter { song ->
-            PlayerManager.play(song)
+        adapter = SongAdapter(
+            onItemClick = { song ->
+                if (currentSongs.isNotEmpty()) {
+                    PlayerManager.setPlaylist(currentSongs)
+                }
 
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                addToBackStack(null)
+                PlayerManager.play(song)
+
+                parentFragmentManager.commit {
+                    replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
+                    addToBackStack(null)
+                }
             }
-        }
+        )
 
         binding.rvArtistSongs.layoutManager = LinearLayoutManager(requireContext())
         binding.rvArtistSongs.adapter = adapter

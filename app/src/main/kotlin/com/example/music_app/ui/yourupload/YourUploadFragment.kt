@@ -40,18 +40,20 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
     }
 
     private fun setupRecyclerView() {
-        adapter = SongAdapter { song ->
-            if (currentSongs.isNotEmpty()) {
-                PlayerManager.setPlaylist(currentSongs)
-            }
+        adapter = SongAdapter(
+            onItemClick = { song ->
+                if (currentSongs.isNotEmpty()) {
+                    PlayerManager.setPlaylist(currentSongs)
+                }
 
-            PlayerManager.play(song)
+                PlayerManager.play(song)
 
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                addToBackStack(null)
+                parentFragmentManager.commit {
+                    replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
+                    addToBackStack(null)
+                }
             }
-        }
+        )
 
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter

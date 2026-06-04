@@ -8,6 +8,7 @@ import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
+import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentYourLikesBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.player.PlayerFragment
@@ -21,6 +22,8 @@ class YourLikesFragment : Fragment(R.layout.fragment_your_likes) {
     private val viewModel: YourLikesViewModel by viewModels()
 
     private lateinit var adapter: SongAdapter
+
+    private var currentSongs: List<Song> = emptyList()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         _binding = FragmentYourLikesBinding.bind(view)
@@ -38,14 +41,20 @@ class YourLikesFragment : Fragment(R.layout.fragment_your_likes) {
     }
 
     private fun setupRecyclerView() {
-        adapter = SongAdapter { song ->
-            PlayerManager.play(song)
+        adapter = SongAdapter(
+            onItemClick = { song ->
+                if (currentSongs.isNotEmpty()) {
+                    PlayerManager.setPlaylist(currentSongs)
+                }
 
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                addToBackStack(null)
+                PlayerManager.play(song)
+
+                parentFragmentManager.commit {
+                    replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
+                    addToBackStack(null)
+                }
             }
-        }
+        )
 
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter
@@ -59,6 +68,7 @@ class YourLikesFragment : Fragment(R.layout.fragment_your_likes) {
 
     private fun observeViewModel() {
         viewModel.likedSongs.observe(viewLifecycleOwner) { songs ->
+            currentSongs = songs
             adapter.setData(songs)
         }
 

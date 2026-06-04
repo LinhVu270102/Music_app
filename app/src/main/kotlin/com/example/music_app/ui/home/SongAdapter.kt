@@ -9,7 +9,8 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.ItemSongBinding
 
 class SongAdapter(
-    private val onItemClick: (Song) -> Unit
+    private val onItemClick: (Song) -> Unit,
+    private val onItemLongClick: ((Song) -> Unit)? = null
 ) : RecyclerView.Adapter<SongAdapter.SongViewHolder>() {
 
     private val songs = mutableListOf<Song>()
@@ -35,6 +36,15 @@ class SongAdapter(
 
             binding.root.setOnClickListener {
                 onItemClick(song)
+            }
+
+            binding.root.setOnLongClickListener {
+                if (onItemLongClick != null) {
+                    onItemLongClick.invoke(song)
+                    true
+                } else {
+                    false
+                }
             }
         }
     }
