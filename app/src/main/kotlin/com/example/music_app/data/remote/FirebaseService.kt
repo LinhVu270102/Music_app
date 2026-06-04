@@ -9,7 +9,9 @@ import com.example.music_app.utils.AppException
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
+import com.example.music_app.data.model.SongStatus
 
 class FirebaseService(
     private val firestore: FirebaseFirestore
@@ -64,6 +66,63 @@ class FirebaseService(
         }
     }
 
+    suspend fun deleteSong(songId: String) {
+        if (songId.isBlank()) return
+
+        firestore.collection("songs")
+            .document(songId)
+            .delete()
+            .await()
+    }
+
+    suspend fun getApprovedSongs(): List<Song> {
+        val snapshot = firestore.collection("songs")
+            .whereEqualTo("status", SongStatus.APPROVED)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .get()
+            .await()
+
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Song::class.java)?.copy(id = doc.id)
+        }
+    }
+
+    suspend fun getSongsByStatus(status: String): List<Song> {
+        if (status.isBlank()) return emptyList()
+
+        val snapshot = firestore.collection("songs")
+            .whereEqualTo("status", status)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .get()
+            .await()
+
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Song::class.java)?.copy(id = doc.id)
+        }
+    }
+
+    suspend fun updateSongStatus(
+        songId: String,
+        status: String,
+        reviewedBy: String,
+        rejectReason: String = ""
+    ) {
+        if (songId.isBlank()) return
+
+        val data = mapOf(
+            "status" to status,
+            "reviewedBy" to reviewedBy,
+            "reviewedAt" to System.currentTimeMillis(),
+            "rejectReason" to rejectReason,
+            "updatedAt" to System.currentTimeMillis()
+        )
+
+        firestore.collection("songs")
+            .document(songId)
+            .update(data)
+            .await()
+    }
+
     // =========================
     // RECENTLY PLAYED
     // =========================
@@ -104,6 +163,8 @@ class FirebaseService(
 
         return songIds.mapNotNull { songId ->
             getSongById(songId)
+        }.filter { song ->
+            song.status == SongStatus.APPROVED
         }
     }
 
@@ -120,6 +181,19 @@ class FirebaseService(
             .await()
 
         return doc.toObject(User::class.java)?.copy(uid = doc.id)
+    }
+
+    suspend fun updateUserRole(userId: String, role: String) {
+        if (userId.isBlank()) return
+
+        val data = mapOf(
+            "role" to role
+        )
+
+        firestore.collection("users")
+            .document(userId)
+            .set(data, SetOptions.merge())
+            .await()
     }
 
     // =========================
@@ -198,6 +272,8 @@ class FirebaseService(
 
         return songIds.mapNotNull { songId ->
             getSongById(songId)
+        }.filter { song ->
+            song.status == SongStatus.APPROVED
         }
     }
 

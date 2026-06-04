@@ -21,6 +21,7 @@ import com.example.music_app.ui.auth.LoginActivity
 import com.example.music_app.ui.settings.SettingViewModel
 import com.example.music_app.utils.LanguageManager
 import com.google.firebase.auth.FirebaseAuth
+import com.example.music_app.ui.admin.AdminFragment
 
 class SettingFragment : Fragment() {
 
@@ -101,9 +102,11 @@ class SettingFragment : Fragment() {
             logout()
         }
 
-        binding.updateAccountButton.setOnClickListener {
-            viewModel.deleteAccount()
-            showToast(getString(R.string.account_deleted))
+        binding.btnAdmin.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, AdminFragment())
+                .addToBackStack(null)
+                .commit()
         }
     }
 
