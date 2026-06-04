@@ -1,19 +1,27 @@
 package com.example.music_app.data.remote
 
+import com.example.music_app.R
+import com.example.music_app.data.model.Comment
+import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.User
+import com.example.music_app.utils.AppException
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
-import com.example.music_app.data.model.Playlist
-import com.example.music_app.data.model.Comment
 
 class FirebaseService(
     private val firestore: FirebaseFirestore
 ) {
 
+    // =========================
+    // SONG
+    // =========================
+
     suspend fun getSongById(songId: String): Song? {
+        if (songId.isBlank()) return null
+
         val doc = firestore.collection("songs")
             .document(songId)
             .get()
@@ -33,11 +41,32 @@ class FirebaseService(
     }
 
     suspend fun upsertSong(song: Song) {
+        if (song.id.isBlank()) {
+            throw AppException(R.string.invalid_song)
+        }
+
         firestore.collection("songs")
             .document(song.id)
             .set(song)
             .await()
     }
+
+    suspend fun getSongsByUploaderId(userId: String): List<Song> {
+        if (userId.isBlank()) return emptyList()
+
+        val snapshot = firestore.collection("songs")
+            .whereEqualTo("uploaderId", userId)
+            .get()
+            .await()
+
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Song::class.java)?.copy(id = doc.id)
+        }
+    }
+
+    // =========================
+    // RECENTLY PLAYED
+    // =========================
 
     suspend fun saveRecentlyPlayed(userId: String, songId: String) {
         if (userId.isBlank() || songId.isBlank()) return
@@ -78,6 +107,10 @@ class FirebaseService(
         }
     }
 
+    // =========================
+    // USER
+    // =========================
+
     suspend fun getUserById(userId: String): User? {
         if (userId.isBlank()) return null
 
@@ -89,18 +122,9 @@ class FirebaseService(
         return doc.toObject(User::class.java)?.copy(uid = doc.id)
     }
 
-    suspend fun getSongsByUploaderId(userId: String): List<Song> {
-        if (userId.isBlank()) return emptyList()
-
-        val snapshot = firestore.collection("songs")
-            .whereEqualTo("uploaderId", userId)
-            .get()
-            .await()
-
-        return snapshot.documents.mapNotNull { doc ->
-            doc.toObject(Song::class.java)?.copy(id = doc.id)
-        }
-    }
+    // =========================
+    // LIKE SONG
+    // =========================
 
     suspend fun likeSong(userId: String, songId: String) {
         if (userId.isBlank() || songId.isBlank()) return
@@ -123,7 +147,6 @@ class FirebaseService(
         )
 
         likedRef.set(data).await()
-
         songRef.update("likes", FieldValue.increment(1)).await()
     }
 
@@ -143,7 +166,6 @@ class FirebaseService(
         if (!likedDoc.exists()) return
 
         likedRef.delete().await()
-
         songRef.update("likes", FieldValue.increment(-1)).await()
     }
 
@@ -179,17 +201,21 @@ class FirebaseService(
         }
     }
 
+    // =========================
+    // PLAYLIST
+    // =========================
+
     suspend fun createPlaylist(
         userId: String,
         name: String,
         description: String = ""
     ): Playlist {
         if (userId.isBlank()) {
-            throw Exception("User không hợp lệ")
+            throw AppException(R.string.invalid_user)
         }
 
         if (name.isBlank()) {
-            throw Exception("Tên playlist không được để trống")
+            throw AppException(R.string.playlist_name_empty)
         }
 
         val playlistRef = firestore.collection("users")
@@ -241,6 +267,7 @@ class FirebaseService(
             .delete()
             .await()
     }
+
     suspend fun addSongToPlaylist(
         userId: String,
         playlistId: String,
@@ -262,7 +289,6 @@ class FirebaseService(
 
         val existedDoc = songInPlaylistRef.get().await()
 
-        // Nếu bài đã có trong playlist thì không thêm trùng
         if (existedDoc.exists()) return
 
         val data = mapOf(
@@ -272,6 +298,7 @@ class FirebaseService(
             "coverUrl" to song.coverUrl,
             "songUrl" to song.songUrl,
             "duration" to song.duration,
+            "status" to song.status,
             "addedAt" to System.currentTimeMillis()
         )
 
@@ -337,6 +364,11 @@ class FirebaseService(
             doc.toObject(Song::class.java)?.copy(id = doc.id)
         }
     }
+
+    // =========================
+    // FOLLOW USER
+    // =========================
+
     suspend fun followUser(
         currentUserId: String,
         targetUserId: String
@@ -404,21 +436,46 @@ class FirebaseService(
             .await()
 
         return doc.exists()
-    }suspend fun addComment(
+    }
+
+    suspend fun getFollowingUsers(userId: String): List<User> {
+        if (userId.isBlank()) return emptyList()
+
+        val snapshot = firestore.collection("users")
+            .document(userId)
+            .collection("following")
+            .orderBy("followedAt", Query.Direction.DESCENDING)
+            .get()
+            .await()
+
+        val userIds = snapshot.documents.mapNotNull { doc ->
+            doc.getString("userId")
+        }
+
+        return userIds.mapNotNull { targetUserId ->
+            getUserById(targetUserId)
+        }
+    }
+
+    // =========================
+    // COMMENT
+    // =========================
+
+    suspend fun addComment(
         songId: String,
         user: User,
         content: String
     ): Comment {
         if (songId.isBlank()) {
-            throw Exception("Bài hát không hợp lệ")
+            throw AppException(R.string.invalid_song)
         }
 
         if (user.uid.isBlank()) {
-            throw Exception("User không hợp lệ")
+            throw AppException(R.string.invalid_user)
         }
 
         if (content.isBlank()) {
-            throw Exception("Nội dung bình luận không được để trống")
+            throw AppException(R.string.comment_content_empty)
         }
 
         val commentRef = firestore.collection("songs")
@@ -480,23 +537,5 @@ class FirebaseService(
             .document(songId)
             .update("commentsCount", FieldValue.increment(-1))
             .await()
-    }
-    suspend fun getFollowingUsers(userId: String): List<User> {
-        if (userId.isBlank()) return emptyList()
-
-        val snapshot = firestore.collection("users")
-            .document(userId)
-            .collection("following")
-            .orderBy("followedAt", Query.Direction.DESCENDING)
-            .get()
-            .await()
-
-        val userIds = snapshot.documents.mapNotNull { doc ->
-            doc.getString("userId")
-        }
-
-        return userIds.mapNotNull { targetUserId ->
-            getUserById(targetUserId)
-        }
     }
 }

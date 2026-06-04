@@ -1,9 +1,12 @@
 package com.example.music_app.ui.auth
 
+import android.util.Patterns
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.example.music_app.R
 import com.example.music_app.data.repository.AuthRepository
+import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseUser
 
 class AuthViewModel(
@@ -16,8 +19,8 @@ class AuthViewModel(
     private val _currentUser = MutableLiveData<FirebaseUser?>()
     val currentUser: LiveData<FirebaseUser?> = _currentUser
 
-    private val _errorMessage = MutableLiveData<String?>()
-    val errorMessage: LiveData<String?> = _errorMessage
+    private val _errorMessageResId = MutableLiveData<Int?>()
+    val errorMessageResId: LiveData<Int?> = _errorMessageResId
 
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
@@ -26,12 +29,12 @@ class AuthViewModel(
         val cleanEmail = email.trim()
 
         if (cleanEmail.isBlank() || password.isBlank()) {
-            _errorMessage.value = "Vui lòng nhập email và mật khẩu"
+            _errorMessageResId.value = R.string.empty_email_or_password
             return
         }
 
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches()) {
-            _errorMessage.value = "Email không hợp lệ"
+        if (!Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches()) {
+            _errorMessageResId.value = R.string.invalid_email
             return
         }
 
@@ -45,7 +48,11 @@ class AuthViewModel(
             }
             .addOnFailureListener { e ->
                 _authSuccess.value = false
-                _errorMessage.value = e.message ?: "Đăng nhập thất bại"
+                _errorMessageResId.value = if (e is AppException) {
+                    e.messageResId
+                } else {
+                    R.string.login_failed
+                }
                 _isLoading.value = false
             }
     }
@@ -59,22 +66,22 @@ class AuthViewModel(
         val cleanEmail = email.trim()
 
         if (cleanDisplayName.isBlank()) {
-            _errorMessage.value = "Vui lòng nhập tên hiển thị"
+            _errorMessageResId.value = R.string.empty_display_name
             return
         }
 
         if (cleanEmail.isBlank() || password.isBlank()) {
-            _errorMessage.value = "Vui lòng nhập email và mật khẩu"
+            _errorMessageResId.value = R.string.empty_email_or_password
             return
         }
 
-        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches()) {
-            _errorMessage.value = "Email không hợp lệ"
+        if (!Patterns.EMAIL_ADDRESS.matcher(cleanEmail).matches()) {
+            _errorMessageResId.value = R.string.invalid_email
             return
         }
 
         if (password.length < 6) {
-            _errorMessage.value = "Mật khẩu phải có ít nhất 6 ký tự"
+            _errorMessageResId.value = R.string.password_too_short
             return
         }
 
@@ -90,7 +97,11 @@ class AuthViewModel(
             _isLoading.value = false
         }.addOnFailureListener { e ->
             _authSuccess.value = false
-            _errorMessage.value = e.message ?: "Đăng ký thất bại"
+            _errorMessageResId.value = if (e is AppException) {
+                e.messageResId
+            } else {
+                R.string.register_failed
+            }
             _isLoading.value = false
         }
     }
@@ -103,5 +114,9 @@ class AuthViewModel(
 
     fun getCurrentUser() {
         _currentUser.value = repository.getCurrentUser()
+    }
+
+    fun clearErrorMessage() {
+        _errorMessageResId.value = null
     }
 }

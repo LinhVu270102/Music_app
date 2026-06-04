@@ -5,8 +5,10 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SongRepository
+import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
 class HomeViewModel : ViewModel() {
@@ -19,8 +21,8 @@ class HomeViewModel : ViewModel() {
     private val _recentSongs = MutableLiveData<List<Song>>()
     val recentSongs: LiveData<List<Song>> = _recentSongs
 
-    private val _errorMessage = MutableLiveData<String?>()
-    val errorMessage: LiveData<String?> = _errorMessage
+    private val _errorMessageResId = MutableLiveData<Int?>()
+    val errorMessageResId: LiveData<Int?> = _errorMessageResId
 
     fun loadHomeData() {
         viewModelScope.launch {
@@ -36,9 +38,12 @@ class HomeViewModel : ViewModel() {
                     allSongs.take(4)
                 }
 
+            } catch (e: AppException) {
+                _errorMessageResId.value = e.messageResId
+                Log.e("HomeViewModel", "Error loading home data", e)
             } catch (e: Exception) {
-                _errorMessage.value = e.message
-                Log.e("HomeViewModel", "Error loading home data: ${e.message}", e)
+                _errorMessageResId.value = R.string.load_home_data_failed
+                Log.e("HomeViewModel", "Error loading home data", e)
             }
         }
     }
@@ -48,8 +53,12 @@ class HomeViewModel : ViewModel() {
             try {
                 repository.saveRecentlyPlayed(song)
             } catch (e: Exception) {
-                Log.e("HomeViewModel", "Error saving recently played: ${e.message}", e)
+                Log.e("HomeViewModel", "Error saving recently played", e)
             }
         }
+    }
+
+    fun clearErrorMessage() {
+        _errorMessageResId.value = null
     }
 }

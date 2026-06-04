@@ -102,8 +102,7 @@ class HomeFragment : Fragment() {
         binding.rvHotForYou.adapter = hotForYouAdapter
         binding.rvHotForYou.isNestedScrollingEnabled = false
 
-        binding.rvTrendingByGenre.layoutManager =
-            GridLayoutManager(requireContext(), 2)
+        binding.rvTrendingByGenre.layoutManager = GridLayoutManager(requireContext(), 2)
         binding.rvTrendingByGenre.adapter = trendingAdapter
         binding.rvTrendingByGenre.isNestedScrollingEnabled = false
     }
@@ -134,16 +133,15 @@ class HomeFragment : Fragment() {
 
             relatedAdapter.setData(songs.take(4))
             moreLikeAdapter.setData(songs)
-            hotForYouAdapter.setData(
-                songs.sortedByDescending { it.plays }
-            )
+            hotForYouAdapter.setData(songs.sortedByDescending { it.plays })
 
             filterTrendingByGenre(binding.chipHipHop.text.toString())
         }
 
-        viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
-            message?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+        viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                showToast(getString(it))
+                viewModel.clearErrorMessage()
             }
         }
     }
@@ -178,6 +176,10 @@ class HomeFragment : Fragment() {
         } else {
             trendingAdapter.setData(allSongs)
         }
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroyView() {

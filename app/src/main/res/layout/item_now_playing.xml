@@ -3,20 +3,19 @@
     android:id="@+id/nowPlayingBar"
     android:layout_width="match_parent"
     android:layout_height="64dp"
-    android:orientation="horizontal"
-    android:padding="8dp"
     android:background="@drawable/border_now_playing"
-    android:gravity="center_vertical">
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="8dp">
 
-    <!-- Ảnh cover bài hát -->
     <ImageButton
         android:id="@+id/btnPlayPause"
-        android:src="@drawable/ic_play_button_circle"
-        android:background="@android:color/transparent"
         android:layout_width="40dp"
-        android:layout_height="40dp"/>
+        android:layout_height="40dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/play_pause"
+        android:src="@drawable/ic_play_button_circle" />
 
-    <!-- Thông tin bài hát -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
@@ -26,39 +25,41 @@
 
         <TextView
             android:id="@+id/trackTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:ellipsize="end"
             android:singleLine="true"
-            android:text="Tên bài hát"
-            android:textStyle="bold"
+            android:text="@string/song_title_placeholder"
             android:textColor="@android:color/white"
             android:textSize="16sp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/trackArtist"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:ellipsize="end"
             android:singleLine="true"
-            android:text="Tên nghệ sĩ"
+            android:text="@string/artist_placeholder"
             android:textColor="@android:color/darker_gray"
-            android:textSize="14sp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+            android:textSize="14sp" />
+
     </LinearLayout>
 
-
-    <!-- Nút điều khiển -->
     <ImageButton
         android:id="@+id/btnFollow"
-        android:src="@drawable/ic_follow"
-        android:background="@android:color/transparent"
         android:layout_width="40dp"
-        android:layout_height="40dp" />
+        android:layout_height="40dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/follow"
+        android:src="@drawable/ic_follow" />
 
     <ImageButton
         android:id="@+id/btnLike"
-        android:src="@drawable/ic_like"
-        android:background="@android:color/transparent"
         android:layout_width="40dp"
-        android:layout_height="40dp" />
+        android:layout_height="40dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/like"
+        android:src="@drawable/ic_like" />
+
 </LinearLayout>

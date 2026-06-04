@@ -13,7 +13,7 @@
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
         android:background="@android:color/transparent"
-        android:contentDescription="Back"
+        android:contentDescription="@string/back"
         android:src="@drawable/ic_return" />
 
     <ImageView
@@ -23,7 +23,7 @@
         android:layout_alignParentTop="true"
         android:layout_marginTop="56dp"
         android:layout_marginBottom="16dp"
-        android:contentDescription="@string/logo_desc"
+        android:contentDescription="@string/song_cover"
         android:scaleType="centerCrop" />
 
     <TextView
@@ -100,10 +100,11 @@
             android:id="@+id/btnShuffle"
             android:layout_width="44dp"
             android:layout_height="44dp"
+            android:alpha="0.4"
             android:background="@android:color/transparent"
+            android:contentDescription="@string/shuffle"
             android:padding="8dp"
-            android:src="@drawable/ic_shuffle"
-            android:alpha="0.4" />
+            android:src="@drawable/ic_shuffle" />
 
         <ImageButton
             android:id="@+id/btnPrev"
@@ -111,6 +112,7 @@
             android:layout_height="56dp"
             android:layout_marginStart="12dp"
             android:background="@android:color/transparent"
+            android:contentDescription="@string/previous_song"
             android:src="@drawable/ic_back" />
 
         <ImageButton
@@ -120,6 +122,7 @@
             android:layout_marginStart="20dp"
             android:layout_marginEnd="20dp"
             android:background="@android:color/transparent"
+            android:contentDescription="@string/play_pause"
             android:src="@drawable/ic_play" />
 
         <ImageButton
@@ -128,16 +131,18 @@
             android:layout_height="56dp"
             android:layout_marginEnd="12dp"
             android:background="@android:color/transparent"
+            android:contentDescription="@string/next_song"
             android:src="@drawable/ic_next" />
 
         <ImageButton
             android:id="@+id/btnLoop"
             android:layout_width="44dp"
             android:layout_height="44dp"
+            android:alpha="0.4"
             android:background="@android:color/transparent"
+            android:contentDescription="@string/loop"
             android:padding="8dp"
-            android:src="@drawable/ic_loop"
-            android:alpha="0.4" />
+            android:src="@drawable/ic_loop" />
 
     </LinearLayout>
 
@@ -171,10 +176,11 @@
                     android:id="@+id/btnLike"
                     android:layout_width="38dp"
                     android:layout_height="38dp"
+                    android:alpha="0.4"
                     android:background="@android:color/transparent"
+                    android:contentDescription="@string/like"
                     android:padding="8dp"
-                    android:src="@drawable/ic_like"
-                    android:alpha="0.4" />
+                    android:src="@drawable/ic_like" />
 
                 <TextView
                     android:id="@+id/tvLikeCount"
@@ -186,12 +192,6 @@
                     android:textSize="12sp"
                     android:textStyle="bold" />
             </LinearLayout>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/white"
-                android:textSize="12sp" />
         </LinearLayout>
 
         <!-- FOLLOW -->
@@ -213,10 +213,11 @@
                     android:id="@+id/btnFollow"
                     android:layout_width="38dp"
                     android:layout_height="38dp"
+                    android:alpha="0.4"
                     android:background="@android:color/transparent"
+                    android:contentDescription="@string/follow"
                     android:padding="8dp"
-                    android:src="@drawable/ic_follow"
-                    android:alpha="0.4" />
+                    android:src="@drawable/ic_follow" />
 
                 <TextView
                     android:id="@+id/tvFollowCount"
@@ -228,12 +229,6 @@
                     android:textSize="12sp"
                     android:textStyle="bold" />
             </LinearLayout>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/white"
-                android:textSize="12sp" />
         </LinearLayout>
 
         <!-- COMMENT -->
@@ -256,6 +251,7 @@
                     android:layout_width="38dp"
                     android:layout_height="38dp"
                     android:background="@android:color/transparent"
+                    android:contentDescription="@string/comment"
                     android:padding="8dp"
                     android:src="@drawable/ic_comment" />
 
@@ -269,12 +265,6 @@
                     android:textSize="12sp"
                     android:textStyle="bold" />
             </LinearLayout>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/white"
-                android:textSize="12sp" />
         </LinearLayout>
 
         <!-- CURRENT PLAYLIST / QUEUE -->
@@ -286,26 +276,15 @@
             android:gravity="center"
             android:orientation="vertical">
 
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:orientation="horizontal">
+            <ImageButton
+                android:id="@+id/btnCurrentPlaylist"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/current_playlist"
+                android:padding="8dp"
+                android:src="@drawable/ic_playlist" />
 
-                <ImageButton
-                    android:id="@+id/btnCurrentPlaylist"
-                    android:layout_width="38dp"
-                    android:layout_height="38dp"
-                    android:background="@android:color/transparent"
-                    android:padding="8dp"
-                    android:src="@drawable/ic_playlist" />
-            </LinearLayout>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="@color/white"
-                android:textSize="12sp" />
         </LinearLayout>
 
     </LinearLayout>

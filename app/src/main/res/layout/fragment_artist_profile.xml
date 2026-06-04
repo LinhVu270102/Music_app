@@ -20,8 +20,8 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="@android:color/transparent"
-            android:src="@drawable/ic_return"
-            android:tint="@color/white" />
+            android:contentDescription="@string/back"
+            android:src="@drawable/ic_return"/>
 
         <TextView
             android:id="@+id/tvHeaderTitle"
@@ -29,7 +29,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:text="Artist"
+            android:text="@string/artist"
             android:textColor="@color/white"
             android:textSize="20sp"
             android:textStyle="bold" />
@@ -52,6 +52,7 @@
                 android:layout_height="96dp"
                 android:layout_gravity="center_horizontal"
                 android:background="@drawable/bg_circle_gray"
+                android:contentDescription="@string/artist_avatar"
                 android:scaleType="centerCrop"
                 android:src="@drawable/music_orange" />
 
@@ -61,7 +62,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:gravity="center"
-                android:text="Artist name"
+                android:text="@string/artist_name_placeholder"
                 android:textColor="@color/white"
                 android:textSize="22sp"
                 android:textStyle="bold" />
@@ -72,7 +73,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:gravity="center"
-                android:text="@username"
+                android:text="@string/username_placeholder"
                 android:textColor="@color/gray_light"
                 android:textSize="14sp" />
 
@@ -82,7 +83,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
                 android:gravity="center"
-                android:text="No bio"
+                android:text="@string/no_bio"
                 android:textColor="@color/white"
                 android:textSize="14sp" />
 
@@ -91,7 +92,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="28dp"
-                android:text="Uploaded songs"
+                android:text="@string/uploaded_songs"
                 android:textColor="@color/white"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -101,7 +102,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:paddingTop="16dp"
-                android:text="Người này chưa upload bài hát nào"
+                android:text="@string/artist_no_uploaded_songs"
                 android:textColor="@color/gray_light"
                 android:textSize="14sp"
                 android:visibility="gone" />

@@ -9,8 +9,9 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
+import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
@@ -18,19 +19,17 @@ import com.example.music_app.databinding.FragmentSearchBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.player.PlayerFragment
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 class SearchFragment : Fragment(R.layout.fragment_search) {
 
     private var _binding: FragmentSearchBinding? = null
     private val binding get() = _binding!!
 
+    private val viewModel: SearchViewModel by viewModels()
+
     private lateinit var searchAdapter: SearchAdapter
 
-    private val allSongs = mutableListOf<Song>()
-
+    private var allSongs: List<Song> = emptyList()
     private var currentTab = SearchTab.ALL
 
     enum class SearchTab {
@@ -47,8 +46,10 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         setupRecyclerView()
         setupSearchBox()
         setupTabs()
+        observeViewModel()
+
         selectTab(SearchTab.ALL)
-        loadSongsFromFirebase()
+        viewModel.loadSongs()
     }
 
     private fun setupRecyclerView() {
@@ -56,7 +57,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             PlayerManager.play(song)
 
             parentFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, PlayerFragment())
+                .replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
                 .addToBackStack(null)
                 .commit()
         }
@@ -68,9 +69,9 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     }
 
     private fun setupSearchBox() {
-        binding.btnCancel.visibility = View.GONE
-        binding.tabContainer.visibility = View.GONE
-        binding.tvSearchSectionTitle.text = "Recently searched"
+        binding.btnCancel.isVisible = false
+        binding.tabContainer.isVisible = false
+        binding.tvSearchSectionTitle.text = getString(R.string.recently_searched)
 
         binding.edtSearch.setOnFocusChangeListener { _, hasFocus ->
             val mainActivity = activity as? MainActivity
@@ -111,14 +112,15 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             ) {
                 val keyword = s.toString().trim()
 
-                binding.btnCancel.visibility =
-                    if (keyword.isNotEmpty()) View.VISIBLE else View.GONE
-
-                binding.tabContainer.visibility =
-                    if (keyword.isNotEmpty()) View.VISIBLE else View.GONE
+                binding.btnCancel.isVisible = keyword.isNotEmpty()
+                binding.tabContainer.isVisible = keyword.isNotEmpty()
 
                 binding.tvSearchSectionTitle.text =
-                    if (keyword.isNotEmpty()) getTitleByTab(currentTab) else "Recently searched"
+                    if (keyword.isNotEmpty()) {
+                        getTitleByTab(currentTab)
+                    } else {
+                        getString(R.string.recently_searched)
+                    }
 
                 filterSongs(keyword)
             }
@@ -132,9 +134,9 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             binding.edtSearch.clearFocus()
             hideKeyboard()
 
-            binding.btnCancel.visibility = View.GONE
-            binding.tabContainer.visibility = View.GONE
-            binding.tvSearchSectionTitle.text = "Recently searched"
+            binding.btnCancel.isVisible = false
+            binding.tabContainer.isVisible = false
+            binding.tvSearchSectionTitle.text = getString(R.string.recently_searched)
 
             searchAdapter.setData(emptyList())
         }
@@ -159,6 +161,22 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
         binding.tabAlbums.setOnClickListener {
             selectTab(SearchTab.ALBUMS)
+        }
+    }
+
+    private fun observeViewModel() {
+        viewModel.songs.observe(viewLifecycleOwner) { songs ->
+            allSongs = songs
+
+            val keyword = binding.edtSearch.text.toString().trim()
+            filterSongs(keyword)
+        }
+
+        viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                showToast(getString(it))
+                viewModel.clearErrorMessage()
+            }
         }
     }
 
@@ -196,7 +214,11 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         val keyword = binding.edtSearch.text.toString().trim()
 
         binding.tvSearchSectionTitle.text =
-            if (keyword.isNotEmpty()) getTitleByTab(tab) else "Recently searched"
+            if (keyword.isNotEmpty()) {
+                getTitleByTab(tab)
+            } else {
+                getString(R.string.recently_searched)
+            }
 
         filterSongs(keyword)
     }
@@ -218,46 +240,11 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
     private fun getTitleByTab(tab: SearchTab): String {
         return when (tab) {
-            SearchTab.ALL -> "All results"
-            SearchTab.TRACKS -> "Tracks"
-            SearchTab.PROFILES -> "Profiles"
-            SearchTab.PLAYLISTS -> "Playlists"
-            SearchTab.ALBUMS -> "Albums"
-        }
-    }
-
-    private fun loadSongsFromFirebase() {
-        lifecycleScope.launch {
-            try {
-                val snapshot = FirebaseFirestore.getInstance()
-                    .collection("songs")
-                    .get()
-                    .await()
-
-                allSongs.clear()
-
-                val songs = snapshot.documents.mapNotNull { document ->
-                    val song = document.toObject(Song::class.java)
-
-                    song?.copy(
-                        id = document.id
-                    )
-                }
-
-                allSongs.addAll(songs)
-
-                val keyword = binding.edtSearch.text.toString().trim()
-                filterSongs(keyword)
-
-            } catch (e: Exception) {
-                if (_binding != null) {
-                    Toast.makeText(
-                        requireContext(),
-                        "Không thể tải dữ liệu bài hát: ${e.message}",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            }
+            SearchTab.ALL -> getString(R.string.all_results)
+            SearchTab.TRACKS -> getString(R.string.tracks)
+            SearchTab.PROFILES -> getString(R.string.profiles)
+            SearchTab.PLAYLISTS -> getString(R.string.playlists)
+            SearchTab.ALBUMS -> getString(R.string.albums)
         }
     }
 
@@ -304,6 +291,10 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
 
         imm.hideSoftInputFromWindow(binding.edtSearch.windowToken, 0)
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroyView() {

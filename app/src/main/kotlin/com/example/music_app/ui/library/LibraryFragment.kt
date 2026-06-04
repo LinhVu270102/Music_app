@@ -15,9 +15,8 @@ import com.example.music_app.databinding.FragmentLibraryBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.albums.AlbumsFragment
 import com.example.music_app.ui.player.PlayerFragment
-import com.example.music_app.ui.settings.SettingFragment
+import com.example.music_app.ui.setting.SettingFragment
 import com.example.music_app.ui.song.SongAdapter
-
 
 class LibraryFragment : Fragment() {
 
@@ -51,31 +50,13 @@ class LibraryFragment : Fragment() {
     private fun setupRecyclerViews() {
         recentlyAdapter = SongAdapter(
             onItemClick = { song ->
-                if (currentRecentlySongs.isNotEmpty()) {
-                    PlayerManager.setPlaylist(currentRecentlySongs)
-                }
-
-                PlayerManager.play(song)
-
-                parentFragmentManager.commit {
-                    replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                    addToBackStack(null)
-                }
+                openPlayer(song)
             }
         )
 
         historyAdapter = SongAdapter(
             onItemClick = { song ->
-                if (currentRecentlySongs.isNotEmpty()) {
-                    PlayerManager.setPlaylist(currentRecentlySongs)
-                }
-
-                PlayerManager.play(song)
-
-                parentFragmentManager.commit {
-                    replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                    addToBackStack(null)
-                }
+                openPlayer(song)
             }
         )
 
@@ -136,6 +117,8 @@ class LibraryFragment : Fragment() {
 
     private fun observeViewModel() {
         viewModel.recentlyPlayed.observe(viewLifecycleOwner) { songs ->
+            currentRecentlySongs = songs
+
             recentlyAdapter.setData(songs)
 
             // Tạm thời Listening history dùng cùng data với Recently Played.
@@ -152,10 +135,24 @@ class LibraryFragment : Fragment() {
             }
         }
 
-        viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
-            message?.let {
-                showToast(it)
+        viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                showToast(getString(it))
+                viewModel.clearErrorMessage()
             }
+        }
+    }
+
+    private fun openPlayer(song: Song) {
+        if (currentRecentlySongs.isNotEmpty()) {
+            PlayerManager.setPlaylist(currentRecentlySongs)
+        }
+
+        PlayerManager.play(song)
+
+        parentFragmentManager.commit {
+            replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
+            addToBackStack(null)
         }
     }
 

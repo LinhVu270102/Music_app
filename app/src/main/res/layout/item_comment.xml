@@ -10,24 +10,22 @@
     android:paddingEnd="12dp"
     android:paddingBottom="10dp">
 
-    <!-- Avatar -->
     <ImageView
         android:id="@+id/imgCommentAvatar"
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:layout_marginEnd="12dp"
         android:background="@drawable/bg_circle_gray"
+        android:contentDescription="@string/comment_avatar"
         android:scaleType="centerCrop"
         android:src="@drawable/music_orange" />
 
-    <!-- Content -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <!-- Top row: name + time -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -40,7 +38,7 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="yastkshin"
+                android:text="@string/comment_user_placeholder"
                 android:textColor="@color/white"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -50,7 +48,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="at"
+                android:text="@string/at"
                 android:textColor="@color/gray_light"
                 android:textSize="14sp" />
 
@@ -62,7 +60,7 @@
                 android:background="@drawable/bg_comment_time"
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp"
-                android:text="0:05"
+                android:text="@string/comment_song_time_placeholder"
                 android:textColor="@color/blue_light"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -72,7 +70,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="·"
+                android:text="@string/dot"
                 android:textColor="@color/gray_light"
                 android:textSize="16sp" />
 
@@ -81,24 +79,22 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="2y"
+                android:text="@string/comment_time_ago_placeholder"
                 android:textColor="@color/gray_light"
                 android:textSize="14sp" />
 
         </LinearLayout>
 
-        <!-- Comment content -->
         <TextView
             android:id="@+id/txtCommentContent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:text="trrrr"
+            android:text="@string/comment_content_placeholder"
             android:textColor="@color/white"
             android:textSize="16sp"
             android:textStyle="bold" />
 
-        <!-- Bottom row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -110,7 +106,7 @@
                 android:id="@+id/txtReply"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Reply"
+                android:text="@string/reply"
                 android:textColor="@color/white"
                 android:textSize="15sp"
                 android:textStyle="bold" />
@@ -120,7 +116,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="24dp"
-                android:text="..."
+                android:text="@string/more_options"
                 android:textColor="@color/white"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -136,6 +132,7 @@
                     android:layout_height="30dp"
                     android:layout_gravity="center"
                     android:background="@drawable/bg_circle_gray"
+                    android:contentDescription="@string/profile_avatar"
                     android:scaleType="centerCrop"
                     android:src="@drawable/music_orange" />
 
@@ -144,7 +141,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="bottom|end"
-                    android:text="❤"
+                    android:text="@string/heart"
                     android:textColor="@color/orange"
                     android:textSize="12sp" />
 
@@ -154,7 +151,6 @@
 
     </LinearLayout>
 
-    <!-- Right like column -->
     <LinearLayout
         android:layout_width="44dp"
         android:layout_height="wrap_content"
@@ -165,16 +161,17 @@
             android:id="@+id/btnLikeComment"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            android:alpha="0.8"
             android:background="@android:color/transparent"
+            android:contentDescription="@string/like_comment"
             android:padding="8dp"
-            android:src="@drawable/ic_like"
-            android:alpha="0.8" />
+            android:src="@drawable/ic_like" />
 
         <TextView
             android:id="@+id/txtCommentLikeCount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="1"
+            android:text="@string/default_like_count"
             android:textColor="@color/white"
             android:textSize="13sp" />
 

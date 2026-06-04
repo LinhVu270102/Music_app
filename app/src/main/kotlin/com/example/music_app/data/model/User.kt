@@ -9,8 +9,8 @@ data class User(
     val bio: String = "",
 
     // Role
-    val role: String = "listener",
-    val accountStatus: String = "active",
+    val role: String = UserRole.USER,
+    val accountStatus: String = AccountStatus.ACTIVE,
 
     // Time
     val createdAt: Long = 0L,

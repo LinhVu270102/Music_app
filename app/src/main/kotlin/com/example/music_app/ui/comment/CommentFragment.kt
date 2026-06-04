@@ -21,10 +21,12 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
     private var songId: String = ""
 
     companion object {
+        private const val ARG_SONG_ID = "songId"
+
         fun newInstance(songId: String): CommentFragment {
             return CommentFragment().apply {
                 arguments = Bundle().apply {
-                    putString("songId", songId)
+                    putString(ARG_SONG_ID, songId)
                 }
             }
         }
@@ -35,7 +37,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
 
         (requireActivity() as? MainActivity)?.updateMainChromeVisibility()
 
-        songId = arguments?.getString("songId").orEmpty()
+        songId = arguments?.getString(ARG_SONG_ID).orEmpty()
 
         setupRecyclerView()
         setupListeners()
@@ -60,11 +62,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
             val content = binding.edtComment.text.toString().trim()
 
             if (content.isBlank()) {
-                Toast.makeText(
-                    requireContext(),
-                    "Vui lòng nhập bình luận",
-                    Toast.LENGTH_SHORT
-                ).show()
+                showToast(getString(R.string.comment_input_empty))
                 return@setOnClickListener
             }
 
@@ -78,9 +76,10 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
             adapter.setData(comments)
         }
 
-        viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
-            message?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+        viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                showToast(getString(it))
+                viewModel.clearErrorMessage()
             }
         }
     }
@@ -88,6 +87,10 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
     override fun onResume() {
         super.onResume()
         (requireActivity() as? MainActivity)?.updateMainChromeVisibility()
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroyView() {

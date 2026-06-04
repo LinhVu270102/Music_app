@@ -1,4 +1,4 @@
-package com.example.music_app.ui.settings
+package com.example.music_app.ui.setting
 
 import android.content.Context
 import android.content.Intent
@@ -9,15 +9,18 @@ import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.Toast
 import androidx.annotation.OptIn
+import androidx.core.content.edit
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.media3.common.util.UnstableApi
 import com.example.music_app.R
 import com.example.music_app.databinding.FragmentSettingBinding
-import com.example.music_app.ui.auth.LoginActivity
-import com.google.firebase.auth.FirebaseAuth
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.service.MusicService
+import com.example.music_app.ui.auth.LoginActivity
+import com.example.music_app.ui.settings.SettingViewModel
+import com.example.music_app.utils.LanguageManager
+import com.google.firebase.auth.FirebaseAuth
 
 class SettingFragment : Fragment() {
 
@@ -25,6 +28,8 @@ class SettingFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: SettingViewModel by viewModels()
+
+    private var isLanguageSpinnerReady = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -36,18 +41,23 @@ class SettingFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        observeViewModel()
+        setupLanguageSpinner()
         setupListeners()
     }
 
-    private fun observeViewModel() {
-        viewModel.selectedLanguage.observe(viewLifecycleOwner) {
-        }
-    }
+    private fun setupLanguageSpinner() {
+        val currentLanguage = LanguageManager.getSavedLanguage(requireContext())
 
-    private fun setupListeners() {
-        binding.btnReturn.setOnClickListener {
-            requireActivity().onBackPressedDispatcher.onBackPressed()
+        val selectedPosition = when (currentLanguage) {
+            LanguageManager.LANGUAGE_VI -> 0
+            LanguageManager.LANGUAGE_EN -> 1
+            else -> 1
+        }
+
+        binding.languageSpinner.setSelection(selectedPosition, false)
+
+        binding.languageSpinner.post {
+            isLanguageSpinnerReady = true
         }
 
         binding.languageSpinner.onItemSelectedListener =
@@ -58,16 +68,29 @@ class SettingFragment : Fragment() {
                     position: Int,
                     id: Long
                 ) {
-                    val selectedLang = parent?.getItemAtPosition(position).toString()
-                    viewModel.setLanguage(selectedLang)
+                    if (!isLanguageSpinnerReady) return
+
+                    val languageCode = when (position) {
+                        0 -> LanguageManager.LANGUAGE_VI
+                        1 -> LanguageManager.LANGUAGE_EN
+                        else -> LanguageManager.LANGUAGE_EN
+                    }
+
+                    changeLanguage(languageCode)
                 }
 
                 override fun onNothingSelected(parent: AdapterView<*>?) {}
             }
+    }
+
+    private fun setupListeners() {
+        binding.btnReturn.setOnClickListener {
+            requireActivity().onBackPressedDispatcher.onBackPressed()
+        }
 
         binding.clearDataButton.setOnClickListener {
             viewModel.clearData()
-            showToast("Dữ liệu đã được xoá")
+            showToast(getString(R.string.data_cleared))
         }
 
         binding.accountHeader.setOnClickListener {
@@ -80,8 +103,17 @@ class SettingFragment : Fragment() {
 
         binding.updateAccountButton.setOnClickListener {
             viewModel.deleteAccount()
-            showToast("Tài khoản đã bị xoá")
+            showToast(getString(R.string.account_deleted))
         }
+    }
+
+    private fun changeLanguage(languageCode: String) {
+        val currentLanguage = LanguageManager.getSavedLanguage(requireContext())
+
+        if (currentLanguage == languageCode) return
+
+        LanguageManager.saveLanguage(requireContext(), languageCode)
+        LanguageManager.applyLanguage(languageCode)
     }
 
     private fun toggleAccountOptions() {
@@ -110,7 +142,6 @@ class SettingFragment : Fragment() {
     @OptIn(UnstableApi::class)
     private fun logout() {
         FirebaseAuth.getInstance().signOut()
-
         PlayerManager.release()
 
         val serviceIntent = Intent(requireContext(), MusicService::class.java)
@@ -119,11 +150,11 @@ class SettingFragment : Fragment() {
         val prefs = requireContext()
             .getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
 
-        prefs.edit()
-            .putBoolean("isLoggedIn", false)
-            .apply()
+        prefs.edit {
+            putBoolean("isLoggedIn", false)
+        }
 
-        showToast("Đăng xuất thành công")
+        showToast(getString(R.string.logout_success))
 
         val intent = Intent(requireContext(), LoginActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

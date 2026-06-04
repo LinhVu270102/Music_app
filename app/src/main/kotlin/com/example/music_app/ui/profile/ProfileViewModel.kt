@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.User
 import com.example.music_app.data.repository.SongRepository
@@ -22,8 +23,8 @@ class ProfileViewModel : ViewModel() {
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
 
-    private val _errorMessage = MutableLiveData<String?>()
-    val errorMessage: LiveData<String?> = _errorMessage
+    private val _errorMessage = MutableLiveData<Int?>()
+    val errorMessage: LiveData<Int?> = _errorMessage
 
     fun loadProfile() {
         viewModelScope.launch {
@@ -36,7 +37,7 @@ class ProfileViewModel : ViewModel() {
                 _user.value = userProfile
                 _mySongs.value = uploadedSongs
             } catch (e: Exception) {
-                _errorMessage.value = e.message ?: "Không tải được thông tin hồ sơ"
+                _errorMessage.value = R.string.load_profile_failed
             } finally {
                 _isLoading.value = false
             }

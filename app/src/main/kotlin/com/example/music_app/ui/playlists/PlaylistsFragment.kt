@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.EditText
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
@@ -72,52 +73,51 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
     private fun observeViewModel() {
         viewModel.playlists.observe(viewLifecycleOwner) { playlists ->
             adapter.setData(playlists)
-
-            binding.tvEmpty.visibility =
-                if (playlists.isEmpty()) View.VISIBLE else View.GONE
+            binding.tvEmpty.isVisible = playlists.isEmpty()
         }
 
-        viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
-            message?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+        viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                Toast.makeText(requireContext(), getString(it), Toast.LENGTH_SHORT).show()
+                viewModel.clearErrorMessage()
             }
         }
     }
 
     private fun showCreatePlaylistDialog() {
         val input = EditText(requireContext()).apply {
-            hint = "Tên playlist"
+            hint = getString(R.string.playlist_name_hint)
             setSingleLine(true)
         }
 
         AlertDialog.Builder(requireContext())
-            .setTitle("Tạo playlist")
+            .setTitle(getString(R.string.create_playlist))
             .setView(input)
-            .setPositiveButton("Tạo") { _, _ ->
+            .setPositiveButton(getString(R.string.create)) { _, _ ->
                 val name = input.text.toString().trim()
 
                 if (name.isBlank()) {
                     Toast.makeText(
                         requireContext(),
-                        "Tên playlist không được để trống",
+                        getString(R.string.playlist_name_empty),
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {
                     viewModel.createPlaylist(name)
                 }
             }
-            .setNegativeButton("Huỷ", null)
+            .setNegativeButton(getString(R.string.cancel), null)
             .show()
     }
 
     private fun confirmDeletePlaylist(playlistId: String) {
         AlertDialog.Builder(requireContext())
-            .setTitle("Xoá playlist")
-            .setMessage("Bạn có chắc muốn xoá playlist này không?")
-            .setPositiveButton("Xoá") { _, _ ->
+            .setTitle(getString(R.string.delete_playlist_title))
+            .setMessage(getString(R.string.delete_playlist_confirm))
+            .setPositiveButton(getString(R.string.delete)) { _, _ ->
                 viewModel.deletePlaylist(playlistId)
             }
-            .setNegativeButton("Huỷ", null)
+            .setNegativeButton(getString(R.string.cancel), null)
             .show()
     }
 

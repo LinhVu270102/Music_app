@@ -9,12 +9,12 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import com.example.music_app.R
+import com.example.music_app.base.BaseActivity
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.databinding.ActivityMainBinding
@@ -32,9 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class MainActivity : AppCompatActivity() {
-
-    private lateinit var binding: ActivityMainBinding
+class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     private val songRepository = SongRepository()
     private var currentMiniSong: Song? = null
@@ -51,6 +49,10 @@ class MainActivity : AppCompatActivity() {
         HOME, SEARCH, LIBRARY, PROFILE
     }
 
+    override fun getViewBinding(): ActivityMainBinding {
+        return ActivityMainBinding.inflate(layoutInflater)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -61,9 +63,6 @@ class MainActivity : AppCompatActivity() {
             finish()
             return
         }
-
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
 
         PlayerManager.init(this)
 
@@ -234,9 +233,9 @@ class MainActivity : AppCompatActivity() {
                     updateMiniPlayerLikeIcon()
 
                     val message = if (liked) {
-                        "Đã thêm vào Your likes"
+                        getString(R.string.added_to_your_likes)
                     } else {
-                        "Đã bỏ khỏi Your likes"
+                        getString(R.string.removed_from_your_likes)
                     }
 
                     Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
@@ -245,7 +244,7 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(
                         this@MainActivity,
-                        e.message ?: "Không thể cập nhật like",
+                        e.message ?: getString(R.string.update_like_failed),
                         Toast.LENGTH_SHORT
                     ).show()
                 }
@@ -286,9 +285,10 @@ class MainActivity : AppCompatActivity() {
             supportFragmentManager.findFragmentById(binding.fragmentContainer.id)
 
         val isPlayerScreen = currentFragment is PlayerFragment
+        val isCommentScreen = currentFragment is CommentFragment
 
         binding.miniPlayer.root.visibility =
-            if (hasSong && !isPlayerScreen) {
+            if (hasSong && !isPlayerScreen && !isCommentScreen) {
                 View.VISIBLE
             } else {
                 View.GONE

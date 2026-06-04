@@ -31,6 +31,7 @@
             <ImageView
                 android:layout_width="24dp"
                 android:layout_height="24dp"
+                android:contentDescription="@string/search"
                 android:src="@drawable/ic_search"
                 app:tint="#BDBDBD" />
 
@@ -41,7 +42,7 @@
                 android:layout_marginStart="10dp"
                 android:layout_weight="1"
                 android:background="@android:color/transparent"
-                android:hint="Search"
+                android:hint="@string/search"
                 android:imeOptions="actionSearch"
                 android:inputType="text"
                 android:singleLine="true"
@@ -51,13 +52,13 @@
 
         </LinearLayout>
 
-        <!-- CANCEL ICON BÊN PHẢI -->
         <ImageButton
             android:id="@+id/btnCancel"
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:layout_marginStart="12dp"
             android:background="@android:color/transparent"
+            android:contentDescription="@string/cancel"
             android:padding="10dp"
             android:src="@drawable/ic_cancel"
             android:visibility="gone"
@@ -83,27 +84,27 @@
             <TextView
                 android:id="@+id/tabAll"
                 style="@style/SearchTabSelected"
-                android:text="All" />
+                android:text="@string/all" />
 
             <TextView
                 android:id="@+id/tabTracks"
                 style="@style/SearchTab"
-                android:text="Tracks" />
+                android:text="@string/tracks" />
 
             <TextView
                 android:id="@+id/tabProfiles"
                 style="@style/SearchTab"
-                android:text="Profiles" />
+                android:text="@string/profiles" />
 
             <TextView
                 android:id="@+id/tabPlaylists"
                 style="@style/SearchTab"
-                android:text="Playlists" />
+                android:text="@string/playlists" />
 
             <TextView
                 android:id="@+id/tabAlbums"
                 style="@style/SearchTab"
-                android:text="Albums" />
+                android:text="@string/albums" />
 
         </LinearLayout>
 
@@ -115,7 +116,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="18dp"
-        android:text="Recently searched"
+        android:text="@string/recently_searched"
         android:textColor="#FFFFFF"
         android:textSize="20sp"
         android:textStyle="bold" />

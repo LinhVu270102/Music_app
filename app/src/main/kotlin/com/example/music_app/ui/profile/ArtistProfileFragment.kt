@@ -3,6 +3,7 @@ package com.example.music_app.ui.profile
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
@@ -28,10 +29,12 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
     private var currentSongs: List<Song> = emptyList()
 
     companion object {
+        private const val ARG_USER_ID = "userId"
+
         fun newInstance(userId: String): ArtistProfileFragment {
             return ArtistProfileFragment().apply {
                 arguments = Bundle().apply {
-                    putString("userId", userId)
+                    putString(ARG_USER_ID, userId)
                 }
             }
         }
@@ -40,7 +43,7 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         _binding = FragmentArtistProfileBinding.bind(view)
 
-        artistId = arguments?.getString("userId").orEmpty()
+        artistId = arguments?.getString(ARG_USER_ID).orEmpty()
 
         setupRecyclerView()
         setupListeners()
@@ -52,16 +55,7 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
     private fun setupRecyclerView() {
         adapter = SongAdapter(
             onItemClick = { song ->
-                if (currentSongs.isNotEmpty()) {
-                    PlayerManager.setPlaylist(currentSongs)
-                }
-
-                PlayerManager.play(song)
-
-                parentFragmentManager.commit {
-                    replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                    addToBackStack(null)
-                }
+                playSong(song)
             }
         )
 
@@ -80,30 +74,55 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
         viewModel.artist.observe(viewLifecycleOwner) { user ->
             if (user == null) return@observe
 
-            binding.tvHeaderTitle.text = user.displayName.ifBlank { "Artist" }
-            binding.tvArtistName.text = user.displayName.ifBlank { user.email }
+            binding.tvHeaderTitle.text =
+                user.displayName.ifBlank { getString(R.string.artist) }
+
+            binding.tvArtistName.text =
+                user.displayName.ifBlank { user.email }
+
             binding.tvArtistUsername.text =
-                if (user.username.isNotBlank()) "@${user.username}" else user.email
-            binding.tvArtistBio.text = user.bio.ifBlank { "No bio" }
+                if (user.username.isNotBlank()) {
+                    "@${user.username}"
+                } else {
+                    user.email
+                }
+
+            binding.tvArtistBio.text =
+                user.bio.ifBlank { getString(R.string.no_bio) }
 
             Glide.with(this)
-                .load(user.avatarUrl)
+                .load(user.avatarUrl.ifBlank { R.drawable.music_orange })
                 .placeholder(R.drawable.music_orange)
+                .error(R.drawable.music_orange)
                 .circleCrop()
                 .into(binding.imgArtistAvatar)
         }
 
         viewModel.songs.observe(viewLifecycleOwner) { songs ->
+            currentSongs = songs
+
             adapter.setData(songs)
 
-            binding.tvEmpty.visibility =
-                if (songs.isEmpty()) View.VISIBLE else View.GONE
+            binding.tvEmpty.isVisible = songs.isEmpty()
         }
 
-        viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
-            message?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+        viewModel.errorMessage.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                Toast.makeText(requireContext(), getString(it), Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun playSong(song: Song) {
+        if (currentSongs.isNotEmpty()) {
+            PlayerManager.setPlaylist(currentSongs)
+        }
+
+        PlayerManager.play(song)
+
+        parentFragmentManager.commit {
+            replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
+            addToBackStack(null)
         }
     }
 

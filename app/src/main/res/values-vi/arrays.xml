@@ -1,6 +1,6 @@
 <resources>
     <string-array name="language_options">
-        <item>Vietnamese</item>
-        <item>English</item>
+        <item>Tiếng Việt</item>
+        <item>Tiếng Anh</item>
     </string-array>
 </resources>

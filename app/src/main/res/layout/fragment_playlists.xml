@@ -19,6 +19,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="@android:color/transparent"
+            android:contentDescription="@string/back"
             android:src="@drawable/ic_return" />
 
         <TextView
@@ -26,17 +27,18 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:text="Playlists"
+            android:text="@string/playlists"
             android:textColor="@color/white"
             android:textSize="20sp"
-            android:textStyle="bold"/>
+            android:textStyle="bold" />
 
         <ImageButton
             android:id="@+id/btnAddPlaylist"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="@android:color/transparent"
-            android:src="@drawable/ic_add"/>
+            android:contentDescription="@string/add_playlist"
+            android:src="@drawable/ic_add" />
     </LinearLayout>
 
     <TextView
@@ -44,7 +46,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:padding="20dp"
-        android:text="Chưa có playlist nào"
+        android:text="@string/no_playlists"
         android:textColor="@color/white"
         android:textSize="16sp"
         android:visibility="gone" />

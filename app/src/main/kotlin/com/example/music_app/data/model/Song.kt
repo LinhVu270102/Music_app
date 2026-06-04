@@ -23,7 +23,10 @@ data class Song(
     val tags: List<String> = emptyList(),
 
     // Kiểm duyệt
-    val status: String = "approved",
+    val status: String = SongStatus.PENDING,
+    val rejectReason: String = "",
+    val reviewedBy: String = "",
+    val reviewedAt: Long = 0L,
 
     // Thời gian
     val createdAt: Long = 0L,

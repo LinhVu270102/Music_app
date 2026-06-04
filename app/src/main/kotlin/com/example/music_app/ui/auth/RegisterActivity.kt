@@ -1,7 +1,9 @@
 package com.example.music_app.ui.auth
 
 import android.content.Intent
+import android.util.Patterns
 import androidx.activity.viewModels
+import com.example.music_app.R
 import com.example.music_app.base.BaseActivity
 import com.example.music_app.databinding.ActivityRegisterBinding
 import com.example.music_app.main.MainActivity
@@ -22,27 +24,27 @@ class RegisterActivity : BaseActivity<ActivityRegisterBinding>() {
             val confirmPassword = binding.regConfirmPassword.text.toString()
 
             if (displayName.isBlank()) {
-                showToast("Vui lòng nhập tên hiển thị")
+                showToast(getString(R.string.empty_display_name))
                 return@setOnClickListener
             }
 
             if (email.isBlank()) {
-                showToast("Vui lòng nhập email")
+                showToast(getString(R.string.empty_email))
                 return@setOnClickListener
             }
 
-            if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                showToast("Email không hợp lệ")
+            if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                showToast(getString(R.string.invalid_email))
                 return@setOnClickListener
             }
 
             if (password.length < 6) {
-                showToast("Mật khẩu phải có ít nhất 6 ký tự")
+                showToast(getString(R.string.password_too_short))
                 return@setOnClickListener
             }
 
             if (password != confirmPassword) {
-                showToast("Mật khẩu không khớp")
+                showToast(getString(R.string.passwords_do_not_match))
                 return@setOnClickListener
             }
 
@@ -64,14 +66,17 @@ class RegisterActivity : BaseActivity<ActivityRegisterBinding>() {
     override fun initObservers() {
         viewModel.authSuccess.observe(this) { success ->
             if (success) {
-                showToast("Đăng ký thành công!")
+                showToast(getString(R.string.register_success))
                 startActivity(Intent(this, MainActivity::class.java))
                 finish()
             }
         }
 
-        viewModel.errorMessage.observe(this) { msg ->
-            msg?.let { showToast(it) }
+        viewModel.errorMessageResId.observe(this) { messageResId ->
+            messageResId?.let {
+                showToast(getString(it))
+                viewModel.clearErrorMessage()
+            }
         }
 
         viewModel.isLoading.observe(this) { loading ->

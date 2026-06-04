@@ -63,11 +63,12 @@ class MusicService : Service() {
         return object : PlayerNotificationManager.MediaDescriptionAdapter {
 
             override fun getCurrentContentTitle(player: Player): CharSequence {
-                return PlayerManager.currentSong.value?.title ?: "Orange Music"
+                return PlayerManager.currentSong.value?.title ?: getString(R.string.app_name)
             }
 
             override fun getCurrentContentText(player: Player): CharSequence {
-                return PlayerManager.currentSong.value?.artist ?: "Đang phát nhạc"
+                return PlayerManager.currentSong.value?.artist
+                    ?: getString(R.string.now_playing_default_text)
             }
 
             override fun createCurrentContentIntent(player: Player): PendingIntent? {

@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
@@ -29,14 +30,17 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
     private var currentSongs: List<Song> = emptyList()
 
     companion object {
+        private const val ARG_PLAYLIST_ID = "playlistId"
+        private const val ARG_PLAYLIST_NAME = "playlistName"
+
         fun newInstance(
             playlistId: String,
             playlistName: String
         ): PlaylistDetailFragment {
             return PlaylistDetailFragment().apply {
                 arguments = Bundle().apply {
-                    putString("playlistId", playlistId)
-                    putString("playlistName", playlistName)
+                    putString(ARG_PLAYLIST_ID, playlistId)
+                    putString(ARG_PLAYLIST_NAME, playlistName)
                 }
             }
         }
@@ -45,10 +49,11 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         _binding = FragmentPlaylistDetailBinding.bind(view)
 
-        playlistId = arguments?.getString("playlistId").orEmpty()
-        playlistName = arguments?.getString("playlistName").orEmpty()
+        playlistId = arguments?.getString(ARG_PLAYLIST_ID).orEmpty()
+        playlistName = arguments?.getString(ARG_PLAYLIST_NAME).orEmpty()
 
-        binding.tvPlaylistName.text = playlistName.ifBlank { "Playlist" }
+        binding.tvPlaylistName.text =
+            playlistName.ifBlank { getString(R.string.playlist) }
 
         setupRecyclerView()
         setupListeners()
@@ -68,12 +73,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
     private fun setupRecyclerView() {
         adapter = SongAdapter(
             onItemClick = { song ->
-                PlayerManager.play(song)
-
-                parentFragmentManager.commit {
-                    replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                    addToBackStack(null)
-                }
+                openPlayer(song)
             },
             onItemLongClick = { song ->
                 confirmRemoveSong(song)
@@ -94,30 +94,46 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         viewModel.songs.observe(viewLifecycleOwner) { songs ->
             currentSongs = songs
             adapter.setData(songs)
-
-            binding.tvEmpty.visibility =
-                if (songs.isEmpty()) View.VISIBLE else View.GONE
+            binding.tvEmpty.isVisible = songs.isEmpty()
         }
 
-        viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
-            message?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+        viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                showToast(getString(it))
+                viewModel.clearErrorMessage()
             }
+        }
+    }
+
+    private fun openPlayer(song: Song) {
+        if (currentSongs.isNotEmpty()) {
+            PlayerManager.setPlaylist(currentSongs)
+        }
+
+        PlayerManager.play(song)
+
+        parentFragmentManager.commit {
+            replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
+            addToBackStack(null)
         }
     }
 
     private fun confirmRemoveSong(song: Song) {
         AlertDialog.Builder(requireContext())
-            .setTitle("Xoá khỏi playlist")
-            .setMessage("Bạn muốn xoá \"${song.title}\" khỏi playlist này?")
-            .setPositiveButton("Xoá") { _, _ ->
+            .setTitle(getString(R.string.remove_from_playlist_title))
+            .setMessage(getString(R.string.remove_song_from_playlist_confirm, song.title))
+            .setPositiveButton(getString(R.string.delete)) { _, _ ->
                 viewModel.removeSongFromPlaylist(
                     playlistId = playlistId,
                     songId = song.id
                 )
             }
-            .setNegativeButton("Huỷ", null)
+            .setNegativeButton(getString(R.string.cancel), null)
             .show()
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroyView() {

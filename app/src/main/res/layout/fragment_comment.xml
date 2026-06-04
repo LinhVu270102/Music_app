@@ -6,7 +6,6 @@
     android:background="@color/black"
     android:orientation="vertical">
 
-    <!-- HEADER -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -20,6 +19,7 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="@android:color/transparent"
+            android:contentDescription="@string/back"
             android:src="@drawable/ic_return"
             android:tint="@color/white" />
 
@@ -29,7 +29,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:text="Comments"
+            android:text="@string/comments"
             android:textColor="@color/white"
             android:textSize="20sp"
             android:textStyle="bold" />
@@ -43,7 +43,6 @@
         android:clipToPadding="false"
         android:padding="12dp" />
 
-    <!-- INPUT -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -58,7 +57,7 @@
             android:layout_height="44dp"
             android:layout_weight="1"
             android:background="@drawable/bg_search_box"
-            android:hint="Viết bình luận..."
+            android:hint="@string/write_comment"
             android:paddingStart="14dp"
             android:paddingEnd="14dp"
             android:singleLine="true"
@@ -72,6 +71,7 @@
             android:layout_height="44dp"
             android:layout_marginStart="8dp"
             android:background="@android:color/transparent"
+            android:contentDescription="@string/send_comment"
             android:src="@drawable/ic_send" />
     </LinearLayout>
 

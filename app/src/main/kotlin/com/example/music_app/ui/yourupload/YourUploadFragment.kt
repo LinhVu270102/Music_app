@@ -3,6 +3,7 @@ package com.example.music_app.ui.library
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
@@ -42,16 +43,7 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
     private fun setupRecyclerView() {
         adapter = SongAdapter(
             onItemClick = { song ->
-                if (currentSongs.isNotEmpty()) {
-                    PlayerManager.setPlaylist(currentSongs)
-                }
-
-                PlayerManager.play(song)
-
-                parentFragmentManager.commit {
-                    replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                    addToBackStack(null)
-                }
+                openPlayer(song)
             }
         )
 
@@ -70,15 +62,32 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
             currentSongs = songs
             adapter.setData(songs)
 
-            binding.tvEmpty.visibility =
-                if (songs.isEmpty()) View.VISIBLE else View.GONE
+            binding.tvEmpty.isVisible = songs.isEmpty()
         }
 
-        viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
-            message?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+        viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                showToast(getString(it))
+                viewModel.clearErrorMessage()
             }
         }
+    }
+
+    private fun openPlayer(song: Song) {
+        if (currentSongs.isNotEmpty()) {
+            PlayerManager.setPlaylist(currentSongs)
+        }
+
+        PlayerManager.play(song)
+
+        parentFragmentManager.commit {
+            replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
+            addToBackStack(null)
+        }
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroyView() {

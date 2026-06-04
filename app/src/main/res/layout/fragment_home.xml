@@ -6,7 +6,7 @@
     android:background="@color/black"
     android:orientation="vertical">
 
-    <!-- HEADER: GIỮ LẠI HEADER HIỆN TẠI -->
+    <!-- HEADER -->
     <LinearLayout
         android:id="@+id/headerContainer"
         android:layout_width="match_parent"
@@ -20,7 +20,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Home"
+            android:text="@string/home"
             android:textColor="@color/white"
             android:textSize="20sp"
             android:textStyle="bold" />
@@ -29,12 +29,14 @@
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="@android:color/transparent"
+            android:contentDescription="@string/upload"
             android:src="@drawable/ic_upload" />
 
         <ImageButton
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:background="@android:color/transparent"
+            android:contentDescription="@string/notification"
             android:src="@drawable/ic_notification" />
 
     </LinearLayout>
@@ -72,14 +74,14 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Your likes"
+                    android:text="@string/your_likes"
                     android:textColor="#FFFFFF"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
             </LinearLayout>
 
-            <!-- RELATED TRACKS: 4 TRACK -->
+            <!-- RELATED TRACKS -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvRelatedTracks"
                 android:layout_width="match_parent"
@@ -96,7 +98,7 @@
                 android:layout_marginTop="26dp"
                 android:paddingStart="20dp"
                 android:paddingEnd="20dp"
-                android:text="More of what you like"
+                android:text="@string/more_of_what_you_like"
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
                 android:textStyle="bold" />
@@ -117,7 +119,7 @@
                 android:layout_marginTop="28dp"
                 android:paddingStart="20dp"
                 android:paddingEnd="20dp"
-                android:text="Hot For You 🔥"
+                android:text="@string/hot_for_you"
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
                 android:textStyle="bold" />
@@ -138,7 +140,7 @@
                 android:layout_marginTop="28dp"
                 android:paddingStart="20dp"
                 android:paddingEnd="20dp"
-                android:text="Trending by genre"
+                android:text="@string/trending_by_genre"
                 android:textColor="#FFFFFF"
                 android:textSize="24sp"
                 android:textStyle="bold" />
@@ -160,32 +162,32 @@
                     <TextView
                         android:id="@+id/chipHipHop"
                         style="@style/GenreChipSelected"
-                        android:text="Hip Hop &amp; Rap" />
+                        android:text="@string/genre_hip_hop_rap" />
 
                     <TextView
                         android:id="@+id/chipSoundCloud"
                         style="@style/GenreChip"
-                        android:text="SoundCloud" />
+                        android:text="@string/genre_soundcloud" />
 
                     <TextView
                         android:id="@+id/chipRnB"
                         style="@style/GenreChip"
-                        android:text="R&amp;B" />
+                        android:text="@string/genre_rnb" />
 
                     <TextView
                         android:id="@+id/chipPop"
                         style="@style/GenreChip"
-                        android:text="Pop" />
+                        android:text="@string/genre_pop" />
 
                     <TextView
                         android:id="@+id/chipElectronic"
                         style="@style/GenreChip"
-                        android:text="Electronic" />
+                        android:text="@string/genre_electronic" />
 
                     <TextView
                         android:id="@+id/chipChill"
                         style="@style/GenreChip"
-                        android:text="Chill" />
+                        android:text="@string/genre_chill" />
 
                 </LinearLayout>
 
@@ -205,7 +207,7 @@
 
     </androidx.core.widget.NestedScrollView>
 
-    <!-- MINI PLAYER HIỆN TẠI -->
+    <!-- MINI PLAYER -->
     <include
         android:id="@+id/nowPlayingBar"
         layout="@layout/item_now_playing"

@@ -23,24 +23,34 @@ class CommentAdapter : RecyclerView.Adapter<CommentAdapter.CommentViewHolder>() 
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(comment: Comment) {
+            val context = binding.root.context
+
             binding.txtCommentUser.text =
-                comment.displayName.ifBlank { "Unknown user" }
+                comment.displayName.ifBlank {
+                    context.getString(R.string.unknown_user)
+                }
 
             binding.txtCommentContent.text = comment.content
 
-            binding.txtCommentSongTime.text = "0:05"
-            binding.txtCommentTimeAgo.text = formatTimeAgo(comment.createdAt)
-            binding.txtCommentLikeCount.text = "0"
+            binding.txtCommentSongTime.text =
+                context.getString(R.string.comment_song_time_placeholder)
 
-            Glide.with(binding.root.context)
+            binding.txtCommentTimeAgo.text = formatTimeAgo(comment.createdAt)
+
+            binding.txtCommentLikeCount.text =
+                context.getString(R.string.default_comment_like_count)
+
+            Glide.with(context)
                 .load(comment.avatarUrl)
                 .placeholder(R.drawable.music_orange)
+                .error(R.drawable.music_orange)
                 .circleCrop()
                 .into(binding.imgCommentAvatar)
 
-            Glide.with(binding.root.context)
+            Glide.with(context)
                 .load(comment.avatarUrl)
                 .placeholder(R.drawable.music_orange)
+                .error(R.drawable.music_orange)
                 .circleCrop()
                 .into(binding.imgSmallAvatar)
 

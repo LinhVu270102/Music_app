@@ -1,26 +1,45 @@
 package com.example.music_app.data.repository
 
+import com.example.music_app.R
+import com.example.music_app.data.model.Comment
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.model.SongStatus
 import com.example.music_app.data.model.User
+import com.example.music_app.data.model.UserRole
 import com.example.music_app.data.remote.FirebaseService
+import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.example.music_app.data.model.Comment
+import kotlinx.coroutines.tasks.await
 
 class SongRepository {
 
-    private val firebaseService = FirebaseService(FirebaseFirestore.getInstance())
+    private val db = FirebaseFirestore.getInstance()
+    private val firebaseService = FirebaseService(db)
     private val auth = FirebaseAuth.getInstance()
+
+    // =========================
+    // SONG BASIC
+    // =========================
 
     suspend fun getSong(songId: String): Song? {
         return firebaseService.getSongById(songId)
     }
 
+    /**
+     * Public song list.
+     * Home/Search/Library chỉ nên hiển thị bài đã được admin duyệt.
+     */
     suspend fun getAllSongs(): List<Song> {
         return firebaseService.getAllSongsWithIds()
+            .filter { song -> song.status == SongStatus.APPROVED }
     }
 
+    /**
+     * Dùng khi tạo/cập nhật bài hát.
+     * Nếu user upload bài mới, Song.kt nên mặc định status = pending.
+     */
     suspend fun upsertSong(song: Song) {
         firebaseService.upsertSong(song)
     }
@@ -32,17 +51,108 @@ class SongRepository {
 
     suspend fun getRecentlyPlayedSongs(): List<Song> {
         val userId = auth.currentUser?.uid ?: return emptyList()
+
         return firebaseService.getRecentlyPlayedSongs(userId)
+            .filter { song -> song.status == SongStatus.APPROVED }
     }
+
+    // =========================
+    // USER PROFILE / UPLOAD
+    // =========================
 
     suspend fun getCurrentUserProfile(): User? {
         val userId = auth.currentUser?.uid ?: return null
         return firebaseService.getUserById(userId)
     }
 
+    /**
+     * Dùng cho màn Your Upload.
+     * Chủ tài khoản nên thấy cả pending / approved / rejected.
+     */
     suspend fun getMyUploadedSongs(): List<Song> {
         val userId = auth.currentUser?.uid ?: return emptyList()
         return firebaseService.getSongsByUploaderId(userId)
+    }
+
+    /**
+     * Dùng khi người khác xem profile user.
+     * Chỉ hiển thị bài đã được duyệt.
+     */
+    suspend fun getSongsByUserId(userId: String): List<Song> {
+        return firebaseService.getSongsByUploaderId(userId)
+            .filter { song -> song.status == SongStatus.APPROVED }
+    }
+
+    suspend fun getUserById(userId: String): User? {
+        return firebaseService.getUserById(userId)
+    }
+
+    // =========================
+    // ADMIN MODERATION
+    // =========================
+
+    suspend fun getPendingSongs(): List<Song> {
+        requireAdmin()
+
+        val snapshot = db.collection("songs")
+            .whereEqualTo("status", SongStatus.PENDING)
+            .get()
+            .await()
+
+        return snapshot.documents.mapNotNull { document ->
+            document.toObject(Song::class.java)?.copy(id = document.id)
+        }
+    }
+
+    suspend fun approveSong(songId: String) {
+        val adminId = requireAdmin()
+
+        db.collection("songs")
+            .document(songId)
+            .update(
+                mapOf(
+                    "status" to SongStatus.APPROVED,
+                    "rejectReason" to "",
+                    "reviewedBy" to adminId,
+                    "reviewedAt" to System.currentTimeMillis(),
+                    "updatedAt" to System.currentTimeMillis()
+                )
+            )
+            .await()
+    }
+
+    suspend fun rejectSong(
+        songId: String,
+        reason: String
+    ) {
+        val adminId = requireAdmin()
+
+        db.collection("songs")
+            .document(songId)
+            .update(
+                mapOf(
+                    "status" to SongStatus.REJECTED,
+                    "rejectReason" to reason,
+                    "reviewedBy" to adminId,
+                    "reviewedAt" to System.currentTimeMillis(),
+                    "updatedAt" to System.currentTimeMillis()
+                )
+            )
+            .await()
+    }
+
+    private suspend fun requireAdmin(): String {
+        val userId = auth.currentUser?.uid
+            ?: throw AppException(R.string.not_logged_in)
+
+        val user = firebaseService.getUserById(userId)
+            ?: throw AppException(R.string.account_not_found)
+
+        if (user.role != UserRole.ADMIN) {
+            throw AppException(R.string.no_admin_permission)
+        }
+
+        return userId
     }
 
     // =========================
@@ -66,7 +176,9 @@ class SongRepository {
 
     suspend fun getLikedSongs(): List<Song> {
         val userId = auth.currentUser?.uid ?: return emptyList()
+
         return firebaseService.getLikedSongs(userId)
+            .filter { song -> song.status == SongStatus.APPROVED }
     }
 
     suspend fun toggleLikeSong(song: Song): Boolean {
@@ -91,7 +203,9 @@ class SongRepository {
         name: String,
         description: String = ""
     ): Playlist {
-        val userId = auth.currentUser?.uid ?: throw Exception("Bạn chưa đăng nhập")
+        val userId = auth.currentUser?.uid
+            ?: throw AppException(R.string.not_logged_in)
+
         return firebaseService.createPlaylist(userId, name, description)
     }
 
@@ -109,7 +223,9 @@ class SongRepository {
         playlistId: String,
         song: Song
     ) {
-        val userId = auth.currentUser?.uid ?: throw Exception("Bạn chưa đăng nhập")
+        val userId = auth.currentUser?.uid
+            ?: throw AppException(R.string.not_logged_in)
+
         firebaseService.addSongToPlaylist(userId, playlistId, song)
     }
 
@@ -117,17 +233,21 @@ class SongRepository {
         playlistId: String,
         songId: String
     ) {
-        val userId = auth.currentUser?.uid ?: throw Exception("Bạn chưa đăng nhập")
+        val userId = auth.currentUser?.uid
+            ?: throw AppException(R.string.not_logged_in)
+
         firebaseService.removeSongFromPlaylist(userId, playlistId, songId)
     }
 
     suspend fun getPlaylistSongs(playlistId: String): List<Song> {
         val userId = auth.currentUser?.uid ?: return emptyList()
+
         return firebaseService.getPlaylistSongs(userId, playlistId)
+            .filter { song -> song.status == SongStatus.APPROVED }
     }
 
     // =========================
-    // FOLLOW USER / ARTIST
+    // FOLLOW USER
     // =========================
 
     suspend fun isFollowing(targetUserId: String): Boolean {
@@ -144,14 +264,15 @@ class SongRepository {
     }
 
     suspend fun toggleFollowUser(targetUserId: String): Boolean {
-        val userId = auth.currentUser?.uid ?: throw Exception("Bạn chưa đăng nhập")
+        val userId = auth.currentUser?.uid
+            ?: throw AppException(R.string.not_logged_in)
 
         if (targetUserId.isBlank()) {
-            throw Exception("Không tìm thấy người dùng để follow")
+            throw AppException(R.string.target_user_not_found)
         }
 
         if (userId == targetUserId) {
-            throw Exception("Không thể follow chính mình")
+            throw AppException(R.string.cannot_follow_yourself)
         }
 
         val isFollowing = firebaseService.isFollowing(
@@ -173,14 +294,25 @@ class SongRepository {
             true
         }
     }
+
+    suspend fun getFollowingUsers(): List<User> {
+        val userId = auth.currentUser?.uid ?: return emptyList()
+        return firebaseService.getFollowingUsers(userId)
+    }
+
+    // =========================
+    // COMMENT
+    // =========================
+
     suspend fun addComment(
         songId: String,
         content: String
     ): Comment {
-        val userId = auth.currentUser?.uid ?: throw Exception("Bạn chưa đăng nhập")
+        val userId = auth.currentUser?.uid
+            ?: throw AppException(R.string.not_logged_in)
 
         val user = firebaseService.getUserById(userId)
-            ?: throw Exception("Không tìm thấy thông tin user")
+            ?: throw AppException(R.string.user_not_found)
 
         return firebaseService.addComment(
             songId = songId,
@@ -198,16 +330,5 @@ class SongRepository {
         commentId: String
     ) {
         firebaseService.deleteComment(songId, commentId)
-    }
-    suspend fun getFollowingUsers(): List<User> {
-        val userId = auth.currentUser?.uid ?: return emptyList()
-        return firebaseService.getFollowingUsers(userId)
-    }
-    suspend fun getUserById(userId: String): User? {
-        return firebaseService.getUserById(userId)
-    }
-
-    suspend fun getSongsByUserId(userId: String): List<Song> {
-        return firebaseService.getSongsByUploaderId(userId)
     }
 }

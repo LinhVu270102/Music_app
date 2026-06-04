@@ -1,0 +1,271 @@
+<resources>
+    <!-- ================= APP ================= -->
+    <string name="app_name">Orange Music</string>
+    <string name="logo_desc">Logo Orange Music</string>
+
+    <!-- ================= COMMON ================= -->
+    <string name="back">Quay lại</string>
+    <string name="cancel">Hủy</string>
+    <string name="clear">Xóa</string>
+    <string name="see_all">Xem tất cả</string>
+    <string name="loading">Đang tải...</string>
+
+    <!-- ================= AUTH ================= -->
+    <string name="login">ĐĂNG NHẬP</string>
+    <string name="signup">Đăng ký</string>
+    <string name="register">Đăng ký</string>
+    <string name="dont_have_account">Chưa có tài khoản?</string>
+    <string name="signup_link">Chưa có tài khoản? Đăng ký</string>
+
+    <string name="email">Email</string>
+    <string name="password">Mật khẩu</string>
+    <string name="confirm_password">Xác nhận mật khẩu</string>
+    <string name="display_name">Tên hiển thị</string>
+
+    <string name="email_hint">Email</string>
+    <string name="password_hint">Mật khẩu</string>
+    <string name="confirm_password_hint">Xác nhận mật khẩu</string>
+    <string name="display_name_hint">Tên hiển thị</string>
+
+    <string name="login_button">ĐĂNG NHẬP</string>
+    <string name="register_button">ĐĂNG KÝ</string>
+    <string name="register_title">Đăng ký</string>
+
+    <!-- AUTH MESSAGE -->
+    <string name="empty_email_or_password">Vui lòng nhập email và mật khẩu</string>
+    <string name="login_failed">Đăng nhập thất bại</string>
+    <string name="register_failed">Đăng ký thất bại</string>
+
+    <!-- ================= MAIN NAVIGATION ================= -->
+    <string name="home">Trang chủ</string>
+    <string name="search">Tìm kiếm</string>
+    <string name="library">Thư viện</string>
+    <string name="profile">Hồ sơ</string>
+    <string name="setting">Cài đặt</string>
+
+    <!-- ================= HOME ================= -->
+    <string name="trending_music">Nhạc thịnh hành</string>
+    <string name="your_likes">Bài hát bạn thích</string>
+    <string name="related_tracks">Bài hát liên quan</string>
+    <string name="more_of_what_you_like">Có thể bạn sẽ thích</string>
+    <string name="hot_for_you">Nổi bật cho bạn</string>
+    <string name="trending_by_genre">Xu hướng theo thể loại</string>
+
+    <string name="upload">Tải lên</string>
+    <string name="notification">Thông báo</string>
+
+    <string name="genre_hip_hop_rap">Hip Hop &amp; Rap</string>
+    <string name="genre_soundcloud">SoundCloud</string>
+    <string name="genre_rnb">R&amp;B</string>
+    <string name="genre_pop">Pop</string>
+    <string name="genre_electronic">Electronic</string>
+    <string name="genre_chill">Chill</string>
+
+    <!-- ================= SEARCH ================= -->
+    <string name="search_hint">Tìm bài hát, nghệ sĩ...</string>
+    <string name="recently_searched">Tìm kiếm gần đây</string>
+    <string name="search_results">Kết quả tìm kiếm</string>
+
+    <string name="all">Tất cả</string>
+    <string name="all_results">Tất cả kết quả</string>
+    <string name="tracks">Bài hát</string>
+    <string name="profiles">Hồ sơ</string>
+    <string name="playlists">Danh sách phát</string>
+    <string name="albums">Album</string>
+
+    <string name="search_result_placeholder">Tên bài hát hoặc nghệ sĩ</string>
+
+    <!-- ================= LIBRARY ================= -->
+    <string name="following">Đang theo dõi</string>
+    <string name="your_upload">Bài đã tải lên</string>
+    <string name="recently_played">Phát gần đây</string>
+    <string name="listening_history">Lịch sử nghe</string>
+
+    <!-- ================= PROFILE ================= -->
+    <string name="guest">Khách</string>
+    <string name="not_logged_in">Chưa đăng nhập</string>
+    <string name="no_name">Chưa có tên</string>
+    <string name="my_music">Nhạc của tôi</string>
+
+    <string name="profile_avatar">Ảnh đại diện</string>
+    <string name="default_user_name">Tên người dùng</string>
+    <string name="default_user_email">user@email.com</string>
+    <string name="default_song_count">Bài hát: 25</string>
+    <string name="default_playlist_count">Danh sách phát: 5</string>
+
+    <string name="song_count_format">Bài hát: %1$d</string>
+    <string name="playlist_count_format">Danh sách phát: %1$d</string>
+
+    <!-- ================= ARTIST PROFILE ================= -->
+    <string name="artist">Nghệ sĩ</string>
+    <string name="artist_avatar">Ảnh nghệ sĩ</string>
+    <string name="artist_name_placeholder">Tên nghệ sĩ</string>
+    <string name="username_placeholder">username</string>
+    <string name="no_bio">Chưa có tiểu sử</string>
+    <string name="uploaded_songs">Bài hát đã tải lên</string>
+    <string name="artist_no_uploaded_songs">Người này chưa tải lên bài hát nào</string>
+
+    <!-- ================= PLAYER ================= -->
+    <string name="song_cover">Ảnh bìa bài hát</string>
+    <string name="song_title_placeholder">Tên bài hát</string>
+    <string name="artist_placeholder">Nghệ sĩ</string>
+
+    <string name="shuffle">Phát ngẫu nhiên</string>
+    <string name="previous_song">Bài trước</string>
+    <string name="play_pause">Phát hoặc tạm dừng</string>
+    <string name="next_song">Bài tiếp theo</string>
+    <string name="loop">Lặp lại</string>
+
+    <string name="like">Thích</string>
+    <string name="follow">Theo dõi</string>
+    <string name="comment">Bình luận</string>
+    <string name="current_playlist">Danh sách phát hiện tại</string>
+    <string name="view_comments">Xem bình luận</string>
+    <string name="like_song_button">Nút thích bài hát</string>
+
+    <!-- ================= PLAYLIST ================= -->
+    <string name="playlist">Danh sách phát</string>
+    <string name="playlist_empty">Danh sách phát này chưa có bài hát</string>
+    <string name="add_playlist">Thêm danh sách phát</string>
+    <string name="no_playlists">Chưa có danh sách phát nào</string>
+
+    <string name="playlist_cover">Ảnh danh sách phát</string>
+    <string name="playlist_name_placeholder">Tên danh sách phát</string>
+    <string name="playlist_song_count_placeholder">0 bài hát</string>
+    <string name="delete_playlist">Xóa danh sách phát</string>
+
+    <!-- ================= ALBUM / UPLOAD / FOLLOWING ================= -->
+    <string name="no_albums">Chưa có album nào</string>
+    <string name="no_following">Bạn chưa theo dõi ai</string>
+    <string name="no_uploaded_songs">Bạn chưa tải lên bài hát nào</string>
+
+    <!-- ================= COMMENT ================= -->
+    <string name="comments">Bình luận</string>
+    <string name="write_comment">Viết bình luận...</string>
+    <string name="send_comment">Gửi bình luận</string>
+
+    <string name="comment_avatar">Ảnh bình luận</string>
+    <string name="comment_user_placeholder">tên người dùng</string>
+    <string name="at">tại</string>
+    <string name="comment_song_time_placeholder">0:05</string>
+    <string name="dot">·</string>
+    <string name="comment_time_ago_placeholder">2 năm</string>
+    <string name="comment_content_placeholder">Nội dung bình luận</string>
+    <string name="reply">Trả lời</string>
+    <string name="more_options">...</string>
+    <string name="heart">❤</string>
+    <string name="like_comment">Thích bình luận</string>
+    <string name="default_like_count">1</string>
+
+    <!-- ================= SETTING ================= -->
+    <string name="language">Ngôn ngữ</string>
+    <string name="vietnamese">Tiếng Việt</string>
+    <string name="english">Tiếng Anh</string>
+    <string name="account">Tài khoản</string>
+    <string name="clear_data">Xóa dữ liệu</string>
+    <string name="update_account">Cập nhật tài khoản</string>
+    <string name="personal_information">Thông tin cá nhân</string>
+    <string name="logout">Đăng xuất</string>
+
+    <!-- ================= TOAST / MESSAGE ================= -->
+    <string name="data_cleared">Dữ liệu đã được xoá</string>
+    <string name="account_deleted">Tài khoản đã bị xoá</string>
+    <string name="logout_success">Đăng xuất thành công</string>
+
+    <string name="passwords_do_not_match">Mật khẩu không khớp</string>
+    <string name="register_success">Đăng ký thành công!</string>
+    <string name="login_success">Đăng nhập thành công!</string>
+    <string name="invalid_email">Email không hợp lệ</string>
+    <string name="empty_email">Vui lòng nhập email</string>
+    <string name="empty_display_name">Vui lòng nhập tên hiển thị</string>
+    <string name="password_too_short">Mật khẩu phải có ít nhất 6 ký tự</string>
+
+    <string name="added_to_your_likes">Đã thêm vào Bài hát bạn thích</string>
+    <string name="removed_from_your_likes">Đã bỏ khỏi Bài hát bạn thích</string>
+    <string name="update_like_failed">Không thể cập nhật lượt thích</string>
+
+    <string name="load_profile_failed">Không tải được thông tin hồ sơ</string>
+    <string name="load_artist_profile_failed">Không tải được hồ sơ nghệ sĩ</string>
+
+    <!-- ROLE / PERMISSION -->
+    <string name="account_not_found">Không tìm thấy thông tin tài khoản</string>
+    <string name="no_admin_permission">Bạn không có quyền quản trị</string>
+    <string name="no_upload_permission">Bạn không có quyền tải bài hát lên</string>
+    <string name="user_not_found">Không tìm thấy thông tin người dùng</string>
+    <string name="target_user_not_found">Không tìm thấy người dùng cần theo dõi</string>
+    <string name="cannot_follow_yourself">Bạn không thể theo dõi chính mình</string>
+
+    <!-- MODERATION -->
+    <string name="pending_songs">Bài hát chờ duyệt</string>
+    <string name="approve">Duyệt</string>
+    <string name="reject">Từ chối</string>
+    <string name="approved_successfully">Đã duyệt bài hát</string>
+    <string name="rejected_successfully">Đã từ chối bài hát</string>
+    <string name="load_pending_songs_failed">Không tải được danh sách bài chờ duyệt</string>
+    <string name="approve_song_failed">Không thể duyệt bài hát</string>
+    <string name="reject_song_failed">Không thể từ chối bài hát</string>
+    <string name="reject_reason">Lý do từ chối</string>
+    <string name="enter_reject_reason">Nhập lý do từ chối</string>
+
+    <!-- PLAYLIST ACTION -->
+    <string name="create_playlist">Tạo playlist</string>
+    <string name="create">Tạo</string>
+    <string name="delete">Xóa</string>
+    <string name="playlist_name_hint">Tên playlist</string>
+    <string name="playlist_name_empty">Tên playlist không được để trống</string>
+    <string name="delete_playlist_title">Xóa playlist</string>
+    <string name="delete_playlist_confirm">Bạn có chắc muốn xóa playlist này không?</string>
+
+    <!-- PLAYLIST MESSAGE -->
+    <string name="load_playlists_failed">Không tải được playlist</string>
+    <string name="create_playlist_failed">Không tạo được playlist</string>
+    <string name="delete_playlist_failed">Không xóa được playlist</string>
+
+    <!-- SERVICE -->
+    <string name="now_playing_default_text">Đang phát nhạc</string>
+
+    <!-- VALIDATION -->
+    <string name="invalid_user">Người dùng không hợp lệ</string>
+    <string name="invalid_song">Bài hát không hợp lệ</string>
+    <string name="comment_content_empty">Nội dung bình luận không được để trống</string>
+
+    <!-- COMMENT MESSAGE -->
+    <string name="unknown_user">Người dùng ẩn danh</string>
+    <string name="comment_input_empty">Vui lòng nhập bình luận</string>
+    <string name="load_comments_failed">Không tải được bình luận</string>
+    <string name="send_comment_failed">Không gửi được bình luận</string>
+    <string name="default_comment_like_count">0</string>
+
+    <!-- HOME / LIBRARY MESSAGE -->
+    <string name="load_home_data_failed">Không tải được dữ liệu trang chủ</string>
+    <string name="load_recently_played_failed">Không tải được danh sách phát gần đây</string>
+    <string name="load_following_failed">Không tải được danh sách đang theo dõi</string>
+
+    <!-- PLAYER MESSAGE -->
+    <string name="load_song_failed">Không tải được bài hát</string>
+    <string name="no_current_song">Chưa có bài hát</string>
+    <string name="default_follow_count">0</string>
+    <string name="song_has_no_uploader">Bài hát chưa có thông tin người đăng</string>
+    <string name="follow_artist_success">Đã theo dõi nghệ sĩ</string>
+    <string name="unfollow_artist_success">Đã bỏ theo dõi</string>
+    <string name="follow_failed">Không thể theo dõi nghệ sĩ</string>
+    <string name="current_playlist_empty">Playlist hiện tại đang trống</string>
+    <string name="add_current_song_to_playlist">Thêm bài hiện tại vào playlist</string>
+    <string name="close">Đóng</string>
+    <string name="add_to_playlist">Thêm vào playlist</string>
+    <string name="added_to_playlist_success">Đã thêm vào playlist</string>
+    <string name="add_song_to_playlist_failed">Không thêm được bài hát vào playlist</string>
+
+    <!-- PLAYLIST DETAIL MESSAGE -->
+    <string name="load_playlist_songs_failed">Không tải được bài hát trong playlist</string>
+    <string name="remove_song_from_playlist_failed">Không xóa được bài hát khỏi playlist</string>
+    <string name="remove_from_playlist_title">Xóa khỏi playlist</string>
+    <string name="remove_song_from_playlist_confirm">Bạn muốn xóa “%1$s” khỏi playlist này?</string>
+
+    <!-- SEARCH MESSAGE -->
+    <string name="load_search_data_failed">Không tải được dữ liệu tìm kiếm</string>
+
+    <!-- LIBRARY MESSAGE -->
+    <string name="load_liked_songs_failed">Không tải được bài hát bạn thích</string>
+    <string name="load_uploaded_songs_failed">Không tải được bài hát đã upload</string>
+</resources>

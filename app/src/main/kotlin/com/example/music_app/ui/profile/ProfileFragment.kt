@@ -30,8 +30,8 @@ class ProfileFragment : Fragment() {
 
     override fun onCreateView(
         inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
+        container: ViewGroup?
+        , savedInstanceState: Bundle?
     ): View {
         _binding = FragmentProfileBinding.inflate(inflater, container, false)
         return binding.root
@@ -46,12 +46,7 @@ class ProfileFragment : Fragment() {
     private fun setupRecyclerView() {
         adapter = SongAdapter(
             onItemClick = { song ->
-                PlayerManager.play(song)
-
-                parentFragmentManager.beginTransaction()
-                    .replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                    .addToBackStack(null)
-                    .commit()
+                playSong(song)
             }
         )
 
@@ -62,8 +57,8 @@ class ProfileFragment : Fragment() {
     private fun observeViewModel() {
         viewModel.user.observe(viewLifecycleOwner) { user ->
             if (user == null) {
-                binding.profileName.text = "Guest"
-                binding.profileEmail.text = "Chưa đăng nhập"
+                binding.profileName.text = getString(R.string.guest)
+                binding.profileEmail.text = getString(R.string.not_logged_in)
 
                 Glide.with(this)
                     .load(R.drawable.music_orange)
@@ -73,7 +68,11 @@ class ProfileFragment : Fragment() {
             }
 
             binding.profileName.text =
-                if (user.displayName.isNotBlank()) user.displayName else "No name"
+                if (user.displayName.isNotBlank()) {
+                    user.displayName
+                } else {
+                    getString(R.string.no_name)
+                }
 
             binding.profileEmail.text = user.email
 
@@ -85,8 +84,13 @@ class ProfileFragment : Fragment() {
         }
 
         viewModel.mySongs.observe(viewLifecycleOwner) { songs ->
-            binding.songCount.text = "Songs: ${songs.size}"
-            binding.playlistCount.text = "Playlists: 0"
+            currentSongs = songs
+
+            binding.songCount.text =
+                getString(R.string.song_count_format, songs.size)
+
+            binding.playlistCount.text =
+                getString(R.string.playlist_count_format, 0)
 
             adapter.setData(songs)
         }
@@ -96,9 +100,9 @@ class ProfileFragment : Fragment() {
                 if (isLoading) View.VISIBLE else View.GONE
         }
 
-        viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
-            message?.let {
-                Toast.makeText(requireContext(), it, Toast.LENGTH_SHORT).show()
+        viewModel.errorMessage.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                Toast.makeText(requireContext(), getString(it), Toast.LENGTH_SHORT).show()
             }
         }
     }

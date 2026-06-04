@@ -13,6 +13,7 @@
         android:layout_width="52dp"
         android:layout_height="52dp"
         android:background="@drawable/bg_circle_gray"
+        android:contentDescription="@string/profile_avatar"
         android:scaleType="centerCrop"
         android:src="@drawable/music_orange" />
 
@@ -29,7 +30,7 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="Artist name"
+            android:text="@string/artist_name_placeholder"
             android:textColor="@color/white"
             android:textSize="16sp"
             android:textStyle="bold" />
@@ -38,7 +39,7 @@
             android:id="@+id/txtUsername"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@username"
+            android:text="@string/username_placeholder"
             android:textColor="@color/gray_light"
             android:textSize="14sp" />
 

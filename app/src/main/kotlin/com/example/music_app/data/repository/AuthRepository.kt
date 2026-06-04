@@ -1,6 +1,10 @@
 package com.example.music_app.data.repository
 
+import com.example.music_app.R
+import com.example.music_app.data.model.AccountStatus
 import com.example.music_app.data.model.User
+import com.example.music_app.data.model.UserRole
+import com.example.music_app.utils.AppException
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
@@ -24,11 +28,11 @@ class AuthRepository {
         return auth.createUserWithEmailAndPassword(email, password)
             .continueWithTask { task ->
                 if (!task.isSuccessful) {
-                    throw task.exception ?: Exception("Đăng ký thất bại")
+                    throw task.exception ?: AppException(R.string.register_failed)
                 }
 
                 val firebaseUser = auth.currentUser
-                    ?: throw Exception("Không lấy được thông tin user")
+                    ?: throw AppException(R.string.user_not_found)
 
                 val uid = firebaseUser.uid
                 val now = System.currentTimeMillis()
@@ -40,8 +44,8 @@ class AuthRepository {
                     username = generateUsername(displayName, email),
                     avatarUrl = "",
                     bio = "",
-                    role = "listener",
-                    accountStatus = "active",
+                    role = UserRole.USER,
+                    accountStatus = AccountStatus.ACTIVE,
                     createdAt = now,
                     updatedAt = now,
                     lastLoginAt = now

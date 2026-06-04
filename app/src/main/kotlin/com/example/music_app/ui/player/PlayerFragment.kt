@@ -22,12 +22,12 @@ import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.databinding.FragmentPlayerBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
+import com.example.music_app.ui.comment.CommentFragment
+import com.example.music_app.utils.AppException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
-import androidx.fragment.app.commit
-import com.example.music_app.ui.comment.CommentFragment
 
 class PlayerFragment : Fragment() {
 
@@ -60,10 +60,12 @@ class PlayerFragment : Fragment() {
     }
 
     companion object {
+        private const val ARG_SONG_ID = "songId"
+
         fun newInstance(songId: String): PlayerFragment {
             return PlayerFragment().apply {
                 arguments = Bundle().apply {
-                    putString("songId", songId)
+                    putString(ARG_SONG_ID, songId)
                 }
             }
         }
@@ -79,8 +81,6 @@ class PlayerFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
         (requireActivity() as? MainActivity)?.setMiniPlayerVisible(false)
         (requireActivity() as? MainActivity)?.setFooterVisible(false)
 
@@ -96,7 +96,7 @@ class PlayerFragment : Fragment() {
             return
         }
 
-        val songId = arguments?.getString("songId")
+        val songId = arguments?.getString(ARG_SONG_ID)
         songId?.let {
             viewModel.loadSong(it)
         }
@@ -142,7 +142,7 @@ class PlayerFragment : Fragment() {
             val song = PlayerManager.currentSong.value
 
             if (song == null) {
-                showToast("Chưa có bài hát")
+                showToast(getString(R.string.no_current_song))
             } else {
                 parentFragmentManager.beginTransaction()
                     .replace(R.id.fragmentContainer, CommentFragment.newInstance(song.id))
@@ -200,9 +200,10 @@ class PlayerFragment : Fragment() {
             updateLoopIcon()
         }
 
-        viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
-            message?.let {
-                showToast(it)
+        viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                showToast(getString(it))
+                viewModel.clearErrorMessage()
             }
         }
     }
@@ -221,8 +222,8 @@ class PlayerFragment : Fragment() {
             .asBitmap()
             .load(song.coverUrl)
             .placeholder(R.drawable.music_orange)
+            .error(R.drawable.music_orange)
             .into(object : com.bumptech.glide.request.target.CustomTarget<Bitmap>() {
-
                 override fun onResourceReady(
                     resource: Bitmap,
                     transition: com.bumptech.glide.request.transition.Transition<in Bitmap>?
@@ -277,7 +278,8 @@ class PlayerFragment : Fragment() {
                     updateLikeIcon()
 
                     val currentCount =
-                        binding.tvLikeCount.text.toString().replace("K", "000")
+                        binding.tvLikeCount.text.toString()
+                            .replace("K", "000")
                             .replace("M", "000000")
                             .toLongOrNull() ?: song.likes
 
@@ -290,13 +292,20 @@ class PlayerFragment : Fragment() {
                     binding.tvLikeCount.text = formatCount(newCount)
 
                     showToast(
-                        if (liked) "Đã thêm vào Your likes"
-                        else "Đã bỏ khỏi Your likes"
+                        if (liked) {
+                            getString(R.string.added_to_your_likes)
+                        } else {
+                            getString(R.string.removed_from_your_likes)
+                        }
                     )
+                }
+            } catch (e: AppException) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(e.messageResId))
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    showToast(e.message ?: "Không thể cập nhật like")
+                    showToast(getString(R.string.update_like_failed))
                 }
             }
         }
@@ -307,7 +316,7 @@ class PlayerFragment : Fragment() {
     }
 
     private fun loadFollowState(song: Song) {
-        binding.tvFollowCount.text = "0"
+        binding.tvFollowCount.text = getString(R.string.default_follow_count)
 
         if (song.uploaderId.isBlank()) {
             isCurrentArtistFollowed = false
@@ -336,7 +345,7 @@ class PlayerFragment : Fragment() {
         val song = PlayerManager.currentSong.value ?: return
 
         if (song.uploaderId.isBlank()) {
-            showToast("Bài hát chưa có uploaderId")
+            showToast(getString(R.string.song_has_no_uploader))
             return
         }
 
@@ -358,13 +367,20 @@ class PlayerFragment : Fragment() {
                     binding.tvFollowCount.text = formatCount(newCount)
 
                     showToast(
-                        if (followed) "Đã follow nghệ sĩ"
-                        else "Đã bỏ follow"
+                        if (followed) {
+                            getString(R.string.follow_artist_success)
+                        } else {
+                            getString(R.string.unfollow_artist_success)
+                        }
                     )
+                }
+            } catch (e: AppException) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(e.messageResId))
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    showToast(e.message ?: "Không thể follow")
+                    showToast(getString(R.string.follow_failed))
                 }
             }
         }
@@ -378,7 +394,7 @@ class PlayerFragment : Fragment() {
         val songs = PlayerManager.getCurrentPlaylist()
 
         if (songs.isEmpty()) {
-            showToast("Playlist hiện tại đang trống")
+            showToast(getString(R.string.current_playlist_empty))
             return
         }
 
@@ -387,22 +403,22 @@ class PlayerFragment : Fragment() {
         }.toTypedArray()
 
         AlertDialog.Builder(requireContext())
-            .setTitle("Playlist hiện tại")
+            .setTitle(getString(R.string.current_playlist))
             .setItems(songTitles) { _, which ->
                 val selectedSong = songs[which]
                 PlayerManager.play(selectedSong)
                 updateUI(selectedSong)
             }
-            .setPositiveButton("Thêm bài hiện tại vào playlist") { _, _ ->
+            .setPositiveButton(getString(R.string.add_current_song_to_playlist)) { _, _ ->
                 val currentSong = PlayerManager.currentSong.value
 
                 if (currentSong != null) {
                     showAddToPlaylistDialog(currentSong)
                 } else {
-                    showToast("Chưa có bài hát hiện tại")
+                    showToast(getString(R.string.no_current_song))
                 }
             }
-            .setNegativeButton("Đóng", null)
+            .setNegativeButton(getString(R.string.close), null)
             .show()
     }
 
@@ -413,24 +429,28 @@ class PlayerFragment : Fragment() {
 
                 withContext(Dispatchers.Main) {
                     if (playlists.isEmpty()) {
-                        showToast("Bạn chưa có playlist nào")
+                        showToast(getString(R.string.no_playlists))
                         return@withContext
                     }
 
                     val playlistNames = playlists.map { it.name }.toTypedArray()
 
                     AlertDialog.Builder(requireContext())
-                        .setTitle("Thêm vào playlist")
+                        .setTitle(getString(R.string.add_to_playlist))
                         .setItems(playlistNames) { _, which ->
                             val selectedPlaylist = playlists[which]
                             addSongToSelectedPlaylist(selectedPlaylist.id, song)
                         }
-                        .setNegativeButton("Huỷ", null)
+                        .setNegativeButton(getString(R.string.cancel), null)
                         .show()
+                }
+            } catch (e: AppException) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(e.messageResId))
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    showToast(e.message ?: "Không tải được playlist")
+                    showToast(getString(R.string.load_playlists_failed))
                 }
             }
         }
@@ -448,11 +468,15 @@ class PlayerFragment : Fragment() {
                 )
 
                 withContext(Dispatchers.Main) {
-                    showToast("Đã thêm vào playlist")
+                    showToast(getString(R.string.added_to_playlist_success))
+                }
+            } catch (e: AppException) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(e.messageResId))
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    showToast(e.message ?: "Không thêm được bài hát")
+                    showToast(getString(R.string.add_song_to_playlist_failed))
                 }
             }
         }
@@ -522,7 +546,6 @@ class PlayerFragment : Fragment() {
 
     override fun onDestroyView() {
         handler.removeCallbacks(updateSeekBarRunnable)
-
         _binding = null
         super.onDestroyView()
     }
