@@ -11,6 +11,7 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentYourLikesBinding
 import com.example.music_app.player.PlayerManager
+import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.player.PlayerFragment
 import com.example.music_app.ui.song.SongAdapter
 
@@ -72,16 +73,11 @@ class YourLikesFragment : Fragment(R.layout.fragment_your_likes) {
     }
 
     private fun openPlayer(song: Song) {
-        if (currentSongs.isNotEmpty()) {
-            PlayerManager.setPlaylist(currentSongs)
-        }
-
-        PlayerManager.play(song)
-
-        parentFragmentManager.commit {
-            replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-            addToBackStack(null)
-        }
+        PlaybackLauncher.openPlayer(
+            fragment = this,
+            song = song,
+            playlist = currentSongs
+        )
     }
 
     private fun showToast(message: String) {
