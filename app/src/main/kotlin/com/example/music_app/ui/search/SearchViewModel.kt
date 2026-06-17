@@ -25,6 +25,8 @@ class SearchViewModel : ViewModel() {
     private val _errorMessageResId = MutableLiveData<Int?>()
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
 
+    private var isPreparingSong = false
+
     /**
      * Giữ lại hàm này để SearchFragment cũ không bị lỗi.
      * Trước đây loadSongs() lấy toàn bộ bài từ Firebase.
@@ -61,8 +63,11 @@ class SearchViewModel : ViewModel() {
     }
 
     fun prepareSongForPlayback(song: Song) {
+        if (isPreparingSong) return
+
         viewModelScope.launch {
             try {
+                isPreparingSong = true
                 _isLoading.value = true
 
                 val playableSong =
@@ -81,6 +86,7 @@ class SearchViewModel : ViewModel() {
                 _errorMessageResId.value = R.string.soundcloud_stream_failed
             } finally {
                 _isLoading.value = false
+                isPreparingSong = false
             }
         }
     }

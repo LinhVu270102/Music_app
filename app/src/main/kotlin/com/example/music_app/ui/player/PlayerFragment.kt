@@ -195,6 +195,13 @@ class PlayerFragment : Fragment() {
             updatePlayPauseIcon()
         }
 
+        PlayerManager.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                showToast(getString(it))
+                PlayerManager.clearErrorMessage()
+            }
+        }
+
         PlayerManager.isShuffleEnabled.observe(viewLifecycleOwner) {
             updateShuffleIcon()
         }

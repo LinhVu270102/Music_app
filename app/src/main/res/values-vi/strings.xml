@@ -341,4 +341,7 @@
     <string name="soundcloud_search_failed">Tìm kiếm SoundCloud thất bại</string>
     <string name="soundcloud_stream_failed">Không thể lấy đường dẫn phát từ SoundCloud</string>
     <string name="song_url_empty">Không có đường dẫn phát nhạc</string>
+
+    <string name="playback_failed">Không thể phát bài hát này</string>
+    <string name="player_not_ready">Trình phát chưa sẵn sàng</string>
 </resources>

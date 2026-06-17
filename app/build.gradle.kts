@@ -53,7 +53,6 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation(libs.firebase.firestore)
     implementation(libs.glide)
-    implementation(libs.androidx.media3.exoplayer)
     annotationProcessor(libs.glide.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -61,6 +60,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
     implementation("androidx.fragment:fragment-ktx:1.6.2")
     implementation("androidx.palette:palette-ktx:1.0.0")
+    implementation(libs.androidx.media3.exoplayer)
+    implementation("androidx.media3:media3-exoplayer-hls:1.4.1")
     implementation("androidx.media3:media3-session:1.4.1")
     implementation("androidx.media3:media3-ui:1.4.1")
 

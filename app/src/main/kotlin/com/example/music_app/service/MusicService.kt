@@ -1,11 +1,16 @@
 package com.example.music_app.service
 
 import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.os.Build
 import android.os.IBinder
+import androidx.core.app.NotificationCompat
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
@@ -28,7 +33,14 @@ class MusicService : Service() {
     override fun onCreate() {
         super.onCreate()
 
-        PlayerManager.init(this)
+        createNotificationChannel()
+
+        startForeground(
+            NOTIFICATION_ID,
+            createInitialNotification()
+        )
+
+        PlayerManager.init(applicationContext)
 
         val player = PlayerManager.getPlayer() ?: return
 
@@ -59,11 +71,33 @@ class MusicService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    private fun createInitialNotification(): Notification {
+        val intent = Intent(this, MainActivity::class.java)
+
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.music_orange)
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(getString(R.string.now_playing_default_text))
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+    }
+
     private fun createDescriptionAdapter(): PlayerNotificationManager.MediaDescriptionAdapter {
         return object : PlayerNotificationManager.MediaDescriptionAdapter {
 
             override fun getCurrentContentTitle(player: Player): CharSequence {
-                return PlayerManager.currentSong.value?.title ?: getString(R.string.app_name)
+                return PlayerManager.currentSong.value?.title
+                    ?: getString(R.string.app_name)
             }
 
             override fun getCurrentContentText(player: Player): CharSequence {
@@ -110,6 +144,24 @@ class MusicService : Service() {
                 stopSelf()
             }
         }
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            getString(R.string.app_name),
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = getString(R.string.now_playing_default_text)
+            setShowBadge(false)
+        }
+
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        notificationManager.createNotificationChannel(channel)
     }
 
     override fun onDestroy() {

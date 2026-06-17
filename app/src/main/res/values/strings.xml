@@ -341,4 +341,7 @@
     <string name="soundcloud_search_failed">SoundCloud search failed</string>
     <string name="soundcloud_stream_failed">Could not get SoundCloud stream</string>
     <string name="song_url_empty">Song URL is empty</string>
+
+    <string name="playback_failed">Could not play this song</string>
+    <string name="player_not_ready">Player is not ready</string>
 </resources>

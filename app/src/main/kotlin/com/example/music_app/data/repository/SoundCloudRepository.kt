@@ -34,9 +34,24 @@ class SoundCloudRepository {
 
         val response = api.getStreamUrl(trackId)
 
+        val newTags = song.tags
+            .filterNot { it == "hls" || it == "progressive" }
+            .toMutableList()
+
+        if (response.protocol == "hls") {
+            newTags.add("hls")
+        } else {
+            newTags.add("progressive")
+        }
+
         return song.copy(
             songUrl = response.streamUrl,
-            duration = if (response.duration > 0) response.duration else song.duration
+            duration = if (response.duration > 0) {
+                response.duration
+            } else {
+                song.duration
+            },
+            tags = newTags
         )
     }
 }

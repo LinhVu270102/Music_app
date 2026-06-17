@@ -1,16 +1,22 @@
 package com.example.music_app.player
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MimeTypes
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.example.music_app.R
 import com.example.music_app.data.model.Song
 
 object PlayerManager {
+
+    private const val TAG = "PlayerManager"
 
     enum class LoopMode {
         OFF,
@@ -35,6 +41,9 @@ object PlayerManager {
     private val _loopMode = MutableLiveData(LoopMode.OFF)
     val loopMode: LiveData<LoopMode> = _loopMode
 
+    private val _errorMessageResId = MutableLiveData<Int?>()
+    val errorMessageResId: LiveData<Int?> = _errorMessageResId
+
     fun init(context: Context) {
         if (exoPlayer != null) {
             applyShuffleMode()
@@ -56,7 +65,21 @@ object PlayerManager {
                 addListener(object : Player.Listener {
 
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
+                        Log.d(TAG, "onIsPlayingChanged: $isPlaying")
                         _isPlaying.value = isPlaying
+                    }
+
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        Log.d(TAG, "onPlaybackStateChanged: $playbackState")
+
+                        if (playbackState == Player.STATE_ENDED) {
+                            _isPlaying.value = false
+
+                            if (_loopMode.value == LoopMode.OFF) {
+                                currentIndex = -1
+                                _currentSong.value = null
+                            }
+                        }
                     }
 
                     override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -69,21 +92,31 @@ object PlayerManager {
                         }
                     }
 
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        if (playbackState == Player.STATE_ENDED) {
-                            _isPlaying.value = false
-
-                            if (_loopMode.value == LoopMode.OFF) {
-                                currentIndex = -1
-                                _currentSong.value = null
-                            }
-                        }
+                    override fun onPlayerError(error: PlaybackException) {
+                        Log.e(TAG, "Player error: ${error.errorCodeName}", error)
+                        _isPlaying.value = false
+                        _errorMessageResId.value = R.string.playback_failed
                     }
                 })
             }
 
         applyShuffleMode()
         applyLoopMode()
+    }
+
+    private fun createMediaItem(song: Song): MediaItem {
+        val builder = MediaItem.Builder()
+            .setUri(song.songUrl)
+            .setMediaId(song.id)
+
+        if (
+            song.tags.contains("hls") ||
+            song.songUrl.contains(".m3u8", ignoreCase = true)
+        ) {
+            builder.setMimeType(MimeTypes.APPLICATION_M3U8)
+        }
+
+        return builder.build()
     }
 
     fun setPlaylist(songs: List<Song>) {
@@ -93,10 +126,7 @@ object PlayerManager {
         playlist.addAll(validSongs)
 
         val mediaItems = validSongs.map { song ->
-            MediaItem.Builder()
-                .setUri(song.songUrl)
-                .setMediaId(song.id)
-                .build()
+            createMediaItem(song)
         }
 
         exoPlayer?.apply {
@@ -110,10 +140,24 @@ object PlayerManager {
 
         applyShuffleMode()
         applyLoopMode()
+
+        Log.d(TAG, "setPlaylist: ${validSongs.size} valid songs")
     }
 
     fun play(song: Song) {
+        Log.d(TAG, "play called: id=${song.id}, title=${song.title}, url=${song.songUrl}")
+
         if (song.songUrl.isBlank()) {
+            Log.e(TAG, "play failed: songUrl is blank")
+            _errorMessageResId.value = R.string.song_url_empty
+            return
+        }
+
+        val player = exoPlayer
+
+        if (player == null) {
+            Log.e(TAG, "play failed: exoPlayer is null")
+            _errorMessageResId.value = R.string.player_not_ready
             return
         }
 
@@ -122,8 +166,9 @@ object PlayerManager {
         if (
             current?.id == song.id &&
             current.songUrl == song.songUrl &&
-            exoPlayer?.isPlaying == true
+            player.isPlaying
         ) {
+            Log.d(TAG, "same song is already playing, ignore")
             return
         }
 
@@ -137,7 +182,13 @@ object PlayerManager {
     }
 
     private fun playFromPlaylist(index: Int) {
-        val song = playlist.getOrNull(index) ?: return
+        val song = playlist.getOrNull(index)
+
+        if (song == null) {
+            Log.e(TAG, "playFromPlaylist failed: song null at index=$index")
+            _errorMessageResId.value = R.string.playback_failed
+            return
+        }
 
         currentIndex = index
         _currentSong.value = song
@@ -152,16 +203,15 @@ object PlayerManager {
         }
 
         _isPlaying.value = true
+
+        Log.d(TAG, "playFromPlaylist: ${song.title}")
     }
 
     private fun playSingle(song: Song) {
         currentIndex = -1
         _currentSong.value = song
 
-        val mediaItem = MediaItem.Builder()
-            .setUri(song.songUrl)
-            .setMediaId(song.id)
-            .build()
+        val mediaItem = createMediaItem(song)
 
         exoPlayer?.apply {
             stop()
@@ -174,6 +224,8 @@ object PlayerManager {
         }
 
         _isPlaying.value = true
+
+        Log.d(TAG, "playSingle: ${song.title}")
     }
 
     fun playNext() {
@@ -190,7 +242,14 @@ object PlayerManager {
     }
 
     fun resume() {
-        exoPlayer?.play()
+        val player = exoPlayer
+
+        if (player == null) {
+            _errorMessageResId.value = R.string.player_not_ready
+            return
+        }
+
+        player.play()
         _isPlaying.value = true
     }
 
@@ -277,5 +336,9 @@ object PlayerManager {
 
     fun getCurrentPlaylist(): List<Song> {
         return playlist.toList()
+    }
+
+    fun clearErrorMessage() {
+        _errorMessageResId.value = null
     }
 }

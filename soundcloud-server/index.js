@@ -16,6 +16,9 @@ const SOUNDCLOUD_CLIENT_SECRET = process.env.SOUNDCLOUD_CLIENT_SECRET;
 let cachedToken = null;
 let cachedTokenExpiresAt = 0;
 
+const streamCache = new Map();
+const STREAM_CACHE_TTL_MS = 5 * 60 * 1000;
+
 function checkConfig() {
   if (!SOUNDCLOUD_CLIENT_ID || !SOUNDCLOUD_CLIENT_SECRET) {
     throw new Error("Missing SOUNDCLOUD_CLIENT_ID or SOUNDCLOUD_CLIENT_SECRET in .env");
@@ -30,6 +33,30 @@ function normalizeLimit(value) {
   if (limit > 30) return 30;
 
   return limit;
+}
+
+function getCachedStream(trackId) {
+  const cached = streamCache.get(trackId);
+
+  if (!cached) return null;
+
+  if (Date.now() > cached.expiresAt) {
+    streamCache.delete(trackId);
+    return null;
+  }
+
+  return cached.data;
+}
+
+function setCachedStream(trackId, data) {
+  streamCache.set(trackId, {
+    data: data,
+    expiresAt: Date.now() + STREAM_CACHE_TTL_MS
+  });
+}
+
+function isRateLimitError(error) {
+  return error && error.response && error.response.status === 429;
 }
 
 async function getSoundCloudAccessToken() {
@@ -92,8 +119,8 @@ function chooseBestStreamFromStreamsEndpoint(streams) {
     streams.hls_aac_160_url ||
     streams.hls_aac_96_url ||
     streams.hls_mp3_128_url ||
-    streams.http_mp3_128_url ||
     streams.hls_opus_64_url ||
+    streams.http_mp3_128_url ||
     ""
   );
 }
@@ -168,6 +195,13 @@ app.get("/searchSoundCloudTracks", async (req, res) => {
   } catch (error) {
     console.error("SoundCloud search failed:", error.response?.data || error.message);
 
+    if (isRateLimitError(error)) {
+      return res.status(429).json({
+        message: "SoundCloud rate limited. Please try again later.",
+        detail: error.response?.data || error.message
+      });
+    }
+
     return res.status(500).json({
       message: "SoundCloud search failed",
       detail: error.response?.data || error.message
@@ -184,6 +218,13 @@ app.get("/getSoundCloudStreamUrl", async (req, res) => {
       return res.status(400).json({
         message: "Missing trackId"
       });
+    }
+
+    const cachedStream = getCachedStream(trackId);
+
+    if (cachedStream) {
+      console.log(`Return cached stream for track ${trackId}`);
+      return res.status(200).json(cachedStream);
     }
 
     const accessToken = await getSoundCloudAccessToken();
@@ -236,7 +277,16 @@ app.get("/getSoundCloudStreamUrl", async (req, res) => {
       streamUrl = chooseBestStreamFromStreamsEndpoint(streamsResponse.data);
       protocol = getProtocolFromUrl(streamUrl);
       mimeType = getMimeTypeFromUrl(streamUrl);
+
+      console.log(`Streams endpoint selected: ${protocol} - ${mimeType}`);
     } catch (streamError) {
+      if (isRateLimitError(streamError)) {
+        return res.status(429).json({
+          message: "SoundCloud rate limited. Please try again later.",
+          detail: streamError.response?.data || streamError.message
+        });
+      }
+
       console.log(
         "Streams endpoint failed, fallback to transcodings:",
         streamError.response?.data || streamError.message
@@ -264,14 +314,6 @@ app.get("/getSoundCloudStreamUrl", async (req, res) => {
         );
       });
 
-      const progressiveMp3 = transcodings.find((item) => {
-        return (
-          item.format &&
-          item.format.protocol === "progressive" &&
-          item.format.mime_type === "audio/mpeg"
-        );
-      });
-
       const hlsMp3 = transcodings.find((item) => {
         return (
           item.format &&
@@ -280,8 +322,16 @@ app.get("/getSoundCloudStreamUrl", async (req, res) => {
         );
       });
 
+      const progressiveMp3 = transcodings.find((item) => {
+        return (
+          item.format &&
+          item.format.protocol === "progressive" &&
+          item.format.mime_type === "audio/mpeg"
+        );
+      });
+
       const selectedTranscoding =
-        hlsAac || progressiveMp3 || hlsMp3 || transcodings[0];
+        hlsAac || hlsMp3 || progressiveMp3 || transcodings[0];
 
       if (!selectedTranscoding || !selectedTranscoding.url) {
         return res.status(404).json({
@@ -302,6 +352,8 @@ app.get("/getSoundCloudStreamUrl", async (req, res) => {
 
       protocol = selectedTranscoding.format?.protocol || "";
       mimeType = selectedTranscoding.format?.mime_type || "";
+
+      console.log(`Transcoding selected: ${protocol} - ${mimeType}`);
     }
 
     if (!streamUrl) {
@@ -310,16 +362,27 @@ app.get("/getSoundCloudStreamUrl", async (req, res) => {
       });
     }
 
-    return res.status(200).json({
+    const result = {
       streamUrl: streamUrl,
       protocol: protocol,
       mimeType: mimeType,
       duration: Math.floor((track.duration || 0) / 1000),
       access: track.access || "",
       streamable: track.streamable === true
-    });
+    };
+
+    setCachedStream(trackId, result);
+
+    return res.status(200).json(result);
   } catch (error) {
     console.error("SoundCloud stream failed:", error.response?.data || error.message);
+
+    if (isRateLimitError(error)) {
+      return res.status(429).json({
+        message: "SoundCloud rate limited. Please try again later.",
+        detail: error.response?.data || error.message
+      });
+    }
 
     return res.status(500).json({
       message: "SoundCloud stream failed",
