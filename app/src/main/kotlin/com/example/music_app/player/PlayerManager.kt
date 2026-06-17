@@ -3,6 +3,8 @@ package com.example.music_app.player
 import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -34,75 +36,122 @@ object PlayerManager {
     val loopMode: LiveData<LoopMode> = _loopMode
 
     fun init(context: Context) {
-        if (exoPlayer == null) {
-            exoPlayer = ExoPlayer.Builder(context.applicationContext).build()
+        if (exoPlayer != null) {
+            applyShuffleMode()
+            applyLoopMode()
+            return
+        }
 
-            exoPlayer?.addListener(object : Player.Listener {
+        val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .build()
 
-                override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    _isPlaying.value = isPlaying
-                }
+        exoPlayer = ExoPlayer.Builder(context.applicationContext)
+            .build()
+            .apply {
+                setAudioAttributes(audioAttributes, true)
+                playWhenReady = false
 
-                override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                    val songId = mediaItem?.mediaId ?: return
-                    val song = playlist.find { it.id == songId }
+                addListener(object : Player.Listener {
 
-                    song?.let {
-                        currentIndex = playlist.indexOfFirst { item -> item.id == songId }
-                        _currentSong.value = it
+                    override fun onIsPlayingChanged(isPlaying: Boolean) {
+                        _isPlaying.value = isPlaying
                     }
-                }
 
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    if (playbackState == Player.STATE_ENDED) {
-                        _isPlaying.value = false
+                    override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                        val songId = mediaItem?.mediaId ?: return
+                        val song = playlist.find { it.id == songId }
 
-                        if (_loopMode.value == LoopMode.OFF) {
-                            currentIndex = -1
-                            _currentSong.value = null
+                        song?.let {
+                            currentIndex = playlist.indexOfFirst { item -> item.id == songId }
+                            _currentSong.value = it
                         }
                     }
-                }
-            })
-        }
+
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        if (playbackState == Player.STATE_ENDED) {
+                            _isPlaying.value = false
+
+                            if (_loopMode.value == LoopMode.OFF) {
+                                currentIndex = -1
+                                _currentSong.value = null
+                            }
+                        }
+                    }
+                })
+            }
 
         applyShuffleMode()
         applyLoopMode()
     }
 
     fun setPlaylist(songs: List<Song>) {
-        playlist.clear()
-        playlist.addAll(songs)
+        val validSongs = songs.filter { it.songUrl.isNotBlank() }
 
-        val mediaItems = songs.map { song ->
+        playlist.clear()
+        playlist.addAll(validSongs)
+
+        val mediaItems = validSongs.map { song ->
             MediaItem.Builder()
                 .setUri(song.songUrl)
                 .setMediaId(song.id)
                 .build()
         }
 
-        exoPlayer?.setMediaItems(mediaItems, false)
-        exoPlayer?.prepare()
+        exoPlayer?.apply {
+            stop()
+            clearMediaItems()
+            setMediaItems(mediaItems, false)
+            prepare()
+        }
+
+        currentIndex = -1
 
         applyShuffleMode()
         applyLoopMode()
     }
 
     fun play(song: Song) {
+        if (song.songUrl.isBlank()) {
+            return
+        }
+
+        val current = _currentSong.value
+
+        if (
+            current?.id == song.id &&
+            current.songUrl == song.songUrl &&
+            exoPlayer?.isPlaying == true
+        ) {
+            return
+        }
+
         val index = playlist.indexOfFirst { it.id == song.id }
 
         if (index != -1) {
-            currentIndex = index
-            _currentSong.value = playlist[index]
-
-            exoPlayer?.seekTo(index, 0L)
-            exoPlayer?.prepare()
-            exoPlayer?.play()
-
-            _isPlaying.value = true
+            playFromPlaylist(index)
         } else {
             playSingle(song)
         }
+    }
+
+    private fun playFromPlaylist(index: Int) {
+        val song = playlist.getOrNull(index) ?: return
+
+        currentIndex = index
+        _currentSong.value = song
+
+        exoPlayer?.apply {
+            stop()
+            seekTo(index, 0L)
+            setPlaybackSpeed(1f)
+            volume = 1f
+            prepare()
+            play()
+        }
+
+        _isPlaying.value = true
     }
 
     private fun playSingle(song: Song) {
@@ -115,6 +164,10 @@ object PlayerManager {
             .build()
 
         exoPlayer?.apply {
+            stop()
+            clearMediaItems()
+            setPlaybackSpeed(1f)
+            volume = 1f
             setMediaItem(mediaItem)
             prepare()
             play()
@@ -199,7 +252,11 @@ object PlayerManager {
     }
 
     fun stop() {
-        exoPlayer?.stop()
+        exoPlayer?.apply {
+            stop()
+            clearMediaItems()
+        }
+
         currentIndex = -1
         _currentSong.value = null
         _isPlaying.value = false
@@ -217,6 +274,7 @@ object PlayerManager {
         _isShuffleEnabled.value = false
         _loopMode.value = LoopMode.OFF
     }
+
     fun getCurrentPlaylist(): List<Song> {
         return playlist.toList()
     }

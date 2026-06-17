@@ -180,7 +180,6 @@ class PlayerFragment : Fragment() {
         viewModel.song.observe(viewLifecycleOwner) { song ->
             song?.let {
                 updateUI(it)
-                PlayerManager.play(it)
                 startProgressUpdater()
             }
         }
@@ -190,6 +189,10 @@ class PlayerFragment : Fragment() {
                 updateUI(it)
                 startProgressUpdater()
             }
+        }
+
+        PlayerManager.isPlaying.observe(viewLifecycleOwner) {
+            updatePlayPauseIcon()
         }
 
         PlayerManager.isShuffleEnabled.observe(viewLifecycleOwner) {

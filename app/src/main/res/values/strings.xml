@@ -337,4 +337,8 @@
 
     <string name="rule_inappropriate_image_title">Inappropriate images</string>
     <string name="rule_inappropriate_image_description">Do not allow offensive, sensitive, violent, or misleading cover images.</string>
+
+    <string name="soundcloud_search_failed">SoundCloud search failed</string>
+    <string name="soundcloud_stream_failed">Could not get SoundCloud stream</string>
+    <string name="song_url_empty">Song URL is empty</string>
 </resources>

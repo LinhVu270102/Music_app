@@ -19,7 +19,8 @@
         android:allowBackup="true"
         android:label="Orange Music"
         android:icon="@drawable/music_orange"
-        android:theme="@style/Theme.Music_app">
+        android:theme="@style/Theme.Music_app"
+        android:usesCleartextTraffic="true">
 
         <activity
             android:name=".ui.splash.SplashActivity"

@@ -129,8 +129,6 @@ class HomeFragment : Fragment() {
         viewModel.playlist.observe(viewLifecycleOwner) { songs ->
             allSongs = songs
 
-            PlayerManager.setPlaylist(songs)
-
             relatedAdapter.setData(songs.take(4))
             moreLikeAdapter.setData(songs)
             hotForYouAdapter.setData(songs.sortedByDescending { it.plays })
@@ -147,7 +145,12 @@ class HomeFragment : Fragment() {
     }
 
     private fun openPlayer(song: Song) {
+        if (allSongs.isNotEmpty()) {
+            PlayerManager.setPlaylist(allSongs)
+        }
+
         PlayerManager.play(song)
+
         viewModel.saveRecentlyPlayed(song)
 
         parentFragmentManager.commit {

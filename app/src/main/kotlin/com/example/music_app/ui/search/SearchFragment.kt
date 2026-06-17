@@ -12,6 +12,7 @@ import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
@@ -19,6 +20,9 @@ import com.example.music_app.databinding.FragmentSearchBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.player.PlayerFragment
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class SearchFragment : Fragment(R.layout.fragment_search) {
 
@@ -32,6 +36,8 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     private var allSongs: List<Song> = emptyList()
     private var currentTab = SearchTab.ALL
 
+    private var searchJob: Job? = null
+
     enum class SearchTab {
         ALL,
         TRACKS,
@@ -41,6 +47,8 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
         _binding = FragmentSearchBinding.bind(view)
 
         setupRecyclerView()
@@ -54,12 +62,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
     private fun setupRecyclerView() {
         searchAdapter = SearchAdapter { song ->
-            PlayerManager.play(song)
-
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-                .addToBackStack(null)
-                .commit()
+            viewModel.prepareSongForPlayback(song)
         }
 
         binding.rvSearchSongs.apply {
@@ -87,6 +90,14 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
         binding.edtSearch.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                val keyword = binding.edtSearch.text.toString().trim()
+
+                searchJob?.cancel()
+
+                if (keyword.isNotBlank()) {
+                    viewModel.searchTracks(keyword)
+                }
+
                 binding.edtSearch.clearFocus()
                 hideKeyboard()
                 true
@@ -122,7 +133,19 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                         getString(R.string.recently_searched)
                     }
 
-                filterSongs(keyword)
+                searchJob?.cancel()
+
+                if (keyword.isBlank()) {
+                    allSongs = emptyList()
+                    searchAdapter.setData(emptyList())
+                    viewModel.clearSearchResult()
+                    return
+                }
+
+                searchJob = viewLifecycleOwner.lifecycleScope.launch {
+                    delay(500)
+                    viewModel.searchTracks(keyword)
+                }
             }
 
             override fun afterTextChanged(s: Editable?) {
@@ -130,6 +153,8 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         })
 
         binding.btnCancel.setOnClickListener {
+            searchJob?.cancel()
+
             binding.edtSearch.text.clear()
             binding.edtSearch.clearFocus()
             hideKeyboard()
@@ -138,7 +163,9 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             binding.tabContainer.isVisible = false
             binding.tvSearchSectionTitle.text = getString(R.string.recently_searched)
 
+            allSongs = emptyList()
             searchAdapter.setData(emptyList())
+            viewModel.clearSearchResult()
         }
     }
 
@@ -169,7 +196,20 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             allSongs = songs
 
             val keyword = binding.edtSearch.text.toString().trim()
-            filterSongs(keyword)
+            filterSongsByCurrentTab(keyword)
+        }
+
+        viewModel.playSongEvent.observe(viewLifecycleOwner) { song ->
+            song?.let {
+                PlayerManager.play(it)
+
+                parentFragmentManager.beginTransaction()
+                    .replace(R.id.fragmentContainer, PlayerFragment.newInstance(it.id))
+                    .addToBackStack(null)
+                    .commit()
+
+                viewModel.donePlaySong()
+            }
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
@@ -177,6 +217,11 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 showToast(getString(it))
                 viewModel.clearErrorMessage()
             }
+        }
+
+        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            binding.edtSearch.isEnabled = !isLoading
+            binding.btnCancel.isEnabled = !isLoading
         }
     }
 
@@ -220,7 +265,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 getString(R.string.recently_searched)
             }
 
-        filterSongs(keyword)
+        filterSongsByCurrentTab(keyword)
     }
 
     private fun resetTabStyle() {
@@ -248,18 +293,15 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         }
     }
 
-    private fun filterSongs(keyword: String) {
-        if (keyword.isEmpty()) {
+    private fun filterSongsByCurrentTab(keyword: String) {
+        if (keyword.isBlank()) {
             searchAdapter.setData(emptyList())
             return
         }
 
         val result = when (currentTab) {
             SearchTab.ALL -> {
-                allSongs.filter { song ->
-                    song.title.contains(keyword, ignoreCase = true) ||
-                            song.artist.contains(keyword, ignoreCase = true)
-                }
+                allSongs
             }
 
             SearchTab.TRACKS -> {
@@ -298,6 +340,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     }
 
     override fun onDestroyView() {
+        searchJob?.cancel()
         super.onDestroyView()
         _binding = null
     }
