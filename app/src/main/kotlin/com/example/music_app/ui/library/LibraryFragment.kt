@@ -8,15 +8,15 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentLibraryBinding
-import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.albums.AlbumsFragment
-import com.example.music_app.ui.player.PlayerFragment
+import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.setting.SettingFragment
 import com.example.music_app.ui.song.SongAdapter
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 
 class LibraryFragment : Fragment() {
 
@@ -29,6 +29,8 @@ class LibraryFragment : Fragment() {
 
     private lateinit var recentlyAdapter: SongAdapter
     private lateinit var historyAdapter: SongAdapter
+
+    private lateinit var playlistAdapter: LibraryPlaylistAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -54,21 +56,44 @@ class LibraryFragment : Fragment() {
             }
         )
 
-        historyAdapter = SongAdapter(
-            onItemClick = { song ->
-                openPlayer(song)
+        playlistAdapter = LibraryPlaylistAdapter(
+            onItemClick = { playlist ->
+                parentFragmentManager.commit {
+                    replace(
+                        R.id.fragmentContainer,
+                        PlaylistDetailFragment.newInstance(
+                            playlistId = playlist.id,
+                            playlistName = playlist.name
+                        )
+                    )
+                    addToBackStack(null)
+                }
             }
         )
 
-        binding.albumHorizontalList.layoutManager =
-            LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-        binding.albumHorizontalList.adapter = recentlyAdapter
-        binding.albumHorizontalList.isNestedScrollingEnabled = false
+        binding.albumHorizontalList.apply {
+            layoutManager = GridLayoutManager(
+                requireContext(),
+                2,
+                RecyclerView.HORIZONTAL,
+                false
+            )
+            adapter = recentlyAdapter
+            isNestedScrollingEnabled = false
+            setHasFixedSize(true)
+        }
 
-        binding.albumHorizontalList1.layoutManager =
-            LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-        binding.albumHorizontalList1.adapter = historyAdapter
-        binding.albumHorizontalList1.isNestedScrollingEnabled = false
+        binding.albumHorizontalList1.apply {
+            layoutManager = GridLayoutManager(
+                requireContext(),
+                2,
+                RecyclerView.HORIZONTAL,
+                false
+            )
+            adapter = playlistAdapter
+            isNestedScrollingEnabled = false
+            setHasFixedSize(true)
+        }
     }
 
     private fun setupListeners() {
@@ -121,8 +146,9 @@ class LibraryFragment : Fragment() {
 
             recentlyAdapter.setData(songs)
 
-            // Tạm thời Listening history dùng cùng data với Recently Played.
-            // Sau này có thể tách riêng full listening history.
+            viewModel.playlists.observe(viewLifecycleOwner) { playlists ->
+                playlistAdapter.setData(playlists)
+            }
             historyAdapter.setData(songs)
         }
 
@@ -135,6 +161,10 @@ class LibraryFragment : Fragment() {
             }
         }
 
+        viewModel.playlists.observe(viewLifecycleOwner) { playlists ->
+            playlistAdapter.setData(playlists)
+        }
+
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 showToast(getString(it))
@@ -144,16 +174,11 @@ class LibraryFragment : Fragment() {
     }
 
     private fun openPlayer(song: Song) {
-        if (currentRecentlySongs.isNotEmpty()) {
-            PlayerManager.setPlaylist(currentRecentlySongs)
-        }
-
-        PlayerManager.play(song)
-
-        parentFragmentManager.commit {
-            replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-            addToBackStack(null)
-        }
+        PlaybackLauncher.openPlayer(
+            fragment = this,
+            song = song,
+            playlist = currentRecentlySongs
+        )
     }
 
     override fun onResume() {

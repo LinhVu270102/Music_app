@@ -12,9 +12,11 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.music_app.R
+import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentHomeBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.library.YourLikesFragment
+import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.player.PlayerFragment
 import com.example.music_app.ui.song.SongAdapter
 
@@ -191,8 +193,11 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun openPlayer(song: com.example.music_app.data.model.Song) {
-        viewModel.prepareSongForPlayback(song)
+    private fun openPlayer(song: Song) {
+        PlaybackLauncher.openPlayer(
+            fragment = this,
+            song = song
+        )
     }
 
     private fun selectGenreChip(selectedChip: TextView) {

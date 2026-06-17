@@ -14,6 +14,7 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentProfileBinding
 import com.example.music_app.player.PlayerManager
+import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.player.PlayerFragment
 import com.example.music_app.ui.song.SongAdapter
 
@@ -108,12 +109,11 @@ class ProfileFragment : Fragment() {
     }
 
     private fun playSong(song: Song) {
-        PlayerManager.play(song)
-
-        parentFragmentManager.commit {
-            replace(R.id.fragmentContainer, PlayerFragment.newInstance(song.id))
-            addToBackStack(null)
-        }
+        PlaybackLauncher.openPlayer(
+            fragment = this,
+            song = song,
+            playlist = currentSongs
+        )
     }
 
     override fun onDestroyView() {

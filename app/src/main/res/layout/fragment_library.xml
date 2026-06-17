@@ -169,11 +169,12 @@
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/albumHorizontalList"
                 android:layout_width="match_parent"
-                android:layout_height="220dp"
+                android:layout_height="145dp"
                 android:layout_marginTop="12dp"
                 android:clipToPadding="false"
                 android:nestedScrollingEnabled="false"
                 android:overScrollMode="never"
+                android:paddingEnd="12dp"
                 android:scrollbars="none" />
 
             <!-- LISTENING HISTORY HEADER -->
@@ -213,11 +214,12 @@
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/albumHorizontalList1"
                 android:layout_width="match_parent"
-                android:layout_height="220dp"
+                android:layout_height="145dp"
                 android:layout_marginTop="12dp"
                 android:clipToPadding="false"
                 android:nestedScrollingEnabled="false"
                 android:overScrollMode="never"
+                android:paddingEnd="12dp"
                 android:scrollbars="none" />
 
         </LinearLayout>

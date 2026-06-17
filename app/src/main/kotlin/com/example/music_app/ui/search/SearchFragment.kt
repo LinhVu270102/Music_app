@@ -19,6 +19,7 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentSearchBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
+import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.player.PlayerFragment
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -62,7 +63,10 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
     private fun setupRecyclerView() {
         searchAdapter = SearchAdapter { song ->
-            viewModel.prepareSongForPlayback(song)
+            PlaybackLauncher.openPlayer(
+                fragment = this,
+                song = song
+            )
         }
 
         binding.rvSearchSongs.apply {
