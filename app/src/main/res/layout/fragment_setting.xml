@@ -99,14 +99,6 @@
                 android:visibility="gone">
 
                 <Button
-                    android:id="@+id/btnAdmin"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:backgroundTint="@color/darker_gray"
-                    android:text="@string/admin"
-                    android:textColor="@color/white" />
-
-                <Button
                     android:id="@+id/btnLogout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

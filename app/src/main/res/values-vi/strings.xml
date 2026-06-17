@@ -253,7 +253,6 @@
     <string name="role_changed_to_user">Đã chuyển sang vai trò người dùng</string>
 
     <!-- ================= ADMIN MODERATION ================= -->
-    <string name="admin_dashboard">Quản trị</string>
     <string name="content_moderation">Kiểm duyệt nội dung</string>
     <string name="content_moderation_subtitle">Quản lý tiêu chuẩn văn hóa của sản phẩm âm nhạc do người dùng upload</string>
 
@@ -311,4 +310,31 @@
     <string name="invalid_user">Người dùng không hợp lệ</string>
     <string name="invalid_song">Bài hát không hợp lệ</string>
     <string name="comment_content_empty">Nội dung bình luận không được để trống</string>
+
+    <!-- ================= ADMIN DASHBOARD ================= -->
+    <string name="admin_dashboard">Quản trị</string>
+    <string name="admin_dashboard_subtitle">Quản lý kiểm duyệt và tiêu chuẩn cộng đồng</string>
+
+    <string name="community_standards">Tiêu chuẩn cộng đồng</string>
+    <string name="community_standards_description">Bảo vệ môi trường âm nhạc lành mạnh bằng cách kiểm duyệt nội dung do người dùng upload trước khi hiển thị công khai.</string>
+
+    <string name="open_moderation_queue">Mở hàng chờ kiểm duyệt</string>
+
+    <string name="community_rules">Quy tắc cộng đồng</string>
+    <string name="community_rules_subtitle">Các tiêu chí dùng để đánh giá sản phẩm âm nhạc trước khi duyệt</string>
+
+    <string name="rule_offensive_content_title">Nội dung phản cảm</string>
+    <string name="rule_offensive_content_description">Không cho phép ngôn từ tục tĩu, xúc phạm, quấy rối hoặc công kích cá nhân, tổ chức.</string>
+
+    <string name="rule_violence_title">Kích động bạo lực</string>
+    <string name="rule_violence_description">Không cho phép nội dung cổ súy bạo lực, đe dọa, thù ghét hoặc hành vi gây hại.</string>
+
+    <string name="rule_copyright_title">Vi phạm bản quyền</string>
+    <string name="rule_copyright_description">Không cho phép upload nội dung âm nhạc không thuộc quyền sở hữu hoặc chưa được phép sử dụng.</string>
+
+    <string name="rule_spam_title">Spam hoặc nội dung rác</string>
+    <string name="rule_spam_description">Không cho phép tiêu đề, mô tả, tag hoặc đường dẫn có tính spam, lừa đảo hoặc quảng cáo không phù hợp.</string>
+
+    <string name="rule_inappropriate_image_title">Hình ảnh không phù hợp</string>
+    <string name="rule_inappropriate_image_description">Không cho phép ảnh bìa phản cảm, nhạy cảm, bạo lực hoặc gây hiểu nhầm cho người nghe.</string>
 </resources>

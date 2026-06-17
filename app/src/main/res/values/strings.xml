@@ -253,7 +253,6 @@
     <string name="role_changed_to_user">Switched to user role</string>
 
     <!-- ================= ADMIN MODERATION ================= -->
-    <string name="admin_dashboard">Admin Dashboard</string>
     <string name="content_moderation">Content moderation</string>
     <string name="content_moderation_subtitle">Manage cultural standards for music uploaded by users</string>
 
@@ -311,4 +310,31 @@
     <string name="invalid_user">Invalid user</string>
     <string name="invalid_song">Invalid song</string>
     <string name="comment_content_empty">Comment content cannot be empty</string>
+
+    <!-- ================= ADMIN DASHBOARD ================= -->
+    <string name="admin_dashboard">Admin Dashboard</string>
+    <string name="admin_dashboard_subtitle">Manage moderation and community standards</string>
+
+    <string name="community_standards">Community standards</string>
+    <string name="community_standards_description">Protect a healthy music environment by reviewing user-uploaded content before it is publicly displayed.</string>
+
+    <string name="open_moderation_queue">Open moderation queue</string>
+
+    <string name="community_rules">Community rules</string>
+    <string name="community_rules_subtitle">Criteria used to evaluate music products before approval</string>
+
+    <string name="rule_offensive_content_title">Offensive content</string>
+    <string name="rule_offensive_content_description">Do not allow profanity, harassment, insults, or attacks against individuals or organizations.</string>
+
+    <string name="rule_violence_title">Violence encouragement</string>
+    <string name="rule_violence_description">Do not allow content that promotes violence, threats, hatred, or harmful behavior.</string>
+
+    <string name="rule_copyright_title">Copyright infringement</string>
+    <string name="rule_copyright_description">Do not allow music content that the uploader does not own or is not permitted to use.</string>
+
+    <string name="rule_spam_title">Spam or junk content</string>
+    <string name="rule_spam_description">Do not allow spammy titles, descriptions, tags, links, scams, or inappropriate advertising.</string>
+
+    <string name="rule_inappropriate_image_title">Inappropriate images</string>
+    <string name="rule_inappropriate_image_description">Do not allow offensive, sensitive, violent, or misleading cover images.</string>
 </resources>

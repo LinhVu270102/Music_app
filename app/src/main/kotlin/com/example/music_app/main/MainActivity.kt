@@ -16,10 +16,13 @@ import androidx.media3.common.util.UnstableApi
 import com.example.music_app.R
 import com.example.music_app.base.BaseActivity
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.model.UserRole
+import com.example.music_app.data.remote.FirebaseService
 import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.databinding.ActivityMainBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.service.MusicService
+import com.example.music_app.ui.admin.AdminDashboardFragment
 import com.example.music_app.ui.auth.LoginActivity
 import com.example.music_app.ui.comment.CommentFragment
 import com.example.music_app.ui.home.HomeFragment
@@ -28,6 +31,7 @@ import com.example.music_app.ui.player.PlayerFragment
 import com.example.music_app.ui.profile.ProfileFragment
 import com.example.music_app.ui.search.SearchFragment
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -35,6 +39,8 @@ import kotlinx.coroutines.withContext
 class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     private val songRepository = SongRepository()
+    private val firebaseService = FirebaseService(FirebaseFirestore.getInstance())
+
     private var currentMiniSong: Song? = null
     private var isCurrentSongLiked = false
 
@@ -76,9 +82,52 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         requestNotificationPermissionIfNeeded()
 
         if (savedInstanceState == null) {
-            openMainFragment(HomeFragment())
-            highlightFooter(FooterTab.HOME)
+            openStartFragmentByRole()
         }
+    }
+
+    private fun openStartFragmentByRole() {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+
+        if (currentUser == null) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val user = firebaseService.getUserById(currentUser.uid)
+
+                withContext(Dispatchers.Main) {
+                    if (user?.role == UserRole.ADMIN) {
+                        openAdminDashboardFragment()
+                    } else {
+                        openHomeFragment()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    openHomeFragment()
+                }
+            }
+        }
+    }
+
+    private fun openAdminDashboardFragment() {
+        supportFragmentManager.beginTransaction()
+            .replace(binding.fragmentContainer.id, AdminDashboardFragment())
+            .commit()
+
+        binding.appFooter.visibility = View.GONE
+        binding.miniPlayer.root.visibility = View.GONE
+    }
+
+    private fun openHomeFragment() {
+        openMainFragment(HomeFragment())
+        highlightFooter(FooterTab.HOME)
+        setFooterVisible(true)
+        updateMiniPlayerVisibility()
     }
 
     fun updateMainChromeVisibility() {
@@ -86,7 +135,9 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             supportFragmentManager.findFragmentById(binding.fragmentContainer.id)
 
         val shouldHideMainChrome =
-            currentFragment is PlayerFragment || currentFragment is CommentFragment
+            currentFragment is PlayerFragment ||
+                    currentFragment is CommentFragment ||
+                    currentFragment is AdminDashboardFragment
 
         if (shouldHideMainChrome) {
             binding.appFooter.visibility = View.GONE
@@ -254,7 +305,11 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     private fun updateMiniPlayerLikeIcon() {
         binding.miniPlayer.btnLike.alpha =
-            if (isCurrentSongLiked) 1f else 0.4f
+            if (isCurrentSongLiked) {
+                1f
+            } else {
+                0.4f
+            }
     }
 
     private fun openMainFragment(fragment: Fragment) {
@@ -286,9 +341,15 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
         val isPlayerScreen = currentFragment is PlayerFragment
         val isCommentScreen = currentFragment is CommentFragment
+        val isAdminDashboard = currentFragment is AdminDashboardFragment
 
         binding.miniPlayer.root.visibility =
-            if (hasSong && !isPlayerScreen && !isCommentScreen) {
+            if (
+                hasSong &&
+                !isPlayerScreen &&
+                !isCommentScreen &&
+                !isAdminDashboard
+            ) {
                 View.VISIBLE
             } else {
                 View.GONE

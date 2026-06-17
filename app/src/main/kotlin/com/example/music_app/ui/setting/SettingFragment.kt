@@ -21,7 +21,6 @@ import com.example.music_app.ui.auth.LoginActivity
 import com.example.music_app.ui.settings.SettingViewModel
 import com.example.music_app.utils.LanguageManager
 import com.google.firebase.auth.FirebaseAuth
-import com.example.music_app.ui.admin.AdminFragment
 
 class SettingFragment : Fragment() {
 
@@ -89,24 +88,12 @@ class SettingFragment : Fragment() {
             requireActivity().onBackPressedDispatcher.onBackPressed()
         }
 
-        binding.clearDataButton.setOnClickListener {
-            viewModel.clearData()
-            showToast(getString(R.string.data_cleared))
-        }
-
         binding.accountHeader.setOnClickListener {
             toggleAccountOptions()
         }
 
         binding.btnLogout.setOnClickListener {
             logout()
-        }
-
-        binding.btnAdmin.setOnClickListener {
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, AdminFragment())
-                .addToBackStack(null)
-                .commit()
         }
     }
 
