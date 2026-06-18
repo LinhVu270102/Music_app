@@ -1,24 +1,30 @@
 package com.example.music_app.ui.home
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.remote.FirebaseService
 import com.example.music_app.data.repository.SoundCloudRepository
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 
 class HomeViewModel : ViewModel() {
 
-    private val soundCloudRepository = SoundCloudRepository()
-    private val firebaseService = FirebaseService(FirebaseFirestore.getInstance())
+    companion object {
+        private const val TAG = "HomeViewModel"
+    }
 
-    private var isPreparingSong = false
+    private val soundCloudRepository = SoundCloudRepository()
+
+    private var isLoadingHome = false
+    private var hasLoadedOnce = false
+
+    private val genreCache = mutableMapOf<String, List<Song>>()
 
     private val _relatedTracks = MutableLiveData<List<Song>>()
     val relatedTracks: LiveData<List<Song>> = _relatedTracks
@@ -32,116 +38,152 @@ class HomeViewModel : ViewModel() {
     private val _trendingByGenre = MutableLiveData<List<Song>>()
     val trendingByGenre: LiveData<List<Song>> = _trendingByGenre
 
-    private val _playSongEvent = MutableLiveData<Song?>()
-    val playSongEvent: LiveData<Song?> = _playSongEvent
-
     private val _isLoading = MutableLiveData(false)
     val isLoading: LiveData<Boolean> = _isLoading
 
     private val _errorMessageResId = MutableLiveData<Int?>()
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
 
-    fun loadHomeData() {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                _isLoading.postValue(true)
+    fun loadHomeDataFast() {
+        val firstPaintStart = System.currentTimeMillis()
 
-                val related = soundCloudRepository.searchTracks(
-                    query = "lofi chill",
-                    limit = 10
-                )
+        val cachedData = HomeMemoryCache.data
 
-                val more = soundCloudRepository.searchTracks(
-                    query = "pop music",
-                    limit = 10
-                )
+        if (cachedData != null) {
+            _relatedTracks.value = cachedData.relatedTracks
+            _moreLike.value = cachedData.moreLike
+            _hotForYou.value = cachedData.hotForYou
+            _trendingByGenre.value = cachedData.trendingByGenre
 
-                val hot = soundCloudRepository.searchTracks(
-                    query = "trending music",
-                    limit = 10
-                )
-
-                val trending = soundCloudRepository.searchTracks(
-                    query = "hip hop rap",
-                    limit = 12
-                )
-
-                _relatedTracks.postValue(related.take(4))
-                _moreLike.postValue(more)
-                _hotForYou.postValue(hot.sortedByDescending { it.plays })
-                _trendingByGenre.postValue(trending)
-            } catch (e: Exception) {
-                _errorMessageResId.postValue(R.string.soundcloud_search_failed)
-            } finally {
-                _isLoading.postValue(false)
-            }
+            Log.d(
+                TAG,
+                "Home first paint from cache in ${System.currentTimeMillis() - firstPaintStart} ms"
+            )
+        } else {
+            Log.d(TAG, "Home cache is empty")
         }
+
+        if (isLoadingHome) {
+            Log.d(TAG, "Home is already loading, skip duplicate request")
+            return
+        }
+
+        if (HomeMemoryCache.isValid()) {
+            Log.d(TAG, "Home cache valid, skip network")
+            return
+        }
+
+        Log.d(TAG, "Home cache invalid, refresh network")
+        refreshHomeDataInBackground()
     }
 
-    fun loadTrendingByGenre(query: String) {
-        if (query.isBlank()) return
-
+    private fun refreshHomeDataInBackground() {
         viewModelScope.launch(Dispatchers.IO) {
+            val start = System.currentTimeMillis()
+
             try {
+                isLoadingHome = true
                 _isLoading.postValue(true)
 
-                val songs = soundCloudRepository.searchTracks(
-                    query = query,
-                    limit = 12
-                )
-
-                _trendingByGenre.postValue(songs)
-            } catch (e: Exception) {
-                _errorMessageResId.postValue(R.string.soundcloud_search_failed)
-            } finally {
-                _isLoading.postValue(false)
-            }
-        }
-    }
-
-    fun prepareSongForPlayback(song: Song) {
-        if (isPreparingSong) return
-
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                isPreparingSong = true
-                _isLoading.postValue(true)
-
-                val playableSong =
-                    if (song.songUrl.isNotBlank()) {
-                        song
-                    } else {
-                        soundCloudRepository.getPlayableSong(song)
+                val homeData = supervisorScope {
+                    val relatedDeferred = async {
+                        safeSearchTracks("lofi chill", 6)
                     }
 
-                if (playableSong.songUrl.isBlank()) {
-                    _errorMessageResId.postValue(R.string.song_url_empty)
-                } else {
-                    _playSongEvent.postValue(playableSong)
+                    val moreDeferred = async {
+                        safeSearchTracks("pop music", 6)
+                    }
+
+                    val hotDeferred = async {
+                        safeSearchTracks("trending music", 6)
+                    }
+
+                    val trendingDeferred = async {
+                        safeSearchTracks("hip hop rap", 8)
+                    }
+
+                    val related = relatedDeferred.await()
+                    val more = moreDeferred.await()
+                    val hot = hotDeferred.await()
+                    val trending = trendingDeferred.await()
+
+                    HomeData(
+                        relatedTracks = related.take(4),
+                        moreLike = more,
+                        hotForYou = hot.sortedByDescending { song -> song.plays },
+                        trendingByGenre = trending
+                    )
                 }
+
+                HomeMemoryCache.save(homeData)
+                hasLoadedOnce = true
+
+                _relatedTracks.postValue(homeData.relatedTracks)
+                _moreLike.postValue(homeData.moreLike)
+                _hotForYou.postValue(homeData.hotForYou)
+                _trendingByGenre.postValue(homeData.trendingByGenre)
+
+                Log.d(
+                    TAG,
+                    "Home network refresh loaded in ${System.currentTimeMillis() - start} ms"
+                )
             } catch (e: Exception) {
-                _errorMessageResId.postValue(R.string.soundcloud_stream_failed)
+                Log.e(TAG, "Home load failed", e)
+
+                if (HomeMemoryCache.data == null) {
+                    _errorMessageResId.postValue(R.string.soundcloud_search_failed)
+                }
             } finally {
                 _isLoading.postValue(false)
-                isPreparingSong = false
+                isLoadingHome = false
             }
         }
     }
 
-    fun saveRecentlyPlayed(song: Song) {
+    private suspend fun safeSearchTracks(
+        query: String,
+        limit: Int
+    ): List<Song> {
+        return try {
+            val start = System.currentTimeMillis()
+
+            val result = soundCloudRepository.searchTracks(
+                query = query,
+                limit = limit
+            )
+
+            Log.d(
+                TAG,
+                "Search '$query' loaded ${result.size} songs in ${System.currentTimeMillis() - start} ms"
+            )
+
+            result
+        } catch (e: Exception) {
+            Log.e(TAG, "Search '$query' failed", e)
+            emptyList()
+        }
+    }
+
+    fun loadTrendingByGenreFast(query: String) {
+        if (query.isBlank()) return
+
+        genreCache[query]?.let { cachedSongs ->
+            _trendingByGenre.value = cachedSongs
+            return
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
+                _isLoading.postValue(true)
 
-                firebaseService.upsertSong(song)
-                firebaseService.saveRecentlyPlayed(userId, song.id)
-            } catch (_: Exception) {
+                val songs = safeSearchTracks(query, 8)
+
+                genreCache[query] = songs
+                _trendingByGenre.postValue(songs)
+            } finally {
+                _isLoading.postValue(false)
             }
         }
-    }
-
-    fun donePlaySong() {
-        _playSongEvent.value = null
     }
 
     fun clearErrorMessage() {

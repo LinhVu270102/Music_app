@@ -1,5 +1,6 @@
 package com.example.music_app.data.repository
 
+import android.util.Log
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.remote.soundcloud.SoundCloudRetrofitClient
 import com.example.music_app.data.remote.soundcloud.getSoundCloudTrackId
@@ -10,6 +11,7 @@ class SoundCloudRepository {
     private val api = SoundCloudRetrofitClient.api
 
     suspend fun searchTracks(query: String, limit: Int = 20): List<Song> {
+
         if (query.isBlank()) return emptyList()
 
         val response = api.searchTracks(
@@ -27,7 +29,6 @@ class SoundCloudRepository {
 
     suspend fun getPlayableSong(song: Song): Song {
         val trackId = song.getSoundCloudTrackId()
-
         if (trackId == 0L) {
             return song
         }

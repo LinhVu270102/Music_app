@@ -16,6 +16,11 @@ class SongAdapter(
     private val songs = mutableListOf<Song>()
 
     fun setData(newSongs: List<Song>) {
+        val oldIds = songs.map { song -> song.id }
+        val newIds = newSongs.map { song -> song.id }
+
+        if (oldIds == newIds) return
+
         songs.clear()
         songs.addAll(newSongs)
         notifyDataSetChanged()
@@ -29,9 +34,12 @@ class SongAdapter(
             binding.txtTitle.text = song.title
             binding.txtArtist.text = song.artist
 
-            Glide.with(binding.root.context)
+            Glide.with(binding.root)
                 .load(song.coverUrl)
                 .placeholder(R.drawable.music_orange)
+                .error(R.drawable.music_orange)
+                .dontAnimate()
+                .centerCrop()
                 .into(binding.imgCover)
 
             binding.root.setOnClickListener {
@@ -49,18 +57,27 @@ class SongAdapter(
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SongViewHolder {
+    override fun onCreateViewHolder(
+        parent: ViewGroup,
+        viewType: Int
+    ): SongViewHolder {
         val binding = ItemSongBinding.inflate(
             LayoutInflater.from(parent.context),
             parent,
             false
         )
+
         return SongViewHolder(binding)
     }
 
-    override fun onBindViewHolder(holder: SongViewHolder, position: Int) {
+    override fun onBindViewHolder(
+        holder: SongViewHolder,
+        position: Int
+    ) {
         holder.bind(songs[position])
     }
 
-    override fun getItemCount(): Int = songs.size
+    override fun getItemCount(): Int {
+        return songs.size
+    }
 }

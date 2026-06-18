@@ -344,4 +344,6 @@
 
     <string name="playback_failed">Could not play this song</string>
     <string name="player_not_ready">Player is not ready</string>
+
+    <string name="soundcloud_rate_limited">SoundCloud is rate limited. Please try again later.</string>
 </resources>

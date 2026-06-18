@@ -12,7 +12,7 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 import com.example.music_app.data.model.SongStatus
-
+import com.google.firebase.firestore.FieldPath
 class FirebaseService(
     private val firestore: FirebaseFirestore
 ) {
@@ -143,29 +143,46 @@ class FirebaseService(
             .await()
     }
 
-    suspend fun getRecentlyPlayedSongs(
-        userId: String,
-        limit: Long = 4
-    ): List<Song> {
+    suspend fun getRecentlyPlayedSongs(userId: String): List<Song> {
         if (userId.isBlank()) return emptyList()
 
-        val snapshot = firestore.collection("users")
+        val recentlySnapshot = firestore.collection("users")
             .document(userId)
             .collection("recentlyPlayed")
             .orderBy("playedAt", Query.Direction.DESCENDING)
-            .limit(limit)
+            .limit(10)
             .get()
             .await()
 
-        val songIds = snapshot.documents.mapNotNull { doc ->
-            doc.getString("songId")
+        val songIds = recentlySnapshot.documents
+            .mapNotNull { document ->
+                document.getString("songId") ?: document.id
+            }
+            .distinct()
+            .take(10)
+
+        if (songIds.isEmpty()) return emptyList()
+
+        val songs = mutableListOf<Song>()
+
+        songIds.chunked(10).forEach { ids ->
+            val songSnapshot = firestore.collection("songs")
+                .whereIn(FieldPath.documentId(), ids)
+                .get()
+                .await()
+
+            val batchSongs = songSnapshot.documents.mapNotNull { document ->
+                document.toObject(Song::class.java)?.copy(id = document.id)
+            }
+
+            songs.addAll(batchSongs)
         }
 
-        return songIds.mapNotNull { songId ->
-            getSongById(songId)
-        }.filter { song ->
-            song.status == SongStatus.APPROVED
-        }
+        val songMap = songs.associateBy { song -> song.id }
+
+        return songIds
+            .mapNotNull { songId -> songMap[songId] }
+            .filter { song -> song.status == SongStatus.APPROVED }
     }
 
     // =========================

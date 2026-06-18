@@ -344,4 +344,6 @@
 
     <string name="playback_failed">Không thể phát bài hát này</string>
     <string name="player_not_ready">Trình phát chưa sẵn sàng</string>
+
+    <string name="soundcloud_rate_limited">SoundCloud đang giới hạn lượt phát. Vui lòng thử lại sau.</string>
 </resources>

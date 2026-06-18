@@ -53,7 +53,6 @@ class SongRepository {
         val userId = auth.currentUser?.uid ?: return emptyList()
 
         return firebaseService.getRecentlyPlayedSongs(userId)
-            .filter { song -> song.status == SongStatus.APPROVED }
     }
 
     // =========================

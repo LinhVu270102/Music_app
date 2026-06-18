@@ -15,11 +15,17 @@ import kotlinx.coroutines.withContext
 
 object PlaybackLauncher {
 
+    private var isOpeningPlayer = false
+
     fun openPlayer(
         fragment: Fragment,
         song: Song,
         playlist: List<Song> = emptyList()
     ) {
+        if (isOpeningPlayer) return
+
+        isOpeningPlayer = true
+
         fragment.viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val repository = MusicInteractionRepository()
@@ -61,6 +67,8 @@ object PlaybackLauncher {
                     fragment.getString(R.string.soundcloud_stream_failed),
                     Toast.LENGTH_SHORT
                 ).show()
+            } finally {
+                isOpeningPlayer = false
             }
         }
     }
