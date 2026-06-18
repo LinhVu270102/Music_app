@@ -14,10 +14,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentHomeBinding
-import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.library.YourLikesFragment
 import com.example.music_app.ui.player.PlaybackLauncher
-import com.example.music_app.ui.player.PlayerFragment
 import com.example.music_app.ui.song.SongAdapter
 
 class HomeFragment : Fragment() {
@@ -61,7 +59,7 @@ class HomeFragment : Fragment() {
         observeViewModel()
 
         selectGenreChip(binding.chipHipHop)
-        viewModel.loadHomeData()
+        viewModel.loadHomeDataFast()
     }
 
     private fun setupRecyclerViews() {
@@ -99,6 +97,7 @@ class HomeFragment : Fragment() {
             adapter = relatedAdapter
             isNestedScrollingEnabled = false
             setHasFixedSize(true)
+            itemAnimator = null
         }
 
         binding.rvMoreLike.apply {
@@ -111,6 +110,7 @@ class HomeFragment : Fragment() {
             adapter = moreLikeAdapter
             isNestedScrollingEnabled = false
             setHasFixedSize(true)
+            itemAnimator = null
         }
 
         binding.rvHotForYou.apply {
@@ -123,13 +123,18 @@ class HomeFragment : Fragment() {
             adapter = hotForYouAdapter
             isNestedScrollingEnabled = false
             setHasFixedSize(true)
+            itemAnimator = null
         }
 
         binding.rvTrendingByGenre.apply {
-            layoutManager = GridLayoutManager(requireContext(), 2)
+            layoutManager = GridLayoutManager(
+                requireContext(),
+                2
+            )
             adapter = trendingAdapter
             isNestedScrollingEnabled = false
             setHasFixedSize(true)
+            itemAnimator = null
         }
     }
 
@@ -140,7 +145,7 @@ class HomeFragment : Fragment() {
 
             chip.setOnClickListener {
                 selectGenreChip(chip)
-                viewModel.loadTrendingByGenre(query)
+                viewModel.loadTrendingByGenreFast(query)
             }
         }
     }
@@ -169,20 +174,6 @@ class HomeFragment : Fragment() {
 
         viewModel.trendingByGenre.observe(viewLifecycleOwner) { songs ->
             trendingAdapter.setData(songs)
-        }
-
-        viewModel.playSongEvent.observe(viewLifecycleOwner) { song ->
-            song?.let {
-                PlayerManager.play(it)
-                viewModel.saveRecentlyPlayed(it)
-
-                parentFragmentManager.commit {
-                    replace(R.id.fragmentContainer, PlayerFragment.newInstance(it.id))
-                    addToBackStack(null)
-                }
-
-                viewModel.donePlaySong()
-            }
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->

@@ -5,11 +5,9 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.music_app.R
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SongRepository
-import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
 class LibraryViewModel : ViewModel() {
@@ -26,47 +24,48 @@ class LibraryViewModel : ViewModel() {
     private val _playlists = MutableLiveData<List<Playlist>>()
     val playlists: LiveData<List<Playlist>> = _playlists
 
-    private val _navigateEvent = MutableLiveData<String?>()
-    val navigateEvent: LiveData<String?> = _navigateEvent
-
     private val _errorMessageResId = MutableLiveData<Int?>()
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
 
     fun loadLibraryData() {
+        Log.d(TAG, "loadLibraryData called")
         loadRecentlyPlayed()
         loadMyPlaylists()
     }
 
-    fun loadRecentlyPlayed() {
+    private fun loadRecentlyPlayed() {
         viewModelScope.launch {
+            val start = System.currentTimeMillis()
+
             try {
-                _recentlyPlayed.value = repository.getRecentlyPlayedSongs()
-            } catch (e: AppException) {
-                Log.e(TAG, "Load recently played failed", e)
+                val songs = repository.getRecentlyPlayedSongs()
+                _recentlyPlayed.value = songs
 
-                // Không hiện lỗi nếu chưa có data, chỉ để danh sách rỗng.
-                _recentlyPlayed.value = emptyList()
+                Log.d(
+                    TAG,
+                    "Recently loaded: ${songs.size} songs in ${System.currentTimeMillis() - start} ms"
+                )
             } catch (e: Exception) {
-                Log.e(TAG, "Load recently played failed", e)
-
-                // Không dùng load_search_data_failed ở Library.
+                Log.e(TAG, "Recently failed", e)
                 _recentlyPlayed.value = emptyList()
             }
         }
     }
 
-    fun loadMyPlaylists() {
+    private fun loadMyPlaylists() {
         viewModelScope.launch {
+            val start = System.currentTimeMillis()
+
             try {
-                _playlists.value = repository.getMyPlaylists()
-            } catch (e: AppException) {
-                Log.e(TAG, "Load playlists failed", e)
+                val result = repository.getMyPlaylists()
+                _playlists.value = result
 
-                // Nếu chưa có playlist thì để rỗng, không cần Toast.
-                _playlists.value = emptyList()
+                Log.d(
+                    TAG,
+                    "Playlists loaded: ${result.size} playlists in ${System.currentTimeMillis() - start} ms"
+                )
             } catch (e: Exception) {
-                Log.e(TAG, "Load playlists failed", e)
-
+                Log.e(TAG, "Playlists failed", e)
                 _playlists.value = emptyList()
             }
         }

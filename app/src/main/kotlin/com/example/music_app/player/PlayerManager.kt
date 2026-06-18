@@ -13,6 +13,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
+import androidx.media3.datasource.HttpDataSource
 
 object PlayerManager {
 
@@ -94,14 +95,38 @@ object PlayerManager {
 
                     override fun onPlayerError(error: PlaybackException) {
                         Log.e(TAG, "Player error: ${error.errorCodeName}", error)
+
                         _isPlaying.value = false
-                        _errorMessageResId.value = R.string.playback_failed
+
+                        val httpError = findHttpError(error)
+
+                        _errorMessageResId.value =
+                            when (httpError?.responseCode) {
+                                429 -> R.string.soundcloud_rate_limited
+                                else -> R.string.playback_failed
+                            }
                     }
                 })
             }
 
         applyShuffleMode()
         applyLoopMode()
+    }
+
+    private fun findHttpError(
+        throwable: Throwable?
+    ): HttpDataSource.InvalidResponseCodeException? {
+        var current = throwable
+
+        while (current != null) {
+            if (current is HttpDataSource.InvalidResponseCodeException) {
+                return current
+            }
+
+            current = current.cause
+        }
+
+        return null
     }
 
     private fun createMediaItem(song: Song): MediaItem {
