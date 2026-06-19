@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/adminReportItemRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    android:background="@drawable/bg_admin_card"
+    android:orientation="vertical"
+    android:padding="14dp">
+
+    <TextView
+        android:id="@+id/txtReportReason"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/report_reason"
+        android:textColor="@color/white"
+        android:textSize="17sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/txtReportTarget"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="5dp"
+        android:text="@string/report_target_placeholder"
+        android:textColor="#FFB74D"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/txtReporter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:text="@string/reporter_placeholder"
+        android:textColor="#AFAFAF"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/txtReportDescription"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/no_report_description"
+        android:textColor="#D0D0D0"
+        android:textSize="14sp" />
+
+    <Button
+        android:id="@+id/btnResolveReport"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="12dp"
+        android:backgroundTint="@color/orange"
+        android:text="@string/resolve_report"
+        android:textAllCaps="false"
+        android:textColor="@color/white" />
+
+    <Button
+        android:id="@+id/btnRejectReport"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="8dp"
+        android:backgroundTint="#616161"
+        android:text="@string/reject_report"
+        android:textAllCaps="false"
+        android:textColor="@color/white" />
+
+    <Button
+        android:id="@+id/btnHideReportedTarget"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginTop="8dp"
+        android:backgroundTint="#B71C1C"
+        android:text="@string/hide_reported_target"
+        android:textAllCaps="false"
+        android:textColor="@color/white" />
+
+</LinearLayout>
