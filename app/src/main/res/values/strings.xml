@@ -443,4 +443,10 @@
     <string name="comment_song_format">Song: %1$s</string>
     <string name="comment_song_placeholder">Song</string>
     <string name="hide_comment">Hide comment</string>
+    <string name="search_failed">Search failed.</string>
+    <string name="search_result_count">%1$d results</string>
+    <string name="search_result_count_placeholder">0 results</string>
+    <string name="playlist_songs_count">%1$d songs</string>
+    <string name="profile_result_selected">Profile: %1$s</string>
+    <string name="playlist_result_selected">Playlist: %1$s</string>
 </resources>
