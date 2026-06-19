@@ -6,16 +6,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentProfileBinding
-import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.player.PlaybackLauncher
-import com.example.music_app.ui.player.PlayerFragment
 import com.example.music_app.ui.song.SongAdapter
 
 class ProfileFragment : Fragment() {
@@ -31,17 +28,40 @@ class ProfileFragment : Fragment() {
 
     override fun onCreateView(
         inflater: LayoutInflater,
-        container: ViewGroup?
-        , savedInstanceState: Bundle?
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
     ): View {
         _binding = FragmentProfileBinding.inflate(inflater, container, false)
         return binding.root
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+    override fun onViewCreated(
+        view: View,
+        savedInstanceState: Bundle?
+    ) {
+        super.onViewCreated(view, savedInstanceState)
+
         setupRecyclerView()
+        setupClickListeners()
         observeViewModel()
+
         viewModel.loadProfile()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        // Khi quay lại từ EditProfileFragment thì reload lại dữ liệu mới
+        viewModel.loadProfile()
+    }
+
+    private fun setupClickListeners() {
+        binding.btnEditProfile.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, EditProfileFragment())
+                .addToBackStack(null)
+                .commit()
+        }
     }
 
     private fun setupRecyclerView() {
@@ -61,21 +81,41 @@ class ProfileFragment : Fragment() {
                 binding.profileName.text = getString(R.string.guest)
                 binding.profileEmail.text = getString(R.string.not_logged_in)
 
+                binding.profileBio.text = getString(R.string.default_bio)
+                binding.profileExtraInfo.text = getString(R.string.profile_extra_info_placeholder)
+
                 Glide.with(this)
                     .load(R.drawable.music_orange)
+                    .placeholder(R.drawable.music_orange)
+                    .error(R.drawable.music_orange)
                     .into(binding.profileAvatar)
 
                 return@observe
             }
 
-            binding.profileName.text =
-                if (user.displayName.isNotBlank()) {
-                    user.displayName
-                } else {
-                    getString(R.string.no_name)
-                }
+            binding.profileName.text = when {
+                user.fullName.isNotBlank() -> user.fullName
+                user.displayName.isNotBlank() -> user.displayName
+                user.username.isNotBlank() -> user.username
+                else -> getString(R.string.no_name)
+            }
 
             binding.profileEmail.text = user.email
+
+            binding.profileBio.text = user.bio.ifBlank {
+                getString(R.string.default_bio)
+            }
+
+            val favoriteGenresText = user.favoriteGenres
+                .joinToString(", ")
+                .ifBlank { getString(R.string.not_updated) }
+
+            binding.profileExtraInfo.text = getString(
+                R.string.profile_extra_info_format,
+                user.country.ifBlank { getString(R.string.not_updated) },
+                user.gender.ifBlank { getString(R.string.not_updated) },
+                favoriteGenresText
+            )
 
             Glide.with(this)
                 .load(user.avatarUrl.ifBlank { R.drawable.music_orange })
@@ -98,12 +138,20 @@ class ProfileFragment : Fragment() {
 
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
             binding.progressBar.visibility =
-                if (isLoading) View.VISIBLE else View.GONE
+                if (isLoading) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
+                }
         }
 
         viewModel.errorMessage.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
-                Toast.makeText(requireContext(), getString(it), Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    getString(it),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }

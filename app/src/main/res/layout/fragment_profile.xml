@@ -37,10 +37,30 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="8dp"
             android:text="@string/default_user_email"
             android:textColor="@android:color/darker_gray"
             android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/profileBio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:gravity="center"
+            android:text="@string/default_bio"
+            android:textColor="@android:color/darker_gray"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btnEditProfile"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="24dp"
+            android:backgroundTint="@color/orange"
+            android:text="@string/edit_profile"
+            android:textColor="@android:color/white"
+            android:textStyle="bold" />
 
         <!-- STATS -->
         <LinearLayout
@@ -67,6 +87,15 @@
                 android:textColor="@android:color/white"
                 android:textSize="16sp" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/profileExtraInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20dp"
+            android:text="@string/profile_extra_info_placeholder"
+            android:textColor="@android:color/darker_gray"
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/myMusicLabel"
