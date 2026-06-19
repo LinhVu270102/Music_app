@@ -15,8 +15,11 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentHomeBinding
 import com.example.music_app.ui.library.YourLikesFragment
+import com.example.music_app.ui.library.YourUploadFragment
+import com.example.music_app.ui.notification.NotificationFragment
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
+import com.example.music_app.ui.yourupload.UploadMusicFragment
 
 class HomeFragment : Fragment() {
 
@@ -63,6 +66,20 @@ class HomeFragment : Fragment() {
     }
 
     private fun setupRecyclerViews() {
+        binding.btnNotification.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, NotificationFragment())
+                .addToBackStack(null)
+                .commit()
+        }
+
+        binding.btnUpload.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, UploadMusicFragment())
+                .addToBackStack(null)
+                .commit()
+        }
+
         relatedAdapter = SongAdapter(
             onItemClick = { song ->
                 openPlayer(song)
