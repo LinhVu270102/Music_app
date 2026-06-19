@@ -449,4 +449,14 @@
     <string name="playlist_songs_count">%1$d songs</string>
     <string name="profile_result_selected">Profile: %1$s</string>
     <string name="playlist_result_selected">Playlist: %1$s</string>
+    <string name="hide_comment_confirm">Do you want to hide this comment?</string>
+    <string name="report_comment">Report comment</string>
+    <string name="report_comment_success">Comment reported.</string>
+    <string name="report_comment_failed">Could not report comment.</string>
+    <string name="comment_added_success">Comment added.</string>
+    <string name="add_comment_failed">Could not add comment.</string>
+    <string name="report_song_success">Song reported.</string>
+    <string name="report_song_failed">Could not report song.</string>
+    <string name="comments_locked_success">Comments locked.</string>
+    <string name="comments_unlocked_success">Comments unlocked.</string>
 </resources>

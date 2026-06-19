@@ -449,4 +449,14 @@
     <string name="playlist_songs_count">%1$d bài hát</string>
     <string name="profile_result_selected">Hồ sơ: %1$s</string>
     <string name="playlist_result_selected">Danh sách phát: %1$s</string>
+    <string name="hide_comment_confirm">Bạn có muốn ẩn bình luận này không?</string>
+    <string name="report_comment">Báo cáo bình luận</string>
+    <string name="report_comment_success">Đã báo cáo bình luận.</string>
+    <string name="report_comment_failed">Không thể báo cáo bình luận.</string>
+    <string name="comment_added_success">Đã thêm bình luận.</string>
+    <string name="add_comment_failed">Không thể thêm bình luận.</string>
+    <string name="report_song_success">Đã báo cáo bài hát.</string>
+    <string name="report_song_failed">Không thể báo cáo bài hát.</string>
+    <string name="comments_locked_success">Đã khóa bình luận.</string>
+    <string name="comments_unlocked_success">Đã mở bình luận.</string>
 </resources>

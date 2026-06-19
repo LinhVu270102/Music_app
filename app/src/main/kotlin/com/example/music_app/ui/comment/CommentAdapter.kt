@@ -1,6 +1,7 @@
 package com.example.music_app.ui.comment
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -8,7 +9,9 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Comment
 import com.example.music_app.databinding.ItemCommentBinding
 
-class CommentAdapter : RecyclerView.Adapter<CommentAdapter.CommentViewHolder>() {
+class CommentAdapter(
+    private val onMoreClick: (Comment, View) -> Unit
+) : RecyclerView.Adapter<CommentAdapter.CommentViewHolder>() {
 
     private val comments = mutableListOf<Comment>()
 
@@ -55,16 +58,15 @@ class CommentAdapter : RecyclerView.Adapter<CommentAdapter.CommentViewHolder>() 
                 .into(binding.imgSmallAvatar)
 
             binding.btnLikeComment.setOnClickListener {
-                // Bước sau sẽ làm like comment thật
                 binding.btnLikeComment.alpha = 1f
             }
 
             binding.txtReply.setOnClickListener {
-                // Bước sau sẽ làm reply comment
+                // Reply sẽ làm sau
             }
 
-            binding.txtMore.setOnClickListener {
-                // Bước sau sẽ làm menu xoá / báo cáo comment
+            binding.txtMore.setOnClickListener { view ->
+                onMoreClick(comment, view)
             }
         }
     }

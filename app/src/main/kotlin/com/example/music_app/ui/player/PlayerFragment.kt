@@ -28,6 +28,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
+import android.text.InputType
+import android.widget.EditText
+import android.widget.PopupMenu
+import com.google.firebase.auth.FirebaseAuth
 
 class PlayerFragment : Fragment() {
 
@@ -61,6 +65,10 @@ class PlayerFragment : Fragment() {
 
     companion object {
         private const val ARG_SONG_ID = "songId"
+
+        private const val MENU_DELETE_SONG = 1
+        private const val MENU_TOGGLE_COMMENTS = 2
+        private const val MENU_REPORT_SONG = 3
 
         fun newInstance(songId: String): PlayerFragment {
             return PlayerFragment().apply {
@@ -174,6 +182,9 @@ class PlayerFragment : Fragment() {
                 override fun onStopTrackingTouch(seekBar: SeekBar?) {}
             }
         )
+        binding.btnSongOptions.setOnClickListener { anchor ->
+            showSongOptions(anchor)
+        }
     }
 
     private fun initObservers() {
@@ -492,6 +503,183 @@ class PlayerFragment : Fragment() {
         }
     }
 
+    private fun showSongOptions(anchor: View) {
+        val song = PlayerManager.currentSong.value ?: return
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+        val isOwner = song.uploaderId.isNotBlank() && song.uploaderId == currentUserId
+
+        val popup = PopupMenu(requireContext(), anchor)
+
+        if (isOwner) {
+            popup.menu.add(
+                0,
+                MENU_DELETE_SONG,
+                0,
+                getString(R.string.delete_song)
+            )
+
+            val commentTextResId =
+                if (song.allowComments) {
+                    R.string.lock_comments
+                } else {
+                    R.string.unlock_comments
+                }
+
+            popup.menu.add(
+                0,
+                MENU_TOGGLE_COMMENTS,
+                1,
+                getString(commentTextResId)
+            )
+        }
+
+        popup.menu.add(
+            0,
+            MENU_REPORT_SONG,
+            2,
+            getString(R.string.report_song)
+        )
+
+        popup.setOnMenuItemClickListener { item ->
+            when (item.itemId) {
+                MENU_DELETE_SONG -> {
+                    confirmDeleteCurrentSong(song)
+                    true
+                }
+
+                MENU_TOGGLE_COMMENTS -> {
+                    toggleCurrentSongComments(song)
+                    true
+                }
+
+                MENU_REPORT_SONG -> {
+                    showReportSongDialog(song)
+                    true
+                }
+
+                else -> false
+            }
+        }
+
+        popup.show()
+    }
+
+    private fun confirmDeleteCurrentSong(song: Song) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.delete_song))
+            .setMessage(getString(R.string.delete_song_confirm))
+            .setPositiveButton(getString(R.string.delete)) { _, _ ->
+                deleteCurrentSong(song)
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
+    }
+
+    private fun deleteCurrentSong(song: Song) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                songRepository.softDeleteMySong(song.id)
+
+                withContext(Dispatchers.Main) {
+                    showToast(getString(R.string.delete_song_success))
+                    PlayerManager.stop()
+                    parentFragmentManager.popBackStack()
+                }
+            } catch (e: AppException) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(e.messageResId))
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(R.string.delete_song_failed))
+                }
+            }
+        }
+    }
+
+    private fun toggleCurrentSongComments(song: Song) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                songRepository.updateMySongCommentPermission(
+                    songId = song.id,
+                    allowComments = !song.allowComments
+                )
+
+                withContext(Dispatchers.Main) {
+                    val messageResId =
+                        if (song.allowComments) {
+                            R.string.comments_locked_success
+                        } else {
+                            R.string.comments_unlocked_success
+                        }
+
+                    showToast(getString(messageResId))
+                    viewModel.loadSong(song.id)
+                }
+            } catch (e: AppException) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(e.messageResId))
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(R.string.update_comment_permission_failed))
+                }
+            }
+        }
+    }
+
+    private fun showReportSongDialog(song: Song) {
+        val input = EditText(requireContext()).apply {
+            hint = getString(R.string.enter_report_reason)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            minLines = 3
+            maxLines = 5
+            setPadding(32, 24, 32, 24)
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.report_song))
+            .setView(input)
+            .setPositiveButton(getString(R.string.report)) { _, _ ->
+                reportCurrentSong(
+                    song = song,
+                    reason = input.text.toString()
+                )
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
+    }
+
+    private fun reportCurrentSong(
+        song: Song,
+        reason: String
+    ) {
+        if (reason.isBlank()) {
+            showToast(getString(R.string.report_reason_empty))
+            return
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                songRepository.reportSong(
+                    songId = song.id,
+                    reason = reason
+                )
+
+                withContext(Dispatchers.Main) {
+                    showToast(getString(R.string.report_song_success))
+                }
+            } catch (e: AppException) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(e.messageResId))
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(R.string.report_song_failed))
+                }
+            }
+        }
+    }
     private fun applyGradientBackground(color: Int) {
         val gradient = GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
