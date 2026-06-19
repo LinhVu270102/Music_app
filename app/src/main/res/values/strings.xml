@@ -376,4 +376,20 @@
     <string name="save">Save</string>
     <string name="update_profile_success">Profile updated successfully</string>
     <string name="display_name_required">Display name is required</string>
+    <string name="notifications">Notifications</string>
+    <string name="no_notifications_yet">No notifications yet</string>
+    <string name="upload_music">Upload music</string>
+    <string name="artist_name">Artist name</string>
+    <string name="genre">Genre</string>
+    <string name="tags_hint">Tags, separated by commas</string>
+    <string name="select_audio_file">Select audio file</string>
+    <string name="select_cover_image">Select cover image</string>
+    <string name="no_audio_selected">No audio file selected</string>
+    <string name="no_cover_selected">No cover image selected</string>
+    <string name="please_select_audio_file">Please select an audio file</string>
+    <string name="song_title_required">Song title is required</string>
+    <string name="upload_music_success">Music uploaded successfully</string>
+    <string name="upload_music_failed">Upload music failed</string>
+    <string name="selected_file">Selected file</string>
+    <string name="unknown_artist">Unknown artist</string>
 </resources>
