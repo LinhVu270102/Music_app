@@ -40,7 +40,10 @@ class AdminDashboardFragment : Fragment(R.layout.fragment_admin_dashboard) {
         }
 
         binding.btnOpenModeration.setOnClickListener {
-            showToast(getString(R.string.open_moderation_queue))
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, AdminModerationFragment())
+                .addToBackStack(null)
+                .commit()
         }
     }
 

@@ -7,11 +7,60 @@ import com.example.music_app.data.model.UserRole
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
+import com.example.music_app.data.model.Song
+import com.example.music_app.data.remote.FirebaseService
 
 class AdminRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
+
+    private val firebaseService = FirebaseService(firestore)
+
+    private fun currentAdminId(): String {
+        return auth.currentUser?.uid.orEmpty()
+    }
+
+    suspend fun getPendingSongs(): List<Song> {
+        return firebaseService.getSongsByStatus(SongStatus.PENDING)
+    }
+
+    suspend fun approveSong(songId: String) {
+        firebaseService.updateSongStatus(
+            songId = songId,
+            status = SongStatus.APPROVED,
+            reviewedBy = currentAdminId()
+        )
+    }
+
+    suspend fun rejectSong(
+        songId: String,
+        reason: String
+    ) {
+        firebaseService.updateSongStatus(
+            songId = songId,
+            status = SongStatus.REJECTED,
+            reviewedBy = currentAdminId(),
+            rejectReason = reason
+        )
+    }
+
+    suspend fun hideSong(songId: String) {
+        firebaseService.softDeleteSong(
+            songId = songId,
+            deletedBy = currentAdminId()
+        )
+    }
+
+    suspend fun updateSongCommentPermission(
+        songId: String,
+        allowComments: Boolean
+    ) {
+        firebaseService.updateSongCommentPermission(
+            songId = songId,
+            allowComments = allowComments
+        )
+    }
 
     suspend fun isCurrentUserAdmin(): Boolean {
         val uid = auth.currentUser?.uid ?: return false
