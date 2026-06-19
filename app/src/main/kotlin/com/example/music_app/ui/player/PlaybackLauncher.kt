@@ -49,10 +49,21 @@ object PlaybackLauncher {
                             playlist.all { it.songUrl.isNotBlank() }
 
                 if (canUsePlaylist) {
-                    PlayerManager.setPlaylist(playlist)
-                }
+                    val playablePlaylist = playlist.map { item ->
+                        if (item.id == playableSong.id) {
+                            playableSong
+                        } else {
+                            item
+                        }
+                    }
 
-                PlayerManager.play(playableSong)
+                    PlayerManager.playPlaylist(
+                        songs = playablePlaylist,
+                        startSong = playableSong
+                    )
+                } else {
+                    PlayerManager.play(playableSong)
+                }
 
                 fragment.parentFragmentManager.commit {
                     replace(

@@ -346,4 +346,16 @@
     <string name="player_not_ready">Player is not ready</string>
 
     <string name="soundcloud_rate_limited">SoundCloud is rate limited. Please try again later.</string>
+
+    <string name="no_permission">You do not have permission</string>
+    <string name="song_deleted">This song has been deleted</string>
+    <string name="comments_locked">Comments are turned off for this song</string>
+    <string name="comment_not_found">Comment not found</string>
+    <string name="invalid_report_target">Invalid report target</string>
+    <string name="report_reason_empty">Please select a report reason</string>
+    <string name="report_success">Report sent successfully</string>
+    <string name="delete_song_success">Song deleted successfully</string>
+    <string name="delete_comment_success">Comment deleted successfully</string>
+    <string name="comments_turned_on">Comments turned on</string>
+    <string name="comments_turned_off">Comments turned off</string>
 </resources>

@@ -16,35 +16,14 @@
         android:contentDescription="@string/play_pause"
         android:src="@drawable/ic_play_button_circle" />
 
-    <LinearLayout
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/vpMiniPlayer"
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_marginStart="12dp"
         android:layout_weight="1"
-        android:orientation="vertical">
-
-        <TextView
-            android:id="@+id/trackTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:singleLine="true"
-            android:text="@string/song_title_placeholder"
-            android:textColor="@android:color/white"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/trackArtist"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:singleLine="true"
-            android:text="@string/artist_placeholder"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="14sp" />
-
-    </LinearLayout>
+        android:clipToPadding="false"
+        android:orientation="horizontal" />
 
     <ImageButton
         android:id="@+id/btnFollow"
