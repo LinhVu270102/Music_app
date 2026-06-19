@@ -470,4 +470,19 @@
     <string name="following_count_format">%1$d following</string>
     <string name="my_uploaded_music_count">My music (%1$d)</string>
     <string name="profile_extra_info_full_format">Full name: %1$s\nPhone: %2$s\nGender: %3$s\nCountry: %4$s\nFavorite genres: %5$s\nMusic moods: %6$s</string>
+    <string name="report_icon">⚠</string>
+    <string name="comment_icon">💬</string>
+    <string name="delete_icon">🗑</string>
+
+    <string name="report_song_subtitle">Tell us why this song should be reviewed by admin.</string>
+    <string name="report_song_name_format">%1$s - %2$s</string>
+    <string name="report_reason_spam">Spam or misleading content</string>
+    <string name="report_reason_offensive">Offensive or inappropriate content</string>
+    <string name="report_reason_copyright">Copyright issue</string>
+    <string name="report_reason_other">Other reason</string>
+    <string name="report_description_optional">Add more details, optional</string>
+    <string name="comment_options">Comment options</string>
+    <string name="report_comment_subtitle">Tell us why this comment should be reviewed by admin.</string>
+    <string name="report_comment_content_format">%1$s: %2$s</string>
+    <string name="report_reason_harassment">Harassment or bullying</string>
 </resources>

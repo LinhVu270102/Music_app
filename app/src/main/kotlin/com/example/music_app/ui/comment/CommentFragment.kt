@@ -17,7 +17,10 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentCommentBinding
 import com.example.music_app.main.MainActivity
 import com.google.firebase.auth.FirebaseAuth
-
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import com.example.music_app.databinding.DialogCommentOptionsBinding
+import com.example.music_app.databinding.DialogReportCommentBinding
 class CommentFragment : Fragment(R.layout.fragment_comment) {
 
     private var _binding: FragmentCommentBinding? = null
@@ -135,41 +138,36 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         comment: Comment,
         anchor: View
     ) {
-        val popup = PopupMenu(requireContext(), anchor)
+        val dialogBinding = DialogCommentOptionsBinding.inflate(layoutInflater)
 
-        popup.menu.add(
-            0,
-            MENU_REPORT_COMMENT,
-            0,
-            getString(R.string.report_comment)
-        )
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogBinding.root)
+            .create()
 
-        if (canHideComment(comment)) {
-            popup.menu.add(
-                0,
-                MENU_HIDE_COMMENT,
-                1,
-                getString(R.string.hide_comment)
-            )
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        dialogBinding.txtCommentPreview.text = comment.content.ifBlank {
+            getString(R.string.no_report_description)
         }
 
-        popup.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                MENU_REPORT_COMMENT -> {
-                    showReportCommentDialog(comment)
-                    true
-                }
-
-                MENU_HIDE_COMMENT -> {
-                    confirmHideComment(comment)
-                    true
-                }
-
-                else -> false
+        dialogBinding.actionHideComment.visibility =
+            if (canHideComment(comment)) {
+                View.VISIBLE
+            } else {
+                View.GONE
             }
+
+        dialogBinding.actionReportComment.setOnClickListener {
+            dialog.dismiss()
+            showReportCommentDialog(comment)
         }
 
-        popup.show()
+        dialogBinding.actionHideComment.setOnClickListener {
+            dialog.dismiss()
+            confirmHideComment(comment)
+        }
+
+        dialog.show()
     }
 
     private fun canHideComment(comment: Comment): Boolean {
@@ -180,26 +178,57 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
     }
 
     private fun showReportCommentDialog(comment: Comment) {
-        val input = EditText(requireContext()).apply {
-            hint = getString(R.string.enter_report_reason)
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            minLines = 3
-            maxLines = 5
-            setPadding(32, 24, 32, 24)
+        val dialogBinding = DialogReportCommentBinding.inflate(layoutInflater)
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogBinding.root)
+            .create()
+
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        dialogBinding.txtReportedCommentPreview.text =
+            getString(
+                R.string.report_comment_content_format,
+                comment.displayName.ifBlank { getString(R.string.unknown_user) },
+                comment.content
+            )
+
+        dialogBinding.radioCommentSpam.isChecked = true
+
+        dialogBinding.btnCancelCommentReport.setOnClickListener {
+            dialog.dismiss()
         }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.report_comment))
-            .setView(input)
-            .setPositiveButton(getString(R.string.report)) { _, _ ->
-                viewModel.reportComment(
-                    songId = songId,
-                    comment = comment,
-                    reason = input.text.toString()
-                )
+        dialogBinding.btnSubmitCommentReport.setOnClickListener {
+            val reason = when (dialogBinding.radioCommentReportReasons.checkedRadioButtonId) {
+                R.id.radioCommentSpam -> getString(R.string.report_reason_spam)
+                R.id.radioCommentOffensive -> getString(R.string.report_reason_offensive)
+                R.id.radioCommentHarassment -> getString(R.string.report_reason_harassment)
+                R.id.radioCommentOther -> getString(R.string.report_reason_other)
+                else -> ""
             }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+
+            if (reason.isBlank()) {
+                showToast(getString(R.string.report_reason_empty))
+                return@setOnClickListener
+            }
+
+            val description = dialogBinding.edtCommentReportDescription.text
+                ?.toString()
+                ?.trim()
+                .orEmpty()
+
+            dialog.dismiss()
+
+            viewModel.reportComment(
+                songId = songId,
+                comment = comment,
+                reason = reason,
+                description = description
+            )
+        }
+
+        dialog.show()
     }
 
     private fun confirmHideComment(comment: Comment) {

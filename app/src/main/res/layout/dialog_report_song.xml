@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/dialogReportSongRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_admin_card"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/txtReportTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/report_song"
+        android:textColor="@color/white"
+        android:textSize="21sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/txtReportSubtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="@string/report_song_subtitle"
+        android:textColor="#BDBDBD"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/txtReportSongName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:background="@drawable/bg_search_box"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:padding="12dp"
+        android:text="@string/song_title_placeholder"
+        android:textColor="@color/white"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <RadioGroup
+        android:id="@+id/radioReportReasons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:orientation="vertical">
+
+        <RadioButton
+            android:id="@+id/radioSpam"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/report_reason_spam"
+            android:textColor="@color/white" />
+
+        <RadioButton
+            android:id="@+id/radioOffensive"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/report_reason_offensive"
+            android:textColor="@color/white" />
+
+        <RadioButton
+            android:id="@+id/radioCopyright"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/report_reason_copyright"
+            android:textColor="@color/white" />
+
+        <RadioButton
+            android:id="@+id/radioOther"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/report_reason_other"
+            android:textColor="@color/white" />
+
+    </RadioGroup>
+
+    <EditText
+        android:id="@+id/edtReportDescription"
+        android:layout_width="match_parent"
+        android:layout_height="96dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_search_box"
+        android:gravity="top"
+        android:hint="@string/report_description_optional"
+        android:inputType="textMultiLine"
+        android:maxLines="4"
+        android:padding="12dp"
+        android:textColor="@color/white"
+        android:textColorHint="#8E8E8E"
+        android:textSize="14sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnCancelReport"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_marginEnd="6dp"
+            android:layout_weight="1"
+            android:backgroundTint="#616161"
+            android:text="@string/cancel"
+            android:textAllCaps="false"
+            android:textColor="@color/white" />
+
+        <Button
+            android:id="@+id/btnSubmitReport"
+            android:layout_width="0dp"
+            android:layout_height="46dp"
+            android:layout_marginStart="6dp"
+            android:layout_weight="1"
+            android:backgroundTint="@color/orange"
+            android:text="@string/report"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:textStyle="bold" />
+
+    </LinearLayout>
+
+</LinearLayout>
