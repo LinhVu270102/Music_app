@@ -434,4 +434,13 @@
     <string name="reject_report">Reject report</string>
     <string name="hide_reported_target">Hide reported target</string>
     <string name="report_reason">Report reason</string>
+    <string name="comment_moderation">Comment moderation</string>
+    <string name="open_comment_moderation">Open comment moderation</string>
+    <string name="no_reported_comments">No reported comments.</string>
+    <string name="load_reported_comments_failed">Could not load reported comments.</string>
+    <string name="comment_hidden_success">Comment hidden.</string>
+    <string name="comment_hidden_failed">Could not hide comment.</string>
+    <string name="comment_song_format">Song: %1$s</string>
+    <string name="comment_song_placeholder">Song</string>
+    <string name="hide_comment">Hide comment</string>
 </resources>

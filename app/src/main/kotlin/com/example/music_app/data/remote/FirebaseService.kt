@@ -702,6 +702,30 @@ class FirebaseService(
             .update("commentsCount", FieldValue.increment(-1))
             .await()
     }
+
+    suspend fun getReportedComments(): List<Comment> {
+        val snapshot = firestore.collectionGroup("comments")
+            .get()
+            .await()
+
+        return snapshot.documents.mapNotNull { doc ->
+            val reportsCount = doc.getLong("reportsCount") ?: 0L
+            val isDeleted = doc.getBoolean("isDeleted") ?: false
+
+            if (reportsCount <= 0L || isDeleted) {
+                return@mapNotNull null
+            }
+
+            val parentSongId = doc.reference.parent.parent?.id.orEmpty()
+
+            doc.toObject(Comment::class.java)?.copy(
+                id = doc.id,
+                songId = parentSongId
+            )
+        }.sortedByDescending { comment ->
+            comment.createdAt
+        }
+    }
     // =========================
 // REPORT
 // =========================
