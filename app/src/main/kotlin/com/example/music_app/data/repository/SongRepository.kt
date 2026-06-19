@@ -471,7 +471,8 @@ class SongRepository {
 
     suspend fun addComment(
         songId: String,
-        content: String
+        content: String,
+        timelinePositionMs: Long = 0L
     ): Comment {
         val userId = auth.currentUser?.uid
             ?: throw AppException(R.string.not_logged_in)
@@ -482,7 +483,8 @@ class SongRepository {
         return firebaseService.addComment(
             songId = songId,
             user = user,
-            content = content
+            content = content,
+            timelinePositionMs = timelinePositionMs
         )
     }
 

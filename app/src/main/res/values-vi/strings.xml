@@ -485,4 +485,10 @@
     <string name="report_comment_subtitle">Cho quản trị viên biết lý do bình luận này cần được xem xét.</string>
     <string name="report_comment_content_format">%1$s: %2$s</string>
     <string name="report_reason_harassment">Quấy rối hoặc bắt nạt</string>
+    <string name="time_now">vừa xong</string>
+    <string name="time_minutes_ago">%1$d phút</string>
+    <string name="time_hours_ago">%1$d giờ</string>
+    <string name="time_days_ago">%1$d ngày</string>
+    <string name="time_months_ago">%1$d tháng</string>
+    <string name="time_years_ago">%1$d năm</string>
 </resources>

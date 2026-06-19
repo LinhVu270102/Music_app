@@ -2,10 +2,7 @@ package com.example.music_app.ui.comment
 
 import android.app.AlertDialog
 import android.os.Bundle
-import android.text.InputType
 import android.view.View
-import android.widget.EditText
-import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -21,6 +18,7 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import com.example.music_app.databinding.DialogCommentOptionsBinding
 import com.example.music_app.databinding.DialogReportCommentBinding
+import com.example.music_app.player.PlayerManager
 class CommentFragment : Fragment(R.layout.fragment_comment) {
 
     private var _binding: FragmentCommentBinding? = null
@@ -96,7 +94,19 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
                 return@setOnClickListener
             }
 
-            viewModel.addComment(songId, content)
+            val timelinePositionMs =
+                if (PlayerManager.currentSong.value?.id == songId) {
+                    PlayerManager.getCurrentPosition()
+                } else {
+                    0L
+                }
+
+            viewModel.addComment(
+                songId = songId,
+                content = content,
+                timelinePositionMs = timelinePositionMs
+            )
+
             binding.edtComment.text?.clear()
         }
     }

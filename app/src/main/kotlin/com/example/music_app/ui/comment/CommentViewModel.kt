@@ -47,10 +47,19 @@ class CommentViewModel : ViewModel() {
         }
     }
 
-    fun addComment(songId: String, content: String) {
+    fun addComment(
+        songId: String,
+        content: String,
+        timelinePositionMs: Long = 0L
+    ) {
         viewModelScope.launch {
             try {
-                songRepository.addComment(songId, content)
+                songRepository.addComment(
+                    songId = songId,
+                    content = content,
+                    timelinePositionMs = timelinePositionMs
+                )
+
                 _successMessageResId.value = R.string.comment_added_success
                 loadComments(songId)
                 loadSong(songId)
