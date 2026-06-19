@@ -10,6 +10,7 @@ import kotlinx.coroutines.tasks.await
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.remote.FirebaseService
 import com.example.music_app.data.model.Report
+import com.example.music_app.data.model.Comment
 
 class AdminRepository {
 
@@ -176,6 +177,17 @@ class AdminRepository {
         }
 
         resolveReport(report.id)
+    }
+    suspend fun getReportedComments(): List<Comment> {
+        return firebaseService.getReportedComments()
+    }
+
+    suspend fun hideComment(comment: Comment) {
+        firebaseService.softDeleteComment(
+            songId = comment.songId,
+            commentId = comment.id,
+            deletedBy = currentAdminId()
+        )
     }
 
     companion object {

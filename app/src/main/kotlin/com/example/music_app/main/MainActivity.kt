@@ -39,6 +39,7 @@ import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import com.example.music_app.ui.admin.AdminModerationFragment
 import com.example.music_app.ui.admin.AdminReportFragment
+import com.example.music_app.ui.admin.AdminCommentModerationFragment
 
 class MainActivity : BaseActivity<ActivityMainBinding>() {
 
@@ -157,6 +158,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                     currentFragment is CommentFragment ||
                     currentFragment is AdminDashboardFragment ||
                     currentFragment is AdminReportFragment ||
+                    currentFragment is AdminCommentModerationFragment ||
                     currentFragment is AdminModerationFragment
 
         if (shouldHideMainChrome) {

@@ -52,6 +52,13 @@ class AdminDashboardFragment : Fragment(R.layout.fragment_admin_dashboard) {
                 .addToBackStack(null)
                 .commit()
         }
+
+        binding.btnOpenCommentModeration.setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragmentContainer, AdminCommentModerationFragment())
+                .addToBackStack(null)
+                .commit()
+        }
     }
 
     private fun observeViewModel() {

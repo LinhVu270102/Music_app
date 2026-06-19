@@ -434,4 +434,13 @@
     <string name="reject_report">Từ chối báo cáo</string>
     <string name="hide_reported_target">Ẩn nội dung bị báo cáo</string>
     <string name="report_reason">Lý do báo cáo</string>
+    <string name="comment_moderation">Kiểm duyệt bình luận</string>
+    <string name="open_comment_moderation">Mở kiểm duyệt bình luận</string>
+    <string name="no_reported_comments">Không có bình luận bị báo cáo.</string>
+    <string name="load_reported_comments_failed">Không thể tải bình luận bị báo cáo.</string>
+    <string name="comment_hidden_success">Đã ẩn bình luận.</string>
+    <string name="comment_hidden_failed">Không thể ẩn bình luận.</string>
+    <string name="comment_song_format">Bài hát: %1$s</string>
+    <string name="comment_song_placeholder">Bài hát</string>
+    <string name="hide_comment">Ẩn bình luận</string>
 </resources>
