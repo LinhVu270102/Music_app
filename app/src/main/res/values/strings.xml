@@ -360,5 +360,20 @@
     <string name="comments_turned_off">Comments turned off</string>
     <string name="followed_successfully">Followed successfully</string>
     <string name="unfollowed_successfully">Unfollowed successfully</string>
-
+    <string name="edit_profile">Edit profile</string>
+    <string name="default_bio">No bio yet</string>
+    <string name="profile_extra_info_placeholder">Profile information has not been updated</string>
+    <string name="profile_extra_info_format">Country: %1$s\nGender: %2$s\nFavorite genres: %3$s</string>
+    <string name="not_updated">Not updated</string>
+    <string name="full_name">Full name</string>
+    <string name="username">Username</string>
+    <string name="bio">Bio</string>
+    <string name="phone_number">Phone number</string>
+    <string name="gender">Gender</string>
+    <string name="country">Country</string>
+    <string name="favorite_genres_hint">Favorite genres, separated by commas</string>
+    <string name="music_mood_tags_hint">Music moods, separated by commas</string>
+    <string name="save">Save</string>
+    <string name="update_profile_success">Profile updated successfully</string>
+    <string name="display_name_required">Display name is required</string>
 </resources>

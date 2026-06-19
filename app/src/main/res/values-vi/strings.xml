@@ -360,4 +360,20 @@
     <string name="comments_turned_off">Đã tắt bình luận</string>
     <string name="followed_successfully">Đã theo dõi</string>
     <string name="unfollowed_successfully">Đã hủy theo dõi</string>
+    <string name="edit_profile">Chỉnh sửa hồ sơ</string>
+    <string name="default_bio">Chưa có tiểu sử</string>
+    <string name="profile_extra_info_placeholder">Thông tin hồ sơ chưa được cập nhật</string>
+    <string name="profile_extra_info_format">Quốc gia: %1$s\nGiới tính: %2$s\nThể loại yêu thích: %3$s</string>
+    <string name="not_updated">Chưa cập nhật</string>
+    <string name="full_name">Họ và tên</string>
+    <string name="username">Tên người dùng</string>
+    <string name="bio">Tiểu sử</string>
+    <string name="phone_number">Số điện thoại</string>
+    <string name="gender">Giới tính</string>
+    <string name="country">Quốc gia</string>
+    <string name="favorite_genres_hint">Thể loại yêu thích, cách nhau bằng dấu phẩy</string>
+    <string name="music_mood_tags_hint">Tâm trạng nghe nhạc, cách nhau bằng dấu phẩy</string>
+    <string name="save">Lưu</string>
+    <string name="update_profile_success">Cập nhật hồ sơ thành công</string>
+    <string name="display_name_required">Tên hiển thị không được để trống</string>
 </resources>
