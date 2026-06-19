@@ -1,0 +1,13 @@
+{
+  "name": "orange-music-firebase-seed",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "seed": "node seed-demo-data.js seed",
+    "rollback": "node seed-demo-data.js rollback"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}
