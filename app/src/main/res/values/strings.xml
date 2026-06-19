@@ -396,9 +396,6 @@
     <string name="delete_song">Delete song</string>
     <string name="delete_song_confirm">Are you sure you want to delete this song?</string>
     <string name="delete_song_failed">Delete song failed</string>
-    <string name="lock_comments">Lock comments</string>
-    <string name="unlock_comments">Unlock comments</string>
-    <string name="update_comment_permission_failed">Update comment permission failed</string>
     <string name="report_song">Report song</string>
     <string name="report">Report</string>
     <string name="enter_report_reason">Enter report reason</string>
@@ -407,4 +404,16 @@
     <string name="no_admin_notifications">No urgent moderation notifications.</string>
     <string name="admin_notification_summary">%1$d songs are waiting for review, %2$d reports are pending, and %3$d songs have been reported.</string>
     <string name="load_admin_dashboard_failed">Could not load admin dashboard.</string>
+    <string name="reload">Reload</string>
+    <string name="no_pending_songs">No pending songs.</string>
+    <string name="unknown_genre">Unknown genre</string>
+    <string name="reports_count">%1$d reports</string>
+    <string name="reports_count_placeholder">0 reports</string>
+    <string name="comments_enabled">Comments enabled</string>
+    <string name="comments_disabled">Comments disabled</string>
+    <string name="lock_comments">Lock comments</string>
+    <string name="unlock_comments">Unlock comments</string>
+    <string name="hide_song">Hide song</string>
+    <string name="update_comment_permission_success">Comment permission updated.</string>
+    <string name="update_comment_permission_failed">Could not update comment permission.</string>
 </resources>

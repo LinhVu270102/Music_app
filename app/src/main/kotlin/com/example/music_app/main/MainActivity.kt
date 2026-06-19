@@ -37,6 +37,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.abs
+import com.example.music_app.ui.admin.AdminModerationFragment
 
 class MainActivity : BaseActivity<ActivityMainBinding>() {
 
@@ -153,7 +154,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         val shouldHideMainChrome =
             currentFragment is PlayerFragment ||
                     currentFragment is CommentFragment ||
-                    currentFragment is AdminDashboardFragment
+                    currentFragment is AdminDashboardFragment ||
+                    currentFragment is AdminModerationFragment
 
         if (shouldHideMainChrome) {
             binding.appFooter.visibility = View.GONE

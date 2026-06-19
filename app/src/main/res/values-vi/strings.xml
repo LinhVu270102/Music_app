@@ -396,9 +396,6 @@
     <string name="delete_song">Xóa bài hát</string>
     <string name="delete_song_confirm">Bạn có chắc muốn xóa bài hát này không?</string>
     <string name="delete_song_failed">Xóa bài hát thất bại</string>
-    <string name="lock_comments">Khóa bình luận</string>
-    <string name="unlock_comments">Mở bình luận</string>
-    <string name="update_comment_permission_failed">Cập nhật quyền bình luận thất bại</string>
     <string name="report_song">Báo cáo bài hát</string>
     <string name="report">Báo cáo</string>
     <string name="enter_report_reason">Nhập lý do báo cáo</string>
@@ -407,4 +404,16 @@
     <string name="no_admin_notifications">Không có thông báo kiểm duyệt khẩn cấp.</string>
     <string name="admin_notification_summary">Có %1$d bài hát đang chờ duyệt, %2$d báo cáo đang chờ xử lý và %3$d bài hát đã bị báo cáo.</string>
     <string name="load_admin_dashboard_failed">Không thể tải bảng quản trị.</string>
+    <string name="reload">Tải lại</string>
+    <string name="no_pending_songs">Không có bài hát đang chờ duyệt.</string>
+    <string name="unknown_genre">Chưa rõ thể loại</string>
+    <string name="reports_count">%1$d báo cáo</string>
+    <string name="reports_count_placeholder">0 báo cáo</string>
+    <string name="comments_enabled">Đang cho phép bình luận</string>
+    <string name="comments_disabled">Đã khóa bình luận</string>
+    <string name="lock_comments">Khóa bình luận</string>
+    <string name="unlock_comments">Mở bình luận</string>
+    <string name="hide_song">Ẩn bài hát</string>
+    <string name="update_comment_permission_success">Đã cập nhật quyền bình luận.</string>
+    <string name="update_comment_permission_failed">Không thể cập nhật quyền bình luận.</string>
 </resources>
