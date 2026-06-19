@@ -35,14 +35,18 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.viewpager2.widget.ViewPager2
+import com.example.music_app.ui.home.MiniPlayerPagerAdapter
 
 class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     private val songRepository = SongRepository()
     private val firebaseService = FirebaseService(FirebaseFirestore.getInstance())
-
     private var currentMiniSong: Song? = null
     private var isCurrentSongLiked = false
+    private lateinit var miniPlayerPagerAdapter: MiniPlayerPagerAdapter
+    private var ignoreMiniPagerCallback = false
+    private var miniPagerUserDragging = false
 
     private val requestNotificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -212,6 +216,48 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         binding.miniPlayer.root.visibility = View.GONE
         updateMiniPlayerLikeIcon()
 
+        miniPlayerPagerAdapter = MiniPlayerPagerAdapter { song ->
+            openPlayerFragment(song.id)
+        }
+
+        binding.miniPlayer.vpMiniPlayer.adapter = miniPlayerPagerAdapter
+        binding.miniPlayer.vpMiniPlayer.offscreenPageLimit = 1
+
+        binding.miniPlayer.vpMiniPlayer.registerOnPageChangeCallback(
+            object : ViewPager2.OnPageChangeCallback() {
+
+                override fun onPageScrollStateChanged(state: Int) {
+                    super.onPageScrollStateChanged(state)
+
+                    when (state) {
+                        ViewPager2.SCROLL_STATE_DRAGGING -> {
+                            miniPagerUserDragging = true
+                        }
+
+                        ViewPager2.SCROLL_STATE_IDLE -> {
+                            miniPagerUserDragging = false
+                        }
+                    }
+                }
+
+                override fun onPageSelected(position: Int) {
+                    super.onPageSelected(position)
+
+                    if (ignoreMiniPagerCallback) return
+                    if (!miniPagerUserDragging) return
+
+                    PlayerManager.playSongAt(position)
+                }
+            }
+        )
+
+        PlayerManager.playlistSongs.observe(this) { songs ->
+            miniPlayerPagerAdapter.submitList(songs) {
+                val index = PlayerManager.currentIndex.value ?: -1
+                setMiniPlayerPage(index, smoothScroll = false)
+            }
+        }
+
         PlayerManager.currentSong.observe(this) { song ->
             if (song == null) {
                 currentMiniSong = null
@@ -223,15 +269,15 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
             currentMiniSong = song
 
-            binding.miniPlayer.trackTitle.text = song.title
-            binding.miniPlayer.trackArtist.text = song.artist
-
             loadMiniPlayerLikeState(song.id)
             updateMiniPlayerVisibility()
 
-            binding.miniPlayer.root.setOnClickListener {
-                openPlayerFragment(song.id)
-            }
+            val index = PlayerManager.currentIndex.value ?: -1
+            setMiniPlayerPage(index, smoothScroll = true)
+        }
+
+        PlayerManager.currentIndex.observe(this) { index ->
+            setMiniPlayerPage(index, smoothScroll = true)
         }
 
         PlayerManager.isPlaying.observe(this) { isPlaying ->
@@ -251,6 +297,28 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
         binding.miniPlayer.btnLike.setOnClickListener {
             toggleMiniPlayerLike()
+        }
+    }
+
+    private fun setMiniPlayerPage(
+        index: Int,
+        smoothScroll: Boolean
+    ) {
+        if (index < 0) return
+        if (!::miniPlayerPagerAdapter.isInitialized) return
+        if (miniPlayerPagerAdapter.itemCount == 0) return
+        if (index >= miniPlayerPagerAdapter.itemCount) return
+        if (binding.miniPlayer.vpMiniPlayer.currentItem == index) return
+
+        ignoreMiniPagerCallback = true
+
+        binding.miniPlayer.vpMiniPlayer.setCurrentItem(
+            index,
+            smoothScroll
+        )
+
+        binding.miniPlayer.vpMiniPlayer.post {
+            ignoreMiniPagerCallback = false
         }
     }
 

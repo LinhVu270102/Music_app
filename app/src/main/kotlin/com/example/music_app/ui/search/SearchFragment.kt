@@ -35,6 +35,8 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     private lateinit var searchAdapter: SearchAdapter
 
     private var allSongs: List<Song> = emptyList()
+
+    private var currentSearchSongs: List<Song> = emptyList()
     private var currentTab = SearchTab.ALL
 
     private var searchJob: Job? = null
@@ -65,7 +67,8 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         searchAdapter = SearchAdapter { song ->
             PlaybackLauncher.openPlayer(
                 fragment = this,
-                song = song
+                song = song,
+                playlist = currentSearchSongs
             )
         }
 
@@ -205,7 +208,10 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
         viewModel.playSongEvent.observe(viewLifecycleOwner) { song ->
             song?.let {
-                PlayerManager.play(it)
+                PlayerManager.playPlaylist(
+                    songs = currentSearchSongs.ifEmpty { allSongs },
+                    startSong = it
+                )
 
                 parentFragmentManager.beginTransaction()
                     .replace(R.id.fragmentContainer, PlayerFragment.newInstance(it.id))
@@ -299,6 +305,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
     private fun filterSongsByCurrentTab(keyword: String) {
         if (keyword.isBlank()) {
+            currentSearchSongs = emptyList()
             searchAdapter.setData(emptyList())
             return
         }
@@ -329,6 +336,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             }
         }
 
+        currentSearchSongs = result
         searchAdapter.setData(result)
     }
 

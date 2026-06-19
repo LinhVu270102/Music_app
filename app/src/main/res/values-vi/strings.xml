@@ -346,4 +346,16 @@
     <string name="player_not_ready">Trình phát chưa sẵn sàng</string>
 
     <string name="soundcloud_rate_limited">SoundCloud đang giới hạn lượt phát. Vui lòng thử lại sau.</string>
+
+    <string name="no_permission">Bạn không có quyền thực hiện thao tác này</string>
+    <string name="song_deleted">Bài hát này đã bị xóa</string>
+    <string name="comments_locked">Bài hát này đã tắt bình luận</string>
+    <string name="comment_not_found">Không tìm thấy bình luận</string>
+    <string name="invalid_report_target">Đối tượng báo cáo không hợp lệ</string>
+    <string name="report_reason_empty">Vui lòng chọn lý do báo cáo</string>
+    <string name="report_success">Đã gửi báo cáo thành công</string>
+    <string name="delete_song_success">Đã xóa bài hát thành công</string>
+    <string name="delete_comment_success">Đã xóa bình luận thành công</string>
+    <string name="comments_turned_on">Đã bật bình luận</string>
+    <string name="comments_turned_off">Đã tắt bình luận</string>
 </resources>

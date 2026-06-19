@@ -3,6 +3,9 @@ package com.example.music_app.data.repository
 import com.example.music_app.R
 import com.example.music_app.data.model.Comment
 import com.example.music_app.data.model.Playlist
+import com.example.music_app.data.model.Report
+import com.example.music_app.data.model.ReportStatus
+import com.example.music_app.data.model.ReportTargetType
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.SongStatus
 import com.example.music_app.data.model.User
@@ -29,11 +32,14 @@ class SongRepository {
 
     /**
      * Public song list.
-     * Home/Search/Library chỉ nên hiển thị bài đã được admin duyệt.
+     * Home/Search/Library chỉ nên hiển thị bài đã được admin duyệt
+     * và chưa bị xóa mềm.
      */
     suspend fun getAllSongs(): List<Song> {
         return firebaseService.getAllSongsWithIds()
-            .filter { song -> song.status == SongStatus.APPROVED }
+            .filter { song ->
+                song.status == SongStatus.APPROVED && !song.isDeleted
+            }
     }
 
     /**
@@ -46,6 +52,10 @@ class SongRepository {
 
     suspend fun saveRecentlyPlayed(song: Song) {
         val userId = auth.currentUser?.uid ?: return
+
+        if (song.id.isBlank()) return
+        if (song.isDeleted) return
+
         firebaseService.saveRecentlyPlayed(userId, song.id)
     }
 
@@ -53,6 +63,9 @@ class SongRepository {
         val userId = auth.currentUser?.uid ?: return emptyList()
 
         return firebaseService.getRecentlyPlayedSongs(userId)
+            .filter { song ->
+                song.status == SongStatus.APPROVED && !song.isDeleted
+            }
     }
 
     // =========================
@@ -67,6 +80,7 @@ class SongRepository {
     /**
      * Dùng cho màn Your Upload.
      * Chủ tài khoản nên thấy cả pending / approved / rejected.
+     * Không lọc isDeleted ở đây để nếu muốn sau này vẫn có thể hiện trạng thái đã xóa.
      */
     suspend fun getMyUploadedSongs(): List<Song> {
         val userId = auth.currentUser?.uid ?: return emptyList()
@@ -74,12 +88,71 @@ class SongRepository {
     }
 
     /**
+     * 2.3
+     * Người đăng hoặc admin xóa mềm bài hát.
+     */
+    suspend fun softDeleteMySong(songId: String) {
+        val userId = auth.currentUser?.uid
+            ?: throw AppException(R.string.not_logged_in)
+
+        val song = firebaseService.getSongById(songId)
+            ?: throw AppException(R.string.invalid_song)
+
+        val currentUser = firebaseService.getUserById(userId)
+            ?: throw AppException(R.string.user_not_found)
+
+        val isOwner = song.uploaderId == userId
+        val isAdmin = currentUser.role == UserRole.ADMIN
+
+        if (!isOwner && !isAdmin) {
+            throw AppException(R.string.no_permission)
+        }
+
+        firebaseService.softDeleteSong(
+            songId = songId,
+            deletedBy = userId
+        )
+    }
+
+    /**
+     * 2.4
+     * Người đăng hoặc admin bật/tắt bình luận của bài hát.
+     */
+    suspend fun updateMySongCommentPermission(
+        songId: String,
+        allowComments: Boolean
+    ) {
+        val userId = auth.currentUser?.uid
+            ?: throw AppException(R.string.not_logged_in)
+
+        val song = firebaseService.getSongById(songId)
+            ?: throw AppException(R.string.invalid_song)
+
+        val currentUser = firebaseService.getUserById(userId)
+            ?: throw AppException(R.string.user_not_found)
+
+        val isOwner = song.uploaderId == userId
+        val isAdmin = currentUser.role == UserRole.ADMIN
+
+        if (!isOwner && !isAdmin) {
+            throw AppException(R.string.no_permission)
+        }
+
+        firebaseService.updateSongCommentPermission(
+            songId = songId,
+            allowComments = allowComments
+        )
+    }
+
+    /**
      * Dùng khi người khác xem profile user.
-     * Chỉ hiển thị bài đã được duyệt.
+     * Chỉ hiển thị bài đã được duyệt và chưa bị xóa.
      */
     suspend fun getSongsByUserId(userId: String): List<Song> {
         return firebaseService.getSongsByUploaderId(userId)
-            .filter { song -> song.status == SongStatus.APPROVED }
+            .filter { song ->
+                song.status == SongStatus.APPROVED && !song.isDeleted
+            }
     }
 
     suspend fun getUserById(userId: String): User? {
@@ -100,6 +173,8 @@ class SongRepository {
 
         return snapshot.documents.mapNotNull { document ->
             document.toObject(Song::class.java)?.copy(id = document.id)
+        }.filter { song ->
+            !song.isDeleted
         }
     }
 
@@ -160,11 +235,18 @@ class SongRepository {
 
     suspend fun likeSong(song: Song) {
         val userId = auth.currentUser?.uid ?: return
+
+        if (song.id.isBlank()) return
+        if (song.isDeleted) return
+
         firebaseService.likeSong(userId, song.id)
     }
 
     suspend fun unlikeSong(song: Song) {
         val userId = auth.currentUser?.uid ?: return
+
+        if (song.id.isBlank()) return
+
         firebaseService.unlikeSong(userId, song.id)
     }
 
@@ -177,11 +259,16 @@ class SongRepository {
         val userId = auth.currentUser?.uid ?: return emptyList()
 
         return firebaseService.getLikedSongs(userId)
-            .filter { song -> song.status == SongStatus.APPROVED }
+            .filter { song ->
+                song.status == SongStatus.APPROVED && !song.isDeleted
+            }
     }
 
     suspend fun toggleLikeSong(song: Song): Boolean {
         val userId = auth.currentUser?.uid ?: return false
+
+        if (song.id.isBlank()) return false
+        if (song.isDeleted) return false
 
         val isLiked = firebaseService.isSongLiked(userId, song.id)
 
@@ -225,6 +312,10 @@ class SongRepository {
         val userId = auth.currentUser?.uid
             ?: throw AppException(R.string.not_logged_in)
 
+        if (song.isDeleted) {
+            throw AppException(R.string.song_deleted)
+        }
+
         firebaseService.addSongToPlaylist(userId, playlistId, song)
     }
 
@@ -242,7 +333,9 @@ class SongRepository {
         val userId = auth.currentUser?.uid ?: return emptyList()
 
         return firebaseService.getPlaylistSongs(userId, playlistId)
-            .filter { song -> song.status == SongStatus.APPROVED }
+            .filter { song ->
+                song.status == SongStatus.APPROVED && !song.isDeleted
+            }
     }
 
     // =========================
@@ -300,6 +393,79 @@ class SongRepository {
     }
 
     // =========================
+    // REPORT
+    // =========================
+
+    /**
+     * 2.5
+     * User report bài hát.
+     */
+    suspend fun reportSong(
+        songId: String,
+        reason: String,
+        description: String = ""
+    ): Report {
+        val userId = auth.currentUser?.uid
+            ?: throw AppException(R.string.not_logged_in)
+
+        val user = firebaseService.getUserById(userId)
+            ?: throw AppException(R.string.user_not_found)
+
+        val song = firebaseService.getSongById(songId)
+            ?: throw AppException(R.string.invalid_song)
+
+        if (song.isDeleted) {
+            throw AppException(R.string.song_deleted)
+        }
+
+        val report = Report(
+            targetId = songId,
+            targetType = ReportTargetType.SONG,
+            reporterId = userId,
+            reporterName = user.displayName.ifBlank { user.email },
+            reason = reason,
+            description = description,
+            status = ReportStatus.PENDING
+        )
+
+        return firebaseService.createReport(report)
+    }
+
+    /**
+     * 2.6
+     * User report comment.
+     *
+     * description lưu dạng:
+     * songId|nội dung mô tả
+     *
+     * để FirebaseService biết comment này thuộc bài nào.
+     */
+    suspend fun reportComment(
+        songId: String,
+        commentId: String,
+        reason: String,
+        description: String = ""
+    ): Report {
+        val userId = auth.currentUser?.uid
+            ?: throw AppException(R.string.not_logged_in)
+
+        val user = firebaseService.getUserById(userId)
+            ?: throw AppException(R.string.user_not_found)
+
+        val report = Report(
+            targetId = commentId,
+            targetType = ReportTargetType.COMMENT,
+            reporterId = userId,
+            reporterName = user.displayName.ifBlank { user.email },
+            reason = reason,
+            description = "$songId|$description",
+            status = ReportStatus.PENDING
+        )
+
+        return firebaseService.createReport(report)
+    }
+
+    // =========================
     // COMMENT
     // =========================
 
@@ -324,10 +490,45 @@ class SongRepository {
         return firebaseService.getComments(songId)
     }
 
-    suspend fun deleteComment(
+    /**
+     * 2.7
+     * Xóa mềm comment.
+     *
+     * Người được xóa:
+     * - chủ comment
+     * - chủ bài hát
+     * - admin
+     */
+    suspend fun softDeleteComment(
         songId: String,
         commentId: String
     ) {
-        firebaseService.deleteComment(songId, commentId)
+        val userId = auth.currentUser?.uid
+            ?: throw AppException(R.string.not_logged_in)
+
+        val currentUser = firebaseService.getUserById(userId)
+            ?: throw AppException(R.string.user_not_found)
+
+        val comments = firebaseService.getComments(songId)
+
+        val comment = comments.firstOrNull { it.id == commentId }
+            ?: throw AppException(R.string.comment_not_found)
+
+        val song = firebaseService.getSongById(songId)
+            ?: throw AppException(R.string.invalid_song)
+
+        val isCommentOwner = comment.userId == userId
+        val isSongOwner = song.uploaderId == userId
+        val isAdmin = currentUser.role == UserRole.ADMIN
+
+        if (!isCommentOwner && !isSongOwner && !isAdmin) {
+            throw AppException(R.string.no_permission)
+        }
+
+        firebaseService.softDeleteComment(
+            songId = songId,
+            commentId = commentId,
+            deletedBy = userId
+        )
     }
 }

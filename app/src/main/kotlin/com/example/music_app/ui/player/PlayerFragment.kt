@@ -416,7 +416,7 @@ class PlayerFragment : Fragment() {
             .setTitle(getString(R.string.current_playlist))
             .setItems(songTitles) { _, which ->
                 val selectedSong = songs[which]
-                PlayerManager.play(selectedSong)
+                PlayerManager.playSongAt(which)
                 updateUI(selectedSong)
             }
             .setPositiveButton(getString(R.string.add_current_song_to_playlist)) { _, _ ->

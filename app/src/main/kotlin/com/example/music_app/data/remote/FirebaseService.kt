@@ -13,6 +13,9 @@ import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 import com.example.music_app.data.model.SongStatus
 import com.google.firebase.firestore.FieldPath
+import com.example.music_app.data.model.Report
+import com.example.music_app.data.model.ReportStatus
+
 class FirebaseService(
     private val firestore: FirebaseFirestore
 ) {
@@ -39,6 +42,8 @@ class FirebaseService(
 
         return snapshot.documents.mapNotNull { doc ->
             doc.toObject(Song::class.java)?.copy(id = doc.id)
+        }.filter { song ->
+            !song.isDeleted
         }
     }
 
@@ -78,6 +83,7 @@ class FirebaseService(
     suspend fun getApprovedSongs(): List<Song> {
         val snapshot = firestore.collection("songs")
             .whereEqualTo("status", SongStatus.APPROVED)
+            .whereEqualTo("isDeleted", false)
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .get()
             .await()
@@ -120,6 +126,46 @@ class FirebaseService(
         firestore.collection("songs")
             .document(songId)
             .update(data)
+            .await()
+    }
+
+    suspend fun softDeleteSong(
+        songId: String,
+        deletedBy: String
+    ) {
+        if (songId.isBlank() || deletedBy.isBlank()) return
+
+        val now = System.currentTimeMillis()
+
+        firestore.collection("songs")
+            .document(songId)
+            .set(
+                mapOf(
+                    "isDeleted" to true,
+                    "deletedAt" to now,
+                    "deletedBy" to deletedBy,
+                    "updatedAt" to now
+                ),
+                SetOptions.merge()
+            )
+            .await()
+    }
+
+    suspend fun updateSongCommentPermission(
+        songId: String,
+        allowComments: Boolean
+    ) {
+        if (songId.isBlank()) return
+
+        firestore.collection("songs")
+            .document(songId)
+            .set(
+                mapOf(
+                    "allowComments" to allowComments,
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                SetOptions.merge()
+            )
             .await()
     }
 
@@ -571,6 +617,17 @@ class FirebaseService(
             throw AppException(R.string.comment_content_empty)
         }
 
+        val song = getSongById(songId)
+            ?: throw AppException(R.string.invalid_song)
+
+        if (song.isDeleted) {
+            throw AppException(R.string.song_deleted)
+        }
+
+        if (!song.allowComments) {
+            throw AppException(R.string.comments_locked)
+        }
+
         val commentRef = firestore.collection("songs")
             .document(songId)
             .collection("comments")
@@ -585,7 +642,8 @@ class FirebaseService(
             displayName = user.displayName.ifBlank { user.email },
             avatarUrl = user.avatarUrl,
             content = content,
-            createdAt = now
+            createdAt = now,
+            updatedAt = now
         )
 
         commentRef.set(comment).await()
@@ -610,25 +668,130 @@ class FirebaseService(
 
         return snapshot.documents.mapNotNull { doc ->
             doc.toObject(Comment::class.java)?.copy(id = doc.id)
+        }.filter { comment ->
+            !comment.isDeleted
         }
     }
 
-    suspend fun deleteComment(
+    suspend fun softDeleteComment(
         songId: String,
-        commentId: String
+        commentId: String,
+        deletedBy: String
     ) {
-        if (songId.isBlank() || commentId.isBlank()) return
+        if (songId.isBlank() || commentId.isBlank() || deletedBy.isBlank()) return
+
+        val now = System.currentTimeMillis()
 
         firestore.collection("songs")
             .document(songId)
             .collection("comments")
             .document(commentId)
-            .delete()
+            .set(
+                mapOf(
+                    "isDeleted" to true,
+                    "deletedAt" to now,
+                    "deletedBy" to deletedBy,
+                    "updatedAt" to now
+                ),
+                SetOptions.merge()
+            )
             .await()
 
         firestore.collection("songs")
             .document(songId)
             .update("commentsCount", FieldValue.increment(-1))
+            .await()
+    }
+    // =========================
+// REPORT
+// =========================
+
+    suspend fun createReport(report: Report): Report {
+        if (report.targetId.isBlank()) {
+            throw AppException(R.string.invalid_report_target)
+        }
+
+        if (report.reporterId.isBlank()) {
+            throw AppException(R.string.invalid_user)
+        }
+
+        if (report.reason.isBlank()) {
+            throw AppException(R.string.report_reason_empty)
+        }
+
+        val reportRef = firestore.collection("reports").document()
+        val now = System.currentTimeMillis()
+
+        val reportWithId = report.copy(
+            id = reportRef.id,
+            createdAt = now,
+            updatedAt = now
+        )
+
+        reportRef.set(reportWithId).await()
+
+        when (report.targetType) {
+            "song" -> {
+                firestore.collection("songs")
+                    .document(report.targetId)
+                    .update("reportsCount", FieldValue.increment(1))
+                    .await()
+            }
+
+            "comment" -> {
+                if (report.description.isNotBlank()) {
+                    val parts = report.description.split("|")
+                    val songId = parts.getOrNull(0).orEmpty()
+
+                    if (songId.isNotBlank()) {
+                        firestore.collection("songs")
+                            .document(songId)
+                            .collection("comments")
+                            .document(report.targetId)
+                            .update("reportsCount", FieldValue.increment(1))
+                            .await()
+                    }
+                }
+            }
+        }
+
+        return reportWithId
+    }
+
+    suspend fun getPendingReports(): List<Report> {
+        val snapshot = firestore.collection("reports")
+            .whereEqualTo("status", ReportStatus.PENDING)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .get()
+            .await()
+
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Report::class.java)?.copy(id = doc.id)
+        }
+    }
+
+    suspend fun updateReportStatus(
+        reportId: String,
+        status: String,
+        reviewedBy: String,
+        adminNote: String = ""
+    ) {
+        if (reportId.isBlank()) return
+
+        val now = System.currentTimeMillis()
+
+        firestore.collection("reports")
+            .document(reportId)
+            .set(
+                mapOf(
+                    "status" to status,
+                    "reviewedBy" to reviewedBy,
+                    "reviewedAt" to now,
+                    "adminNote" to adminNote,
+                    "updatedAt" to now
+                ),
+                SetOptions.merge()
+            )
             .await()
     }
 }
