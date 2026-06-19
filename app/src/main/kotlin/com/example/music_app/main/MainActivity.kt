@@ -44,6 +44,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     private val firebaseService = FirebaseService(FirebaseFirestore.getInstance())
     private var currentMiniSong: Song? = null
     private var isCurrentSongLiked = false
+    private var isCurrentUploaderFollowed = false
     private lateinit var miniPlayerPagerAdapter: MiniPlayerPagerAdapter
     private var ignoreMiniPagerCallback = false
     private var miniPagerUserDragging = false
@@ -262,14 +263,17 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             if (song == null) {
                 currentMiniSong = null
                 isCurrentSongLiked = false
+                isCurrentUploaderFollowed = false
                 binding.miniPlayer.root.visibility = View.GONE
                 updateMiniPlayerLikeIcon()
+                updateMiniPlayerFollowIcon(showButton = false)
                 return@observe
             }
 
             currentMiniSong = song
 
             loadMiniPlayerLikeState(song.id)
+            loadMiniPlayerFollowState(song)
             updateMiniPlayerVisibility()
 
             val index = PlayerManager.currentIndex.value ?: -1
@@ -297,6 +301,9 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
         binding.miniPlayer.btnLike.setOnClickListener {
             toggleMiniPlayerLike()
+        }
+        binding.miniPlayer.btnFollow.setOnClickListener {
+            toggleMiniPlayerFollow()
         }
     }
 
@@ -369,6 +376,105 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                 }
             }
         }
+    }
+    private fun loadMiniPlayerFollowState(song: Song) {
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+        val uploaderId = song.uploaderId
+
+        if (uploaderId.isBlank() || currentUserId == uploaderId) {
+            isCurrentUploaderFollowed = false
+            updateMiniPlayerFollowIcon(showButton = false)
+            return
+        }
+
+        updateMiniPlayerFollowIcon(showButton = true)
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val followed = songRepository.isFollowing(uploaderId)
+
+                withContext(Dispatchers.Main) {
+                    isCurrentUploaderFollowed = followed
+                    updateMiniPlayerFollowIcon(showButton = true)
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    isCurrentUploaderFollowed = false
+                    updateMiniPlayerFollowIcon(showButton = true)
+                }
+            }
+        }
+    }
+
+    private fun toggleMiniPlayerFollow() {
+        val song = currentMiniSong ?: return
+        val uploaderId = song.uploaderId
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+
+        if (uploaderId.isBlank()) {
+            Toast.makeText(
+                this,
+                getString(R.string.target_user_not_found),
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        if (currentUserId == uploaderId) {
+            Toast.makeText(
+                this,
+                getString(R.string.cannot_follow_yourself),
+                Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val followed = songRepository.toggleFollowUser(uploaderId)
+
+                withContext(Dispatchers.Main) {
+                    isCurrentUploaderFollowed = followed
+                    updateMiniPlayerFollowIcon(showButton = true)
+
+                    val message = if (followed) {
+                        getString(R.string.followed_successfully)
+                    } else {
+                        getString(R.string.unfollowed_successfully)
+                    }
+
+                    Toast.makeText(
+                        this@MainActivity,
+                        message,
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        e.message ?: getString(R.string.follow_failed),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+        }
+    }
+
+    private fun updateMiniPlayerFollowIcon(showButton: Boolean = true) {
+        binding.miniPlayer.btnFollow.visibility =
+            if (showButton) {
+                View.VISIBLE
+            } else {
+                View.GONE
+            }
+
+        binding.miniPlayer.btnFollow.alpha =
+            if (isCurrentUploaderFollowed) {
+                1f
+            } else {
+                0.4f
+            }
     }
 
     private fun updateMiniPlayerLikeIcon() {

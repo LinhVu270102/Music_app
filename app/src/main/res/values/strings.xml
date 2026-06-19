@@ -358,4 +358,7 @@
     <string name="delete_comment_success">Comment deleted successfully</string>
     <string name="comments_turned_on">Comments turned on</string>
     <string name="comments_turned_off">Comments turned off</string>
+    <string name="followed_successfully">Followed successfully</string>
+    <string name="unfollowed_successfully">Unfollowed successfully</string>
+
 </resources>
