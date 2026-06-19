@@ -459,4 +459,15 @@
     <string name="report_song_failed">Could not report song.</string>
     <string name="comments_locked_success">Comments locked.</string>
     <string name="comments_unlocked_success">Comments unlocked.</string>
+    <string name="username_format">@%1$s</string>
+    <string name="username_not_updated">Username not updated</string>
+    <string name="email_not_updated">Email not updated</string>
+    <string name="default_liked_song_count">0 liked</string>
+    <string name="default_followers_count">0 followers</string>
+    <string name="default_following_count">0 following</string>
+    <string name="liked_song_count_format">%1$d liked</string>
+    <string name="followers_count_format">%1$d followers</string>
+    <string name="following_count_format">%1$d following</string>
+    <string name="my_uploaded_music_count">My music (%1$d)</string>
+    <string name="profile_extra_info_full_format">Full name: %1$s\nPhone: %2$s\nGender: %3$s\nCountry: %4$s\nFavorite genres: %5$s\nMusic moods: %6$s</string>
 </resources>

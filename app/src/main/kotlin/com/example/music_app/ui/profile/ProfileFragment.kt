@@ -5,12 +5,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.model.User
 import com.example.music_app.databinding.FragmentProfileBinding
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
@@ -23,7 +25,6 @@ class ProfileFragment : Fragment() {
     private val viewModel: ProfileViewModel by viewModels()
 
     private lateinit var adapter: SongAdapter
-
     private var currentSongs: List<Song> = emptyList()
 
     override fun onCreateView(
@@ -50,8 +51,6 @@ class ProfileFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-
-        // Khi quay lại từ EditProfileFragment thì reload lại dữ liệu mới
         viewModel.loadProfile()
     }
 
@@ -77,72 +76,30 @@ class ProfileFragment : Fragment() {
 
     private fun observeViewModel() {
         viewModel.user.observe(viewLifecycleOwner) { user ->
-            if (user == null) {
-                binding.profileName.text = getString(R.string.guest)
-                binding.profileEmail.text = getString(R.string.not_logged_in)
-
-                binding.profileBio.text = getString(R.string.default_bio)
-                binding.profileExtraInfo.text = getString(R.string.profile_extra_info_placeholder)
-
-                Glide.with(this)
-                    .load(R.drawable.music_orange)
-                    .placeholder(R.drawable.music_orange)
-                    .error(R.drawable.music_orange)
-                    .into(binding.profileAvatar)
-
-                return@observe
-            }
-
-            binding.profileName.text = when {
-                user.fullName.isNotBlank() -> user.fullName
-                user.displayName.isNotBlank() -> user.displayName
-                user.username.isNotBlank() -> user.username
-                else -> getString(R.string.no_name)
-            }
-
-            binding.profileEmail.text = user.email
-
-            binding.profileBio.text = user.bio.ifBlank {
-                getString(R.string.default_bio)
-            }
-
-            val favoriteGenresText = user.favoriteGenres
-                .joinToString(", ")
-                .ifBlank { getString(R.string.not_updated) }
-
-            binding.profileExtraInfo.text = getString(
-                R.string.profile_extra_info_format,
-                user.country.ifBlank { getString(R.string.not_updated) },
-                user.gender.ifBlank { getString(R.string.not_updated) },
-                favoriteGenresText
-            )
-
-            Glide.with(this)
-                .load(user.avatarUrl.ifBlank { R.drawable.music_orange })
-                .placeholder(R.drawable.music_orange)
-                .error(R.drawable.music_orange)
-                .into(binding.profileAvatar)
+            bindUser(user)
         }
 
         viewModel.mySongs.observe(viewLifecycleOwner) { songs ->
             currentSongs = songs
+            adapter.setData(songs)
 
             binding.songCount.text =
                 getString(R.string.song_count_format, songs.size)
 
-            binding.playlistCount.text =
-                getString(R.string.playlist_count_format, 0)
+            binding.myMusicLabel.text =
+                getString(R.string.my_uploaded_music_count, songs.size)
 
-            adapter.setData(songs)
+            binding.profileMusicList.isVisible = songs.isNotEmpty()
+            binding.tvNoUploadedSongs.isVisible = songs.isEmpty()
+        }
+
+        viewModel.myPlaylists.observe(viewLifecycleOwner) { playlists ->
+            binding.playlistCount.text =
+                getString(R.string.playlist_count_format, playlists.size)
         }
 
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            binding.progressBar.visibility =
-                if (isLoading) {
-                    View.VISIBLE
-                } else {
-                    View.GONE
-                }
+            binding.progressBar.isVisible = isLoading
         }
 
         viewModel.errorMessage.observe(viewLifecycleOwner) { messageResId ->
@@ -152,8 +109,106 @@ class ProfileFragment : Fragment() {
                     getString(it),
                     Toast.LENGTH_SHORT
                 ).show()
+
+                viewModel.clearErrorMessage()
             }
         }
+    }
+
+    private fun bindUser(user: User?) {
+        if (user == null) {
+            bindGuest()
+            return
+        }
+
+        binding.profileName.text = getDisplayName(user)
+
+        binding.profileUsername.text =
+            if (user.username.isNotBlank()) {
+                getString(R.string.username_format, user.username)
+            } else {
+                getString(R.string.username_not_updated)
+            }
+
+        binding.profileEmail.text = user.email.ifBlank {
+            getString(R.string.email_not_updated)
+        }
+
+        binding.profileBio.text = user.bio.ifBlank {
+            getString(R.string.default_bio)
+        }
+
+        binding.likedSongsCount.text =
+            getString(R.string.liked_song_count_format, user.likedSongsCount)
+
+        binding.followersCount.text =
+            getString(R.string.followers_count_format, user.followersCount)
+
+        binding.followingCount.text =
+            getString(R.string.following_count_format, user.followingCount)
+
+        binding.profileExtraInfo.text = buildExtraInfo(user)
+
+        Glide.with(this)
+            .load(user.avatarUrl.ifBlank { R.drawable.music_orange })
+            .placeholder(R.drawable.music_orange)
+            .error(R.drawable.music_orange)
+            .circleCrop()
+            .into(binding.profileAvatar)
+    }
+
+    private fun bindGuest() {
+        binding.profileName.text = getString(R.string.guest)
+        binding.profileUsername.text = getString(R.string.username_not_updated)
+        binding.profileEmail.text = getString(R.string.not_logged_in)
+        binding.profileBio.text = getString(R.string.default_bio)
+        binding.profileExtraInfo.text = getString(R.string.profile_extra_info_placeholder)
+
+        binding.songCount.text = getString(R.string.song_count_format, 0)
+        binding.playlistCount.text = getString(R.string.playlist_count_format, 0)
+        binding.likedSongsCount.text = getString(R.string.liked_song_count_format, 0)
+        binding.followersCount.text = getString(R.string.followers_count_format, 0)
+        binding.followingCount.text = getString(R.string.following_count_format, 0)
+
+        Glide.with(this)
+            .load(R.drawable.music_orange)
+            .placeholder(R.drawable.music_orange)
+            .error(R.drawable.music_orange)
+            .circleCrop()
+            .into(binding.profileAvatar)
+    }
+
+    private fun getDisplayName(user: User): String {
+        return when {
+            user.fullName.isNotBlank() -> user.fullName
+            user.displayName.isNotBlank() -> user.displayName
+            user.username.isNotBlank() -> user.username
+            else -> getString(R.string.no_name)
+        }
+    }
+
+    private fun buildExtraInfo(user: User): String {
+        val favoriteGenresText = user.favoriteGenres
+            .joinToString(", ")
+            .ifBlank {
+                getString(R.string.not_updated)
+            }
+
+        val moodTagsText = user.musicMoodTags
+            .joinToString(", ")
+            .ifBlank {
+                getString(R.string.not_updated)
+            }
+
+        return getString(
+            R.string.profile_extra_info_full_format,
+            user.fullName.ifBlank { getString(R.string.not_updated) },
+            user.phoneNumber.ifBlank { getString(R.string.not_updated) },
+            user.gender.ifBlank { getString(R.string.not_updated) },
+            user.country.ifBlank { getString(R.string.not_updated) },
+            favoriteGenresText,
+            moodTagsText
+        )
     }
 
     private fun playSong(song: Song) {
