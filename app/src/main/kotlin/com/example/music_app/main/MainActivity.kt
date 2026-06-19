@@ -26,6 +26,7 @@ import com.example.music_app.ui.admin.AdminDashboardFragment
 import com.example.music_app.ui.auth.LoginActivity
 import com.example.music_app.ui.comment.CommentFragment
 import com.example.music_app.ui.home.HomeFragment
+import com.example.music_app.ui.home.MiniPlayerPagerAdapter
 import com.example.music_app.ui.library.LibraryFragment
 import com.example.music_app.ui.player.PlayerFragment
 import com.example.music_app.ui.profile.ProfileFragment
@@ -35,19 +36,25 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.viewpager2.widget.ViewPager2
-import com.example.music_app.ui.home.MiniPlayerPagerAdapter
+import kotlin.math.abs
 
 class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     private val songRepository = SongRepository()
     private val firebaseService = FirebaseService(FirebaseFirestore.getInstance())
+
     private var currentMiniSong: Song? = null
     private var isCurrentSongLiked = false
     private var isCurrentUploaderFollowed = false
+
     private lateinit var miniPlayerPagerAdapter: MiniPlayerPagerAdapter
+    private lateinit var ghostMiniPlayerPagerAdapter: MiniPlayerPagerAdapter
+
     private var ignoreMiniPagerCallback = false
-    private var miniPagerUserDragging = false
+    private var pendingMiniEnterDirection = 0
+    private var pendingMiniTargetSong: Song? = null
+    private var pendingMiniTargetFromPlaylist = false
+    private var isMiniTailAnimating = false
 
     private val requestNotificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -57,7 +64,10 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         }
 
     enum class FooterTab {
-        HOME, SEARCH, LIBRARY, PROFILE
+        HOME,
+        SEARCH,
+        LIBRARY,
+        PROFILE
     }
 
     override fun getViewBinding(): ActivityMainBinding {
@@ -111,7 +121,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                         openHomeFragment()
                     }
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 withContext(Dispatchers.Main) {
                     openHomeFragment()
                 }
@@ -126,6 +136,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
         binding.appFooter.visibility = View.GONE
         binding.miniPlayer.root.visibility = View.GONE
+        binding.miniPlayerGhost.root.visibility = View.GONE
     }
 
     private fun openHomeFragment() {
@@ -147,6 +158,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         if (shouldHideMainChrome) {
             binding.appFooter.visibility = View.GONE
             binding.miniPlayer.root.visibility = View.GONE
+            binding.miniPlayerGhost.root.visibility = View.GONE
         } else {
             binding.appFooter.visibility = View.VISIBLE
             updateMiniPlayerVisibility()
@@ -215,42 +227,47 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     private fun setupMiniPlayer() {
         binding.miniPlayer.root.visibility = View.GONE
+        binding.miniPlayerGhost.root.visibility = View.GONE
+
         updateMiniPlayerLikeIcon()
 
-        miniPlayerPagerAdapter = MiniPlayerPagerAdapter { song ->
-            openPlayerFragment(song.id)
-        }
+        miniPlayerPagerAdapter = MiniPlayerPagerAdapter(
+            onSongClick = { song ->
+                openPlayerFragment(song.id)
+            },
+            onDrag = { diffX ->
+                dragMiniPlayersTogether(diffX)
+            },
+            onSwipeLeft = {
+                animateMiniPlayersOutThenChange(direction = -1)
+            },
+            onSwipeRight = {
+                animateMiniPlayersOutThenChange(direction = 1)
+            },
+            onCancelSwipe = {
+                resetMiniPlayersPosition()
+            }
+        )
+
+        ghostMiniPlayerPagerAdapter = MiniPlayerPagerAdapter(
+            onSongClick = {},
+            onDrag = {},
+            onSwipeLeft = {},
+            onSwipeRight = {},
+            onCancelSwipe = {}
+        )
 
         binding.miniPlayer.vpMiniPlayer.adapter = miniPlayerPagerAdapter
         binding.miniPlayer.vpMiniPlayer.offscreenPageLimit = 1
+        binding.miniPlayer.vpMiniPlayer.isUserInputEnabled = false
 
-        binding.miniPlayer.vpMiniPlayer.registerOnPageChangeCallback(
-            object : ViewPager2.OnPageChangeCallback() {
+        binding.miniPlayerGhost.vpMiniPlayer.adapter = ghostMiniPlayerPagerAdapter
+        binding.miniPlayerGhost.vpMiniPlayer.offscreenPageLimit = 1
+        binding.miniPlayerGhost.vpMiniPlayer.isUserInputEnabled = false
 
-                override fun onPageScrollStateChanged(state: Int) {
-                    super.onPageScrollStateChanged(state)
-
-                    when (state) {
-                        ViewPager2.SCROLL_STATE_DRAGGING -> {
-                            miniPagerUserDragging = true
-                        }
-
-                        ViewPager2.SCROLL_STATE_IDLE -> {
-                            miniPagerUserDragging = false
-                        }
-                    }
-                }
-
-                override fun onPageSelected(position: Int) {
-                    super.onPageSelected(position)
-
-                    if (ignoreMiniPagerCallback) return
-                    if (!miniPagerUserDragging) return
-
-                    PlayerManager.playSongAt(position)
-                }
-            }
-        )
+        binding.miniPlayerGhost.btnPlayPause.isEnabled = false
+        binding.miniPlayerGhost.btnFollow.isEnabled = false
+        binding.miniPlayerGhost.btnLike.isEnabled = false
 
         PlayerManager.playlistSongs.observe(this) { songs ->
             miniPlayerPagerAdapter.submitList(songs) {
@@ -264,9 +281,14 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                 currentMiniSong = null
                 isCurrentSongLiked = false
                 isCurrentUploaderFollowed = false
+
                 binding.miniPlayer.root.visibility = View.GONE
+                binding.miniPlayerGhost.root.visibility = View.GONE
+
                 updateMiniPlayerLikeIcon()
                 updateMiniPlayerFollowIcon(showButton = false)
+                resetMiniPlayersPosition()
+
                 return@observe
             }
 
@@ -278,6 +300,10 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
             val index = PlayerManager.currentIndex.value ?: -1
             setMiniPlayerPage(index, smoothScroll = true)
+
+            binding.miniPlayer.root.post {
+                finishMiniTailAnimationIfNeeded()
+            }
         }
 
         PlayerManager.currentIndex.observe(this) { index ->
@@ -292,6 +318,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             }
 
             binding.miniPlayer.btnPlayPause.setImageResource(icon)
+            binding.miniPlayerGhost.btnPlayPause.setImageResource(icon)
+
             updateMiniPlayerVisibility()
         }
 
@@ -302,9 +330,84 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         binding.miniPlayer.btnLike.setOnClickListener {
             toggleMiniPlayerLike()
         }
+
         binding.miniPlayer.btnFollow.setOnClickListener {
             toggleMiniPlayerFollow()
         }
+    }
+
+    private fun dragMiniPlayer(diffX: Float) {
+        val miniRoot = binding.miniPlayer.root
+        val width = miniRoot.width.takeIf { it > 0 } ?: return
+
+        miniRoot.animate().cancel()
+
+        miniRoot.translationX = diffX
+        miniRoot.alpha = (1f - abs(diffX) / width)
+            .coerceIn(0.45f, 1f)
+    }
+
+    private fun animateMiniPlayerOutThenChange(direction: Int) {
+        val miniRoot = binding.miniPlayer.root
+        val width = miniRoot.width.takeIf { it > 0 } ?: return
+
+        pendingMiniEnterDirection = direction
+
+        miniRoot.animate()
+            .translationX(direction * width.toFloat())
+            .alpha(0f)
+            .setDuration(160L)
+            .withEndAction {
+                if (direction < 0) {
+                    PlayerManager.playNext()
+                } else {
+                    PlayerManager.playPrevious()
+                }
+
+                /**
+                 * Nếu PlayerManager không đổi bài được,
+                 * ví dụ fallback rỗng, thì kéo mini player về lại.
+                 */
+                miniRoot.postDelayed({
+                    if (pendingMiniEnterDirection == direction) {
+                        pendingMiniEnterDirection = 0
+                        resetMiniPlayerPosition()
+                    }
+                }, 700L)
+            }
+            .start()
+    }
+
+    private fun animateMiniPlayerInIfNeeded() {
+        val miniRoot = binding.miniPlayer.root
+        val width = miniRoot.width.takeIf { it > 0 } ?: return
+
+        val direction = pendingMiniEnterDirection
+
+        if (direction == 0) {
+            resetMiniPlayerPosition()
+            return
+        }
+
+        pendingMiniEnterDirection = 0
+
+        miniRoot.animate().cancel()
+        miniRoot.translationX = -direction * width.toFloat()
+        miniRoot.alpha = 0f
+
+        miniRoot.animate()
+            .translationX(0f)
+            .alpha(1f)
+            .setDuration(180L)
+            .start()
+    }
+
+    private fun resetMiniPlayerPosition() {
+        binding.miniPlayer.root.animate()
+            .translationX(0f)
+            .alpha(1f)
+            .setDuration(120L)
+            .start()
     }
 
     private fun setMiniPlayerPage(
@@ -377,6 +480,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             }
         }
     }
+
     private fun loadMiniPlayerFollowState(song: Song) {
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
         val uploaderId = song.uploaderId
@@ -580,5 +684,190 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         button.scaleX = 1.2f
         button.scaleY = 1.2f
         button.alpha = 1f
+    }
+    private fun dragMiniPlayersTogether(diffX: Float) {
+        val miniRoot = binding.miniPlayer.root
+        val ghostRoot = binding.miniPlayerGhost.root
+        val width = miniRoot.width.takeIf { it > 0 } ?: return
+
+        val direction = if (diffX < 0) -1 else 1
+        val targetSong = prepareGhostMiniPlayer(direction) ?: run {
+            miniRoot.translationX = diffX * 0.25f
+            return
+        }
+
+        miniRoot.animate().cancel()
+        ghostRoot.animate().cancel()
+
+        ghostRoot.visibility = View.VISIBLE
+
+        miniRoot.translationX = diffX
+        miniRoot.alpha = (1f - kotlin.math.abs(diffX) / width)
+            .coerceIn(0.45f, 1f)
+
+        ghostRoot.translationX = (-direction * width.toFloat()) + diffX
+        ghostRoot.alpha = (kotlin.math.abs(diffX) / width)
+            .coerceIn(0.45f, 1f)
+    }
+
+    private fun prepareGhostMiniPlayer(direction: Int): Song? {
+        if (
+            pendingMiniEnterDirection == direction &&
+            pendingMiniTargetSong != null
+        ) {
+            return pendingMiniTargetSong
+        }
+
+        val target = findMiniPlayerTargetSong(direction) ?: return null
+
+        pendingMiniEnterDirection = direction
+        pendingMiniTargetSong = target.first
+        pendingMiniTargetFromPlaylist = target.second
+
+        ghostMiniPlayerPagerAdapter.submitList(listOf(target.first)) {
+            binding.miniPlayerGhost.vpMiniPlayer.setCurrentItem(0, false)
+        }
+
+        val playIcon = if (PlayerManager.isCurrentlyPlaying()) {
+            R.drawable.ic_pause
+        } else {
+            R.drawable.ic_play_button_circle
+        }
+
+        binding.miniPlayerGhost.btnPlayPause.setImageResource(playIcon)
+        binding.miniPlayerGhost.btnLike.alpha = 0.4f
+        binding.miniPlayerGhost.btnFollow.alpha = 0.4f
+
+        binding.miniPlayerGhost.root.visibility = View.VISIBLE
+
+        return target.first
+    }
+
+    private fun findMiniPlayerTargetSong(direction: Int): Pair<Song, Boolean>? {
+        val playlist = PlayerManager.playlistSongs.value.orEmpty()
+        val currentIndex = PlayerManager.currentIndex.value ?: -1
+
+        if (playlist.size > 1 && currentIndex in playlist.indices) {
+            val targetIndex =
+                if (direction < 0) {
+                    if (currentIndex + 1 < playlist.size) {
+                        currentIndex + 1
+                    } else {
+                        0
+                    }
+                } else {
+                    if (currentIndex - 1 >= 0) {
+                        currentIndex - 1
+                    } else {
+                        playlist.lastIndex
+                    }
+                }
+
+            val targetSong = playlist.getOrNull(targetIndex) ?: return null
+            return targetSong to true
+        }
+
+        val currentId = PlayerManager.currentSong.value?.id
+
+        val fallbackSongs = PlayerManager.fallbackSongs.value
+            .orEmpty()
+            .filter { it.id != currentId }
+
+        val targetSong = fallbackSongs.randomOrNull() ?: return null
+
+        return targetSong to false
+    }
+
+    private fun animateMiniPlayersOutThenChange(direction: Int) {
+        val miniRoot = binding.miniPlayer.root
+        val ghostRoot = binding.miniPlayerGhost.root
+        val width = miniRoot.width.takeIf { it > 0 } ?: return
+
+        val targetSong = prepareGhostMiniPlayer(direction)
+
+        if (targetSong == null) {
+            resetMiniPlayersPosition()
+            return
+        }
+
+        isMiniTailAnimating = true
+
+        miniRoot.animate().cancel()
+        ghostRoot.animate().cancel()
+
+        ghostRoot.visibility = View.VISIBLE
+
+        miniRoot.animate()
+            .translationX(direction * width.toFloat())
+            .alpha(0f)
+            .setDuration(160L)
+            .start()
+
+        ghostRoot.animate()
+            .translationX(0f)
+            .alpha(1f)
+            .setDuration(160L)
+            .withEndAction {
+                if (pendingMiniTargetFromPlaylist) {
+                    if (direction < 0) {
+                        PlayerManager.playNext()
+                    } else {
+                        PlayerManager.playPrevious()
+                    }
+                } else {
+                    PlayerManager.playPreparedSong(targetSong)
+                }
+
+                ghostRoot.postDelayed({
+                    if (isMiniTailAnimating) {
+                        isMiniTailAnimating = false
+                        pendingMiniEnterDirection = 0
+                        pendingMiniTargetSong = null
+                        pendingMiniTargetFromPlaylist = false
+                        resetMiniPlayersPosition()
+                    }
+                }, 1000L)
+            }
+            .start()
+    }
+
+    private fun finishMiniTailAnimationIfNeeded() {
+        if (!isMiniTailAnimating) {
+            resetMiniPlayersPosition()
+            return
+        }
+
+        isMiniTailAnimating = false
+        pendingMiniEnterDirection = 0
+        pendingMiniTargetSong = null
+        pendingMiniTargetFromPlaylist = false
+
+        binding.miniPlayer.root.animate().cancel()
+        binding.miniPlayerGhost.root.animate().cancel()
+
+        binding.miniPlayer.root.translationX = 0f
+        binding.miniPlayer.root.alpha = 1f
+
+        binding.miniPlayerGhost.root.visibility = View.GONE
+        binding.miniPlayerGhost.root.translationX = 0f
+        binding.miniPlayerGhost.root.alpha = 1f
+    }
+
+    private fun resetMiniPlayersPosition() {
+        binding.miniPlayer.root.animate()
+            .translationX(0f)
+            .alpha(1f)
+            .setDuration(120L)
+            .start()
+
+        binding.miniPlayerGhost.root.animate()
+            .alpha(0f)
+            .setDuration(120L)
+            .withEndAction {
+                binding.miniPlayerGhost.root.visibility = View.GONE
+                binding.miniPlayerGhost.root.translationX = 0f
+                binding.miniPlayerGhost.root.alpha = 1f
+            }
+            .start()
     }
 }
