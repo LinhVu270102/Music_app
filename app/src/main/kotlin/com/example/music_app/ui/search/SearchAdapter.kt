@@ -3,6 +3,8 @@ package com.example.music_app.ui.search
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
+import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.ItemSearchResultBinding
 
@@ -23,7 +25,14 @@ class SearchAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(song: Song) {
-            binding.txtResult.text = "${song.title} - ${song.artist}"
+            binding.txtTitle.text = song.title
+            binding.txtArtist.text = song.artist
+
+            Glide.with(binding.root)
+                .load(song.coverUrl.ifBlank { R.drawable.music_orange })
+                .placeholder(R.drawable.music_orange)
+                .error(R.drawable.music_orange)
+                .into(binding.imgCover)
 
             binding.root.setOnClickListener {
                 onItemClick(song)
@@ -31,18 +40,27 @@ class SearchAdapter(
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+    override fun onCreateViewHolder(
+        parent: ViewGroup,
+        viewType: Int
+    ): ViewHolder {
         val binding = ItemSearchResultBinding.inflate(
             LayoutInflater.from(parent.context),
             parent,
             false
         )
+
         return ViewHolder(binding)
     }
 
-    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+    override fun onBindViewHolder(
+        holder: ViewHolder,
+        position: Int
+    ) {
         holder.bind(items[position])
     }
 
-    override fun getItemCount(): Int = items.size
+    override fun getItemCount(): Int {
+        return items.size
+    }
 }

@@ -101,11 +101,6 @@
                 style="@style/SearchTab"
                 android:text="@string/playlists" />
 
-            <TextView
-                android:id="@+id/tabAlbums"
-                style="@style/SearchTab"
-                android:text="@string/albums" />
-
         </LinearLayout>
 
     </HorizontalScrollView>
