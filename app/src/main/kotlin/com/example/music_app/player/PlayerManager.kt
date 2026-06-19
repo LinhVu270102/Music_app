@@ -14,6 +14,15 @@ import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.model.SongStatus
+import com.example.music_app.data.remote.soundcloud.isSoundCloudSong
+import com.example.music_app.data.repository.MusicInteractionRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.random.Random
 
 object PlayerManager {
 
@@ -29,6 +38,10 @@ object PlayerManager {
 
     private val playlist = mutableListOf<Song>()
     private var currentPlaylistIndex = -1
+
+    private val playerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val musicInteractionRepository = MusicInteractionRepository()
+    private var isPreparingRandomSong = false
 
     private val _playlistSongs = MutableLiveData<List<Song>>(emptyList())
     val playlistSongs: LiveData<List<Song>> = _playlistSongs
@@ -50,6 +63,9 @@ object PlayerManager {
 
     private val _errorMessageResId = MutableLiveData<Int?>()
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
+
+    private val _fallbackSongs = MutableLiveData<List<Song>>(emptyList())
+    val fallbackSongs: LiveData<List<Song>> = _fallbackSongs
 
     fun init(context: Context) {
         if (exoPlayer != null) {
@@ -77,16 +93,9 @@ object PlayerManager {
                     }
 
                     override fun onPlaybackStateChanged(playbackState: Int) {
-                        Log.d(TAG, "onPlaybackStateChanged: $playbackState")
-
                         if (playbackState == Player.STATE_ENDED) {
-                            _isPlaying.value = false
-
-                            if (_loopMode.value == LoopMode.OFF) {
-                                currentPlaylistIndex = -1
-                                _currentIndex.value = -1
-                                _currentSong.value = null
-                            }
+                            Log.d(TAG, "Playback ended, play next")
+                            playNext()
                         }
                     }
 
@@ -147,7 +156,7 @@ object PlayerManager {
             .setMediaId(song.id)
 
         if (
-            song.tags.contains("hls") ||
+            song.tags.any { it.equals("hls", ignoreCase = true) } ||
             song.songUrl.contains(".m3u8", ignoreCase = true) ||
             song.songUrl.contains("/hls", ignoreCase = true)
         ) {
@@ -159,6 +168,7 @@ object PlayerManager {
 
     fun setPlaylist(songs: List<Song>) {
         val validSongs = songs
+            .filter { it.id.isNotBlank() }
             .filter { it.songUrl.isNotBlank() }
             .distinctBy { it.id }
 
@@ -192,10 +202,12 @@ object PlayerManager {
         startSong: Song
     ) {
         val validSongs = songs
+            .filter { it.id.isNotBlank() }
             .filter { it.songUrl.isNotBlank() }
             .distinctBy { it.id }
 
         if (validSongs.isEmpty()) {
+            Log.e(TAG, "playPlaylist failed: no valid songs")
             _errorMessageResId.value = R.string.playback_failed
             return
         }
@@ -256,7 +268,7 @@ object PlayerManager {
 
         val index = playlist.indexOfFirst { it.id == song.id }
 
-        if (index != -1) {
+        if (index != -1 && playlist.size > 1) {
             playFromPlaylist(index)
         } else {
             playSingle(song)
@@ -277,7 +289,6 @@ object PlayerManager {
         _currentSong.value = song
 
         exoPlayer?.apply {
-            stop()
             seekTo(index, 0L)
             setPlaybackSpeed(1f)
             volume = 1f
@@ -326,26 +337,107 @@ object PlayerManager {
     }
 
     fun playNext() {
-        if (playlist.isEmpty()) return
+        val songs = _playlistSongs.value.orEmpty()
+        val currentIndex = _currentIndex.value ?: -1
 
-        val nextIndex = currentPlaylistIndex + 1
+        Log.d(
+            TAG,
+            "playNext: playlistSize=${songs.size}, currentIndex=$currentIndex, fallbackSize=${_fallbackSongs.value.orEmpty().size}"
+        )
 
-        if (nextIndex in playlist.indices) {
+        if (songs.size > 1 && currentIndex in songs.indices) {
+            val nextIndex = if (currentIndex + 1 < songs.size) {
+                currentIndex + 1
+            } else {
+                0
+            }
+
             playSongAt(nextIndex)
-        } else {
-            playSongAt(0)
+            return
         }
+
+        playRandomFallback()
     }
 
     fun playPrevious() {
-        if (playlist.isEmpty()) return
+        val songs = _playlistSongs.value.orEmpty()
+        val currentIndex = _currentIndex.value ?: -1
 
-        val previousIndex = currentPlaylistIndex - 1
+        Log.d(
+            TAG,
+            "playPrevious: playlistSize=${songs.size}, currentIndex=$currentIndex, fallbackSize=${_fallbackSongs.value.orEmpty().size}"
+        )
 
-        if (previousIndex in playlist.indices) {
+        if (songs.size > 1 && currentIndex in songs.indices) {
+            val previousIndex = if (currentIndex - 1 >= 0) {
+                currentIndex - 1
+            } else {
+                songs.lastIndex
+            }
+
             playSongAt(previousIndex)
-        } else {
-            playSongAt(playlist.lastIndex)
+            return
+        }
+
+        playRandomFallback()
+    }
+
+    fun setFallbackSongs(songs: List<Song>) {
+        val validSongs = songs
+            .filter { it.id.isNotBlank() }
+            .filter { it.status == SongStatus.APPROVED }
+            .filter { !it.isDeleted }
+            .filter { it.songUrl.isNotBlank() || it.isSoundCloudSong() }
+            .distinctBy { it.id }
+
+        _fallbackSongs.value = validSongs
+
+        Log.d(TAG, "setFallbackSongs: ${validSongs.size}")
+    }
+
+    private fun playRandomFallback() {
+        if (isPreparingRandomSong) {
+            Log.d(TAG, "playRandomFallback ignored: already preparing")
+            return
+        }
+
+        val currentId = _currentSong.value?.id
+
+        val candidates = _fallbackSongs.value
+            .orEmpty()
+            .filter { it.id != currentId }
+            .filter { it.songUrl.isNotBlank() || it.isSoundCloudSong() }
+
+        Log.d(TAG, "playRandomFallback: candidates=${candidates.size}")
+
+        if (candidates.isEmpty()) {
+            Log.d(TAG, "No fallback songs available")
+            return
+        }
+
+        val randomSong = candidates[Random.nextInt(candidates.size)]
+
+        isPreparingRandomSong = true
+
+        playerScope.launch {
+            try {
+                val playableSong = withContext(Dispatchers.IO) {
+                    musicInteractionRepository.preparePlayableSong(randomSong)
+                }
+
+                if (playableSong.songUrl.isBlank()) {
+                    Log.e(TAG, "random fallback failed: songUrl blank")
+                    _errorMessageResId.value = R.string.song_url_empty
+                    return@launch
+                }
+
+                play(playableSong)
+            } catch (e: Exception) {
+                Log.e(TAG, "playRandomFallback failed: ${e.message}", e)
+                _errorMessageResId.value = R.string.playback_failed
+            } finally {
+                isPreparingRandomSong = false
+            }
         }
     }
 
@@ -429,7 +521,10 @@ object PlayerManager {
             clearMediaItems()
         }
 
+        playlist.clear()
         currentPlaylistIndex = -1
+
+        _playlistSongs.value = emptyList()
         _currentIndex.value = -1
         _currentSong.value = null
         _isPlaying.value = false
@@ -448,6 +543,7 @@ object PlayerManager {
         _isPlaying.value = false
         _isShuffleEnabled.value = false
         _loopMode.value = LoopMode.OFF
+        _fallbackSongs.value = emptyList()
     }
 
     fun getCurrentPlaylist(): List<Song> {

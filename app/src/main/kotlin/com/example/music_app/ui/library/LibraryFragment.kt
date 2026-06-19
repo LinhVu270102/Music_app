@@ -15,6 +15,7 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentLibraryBinding
+import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.albums.AlbumsFragment
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.setting.SettingFragment
@@ -155,6 +156,7 @@ class LibraryFragment : Fragment() {
         viewModel.recentlyPlayed.observe(viewLifecycleOwner) { songs ->
             currentRecentlySongs = songs
             recentlyAdapter.setData(songs)
+            PlayerManager.setFallbackSongs(songs)
         }
 
         viewModel.playlists.observe(viewLifecycleOwner) { playlists ->
