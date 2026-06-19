@@ -16,6 +16,19 @@
         android:contentDescription="@string/back"
         android:src="@drawable/ic_return" />
 
+    <TextView
+        android:id="@+id/btnSongOptions"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:background="@android:color/transparent"
+        android:gravity="center"
+        android:text="@string/more_options"
+        android:textColor="@color/white"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
     <ImageView
         android:id="@+id/playerCover"
         android:layout_width="match_parent"
