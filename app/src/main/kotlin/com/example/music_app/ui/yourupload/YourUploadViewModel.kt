@@ -20,19 +20,91 @@ class YourUploadViewModel : ViewModel() {
     private val _errorMessageResId = MutableLiveData<Int?>()
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
 
+    private val _successMessageResId = MutableLiveData<Int?>()
+    val successMessageResId: LiveData<Int?> = _successMessageResId
+
     fun loadMyUploadedSongs() {
         viewModelScope.launch {
             try {
                 _songs.value = repository.getMyUploadedSongs()
             } catch (e: AppException) {
                 _errorMessageResId.value = e.messageResId
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _errorMessageResId.value = R.string.load_uploaded_songs_failed
+            }
+        }
+    }
+
+    fun deleteSong(song: Song) {
+        viewModelScope.launch {
+            try {
+                repository.softDeleteMySong(song.id)
+                _successMessageResId.value = R.string.delete_song_success
+                loadMyUploadedSongs()
+            } catch (e: AppException) {
+                _errorMessageResId.value = e.messageResId
+            } catch (_: Exception) {
+                _errorMessageResId.value = R.string.delete_song_failed
+            }
+        }
+    }
+
+    fun toggleComments(song: Song) {
+        viewModelScope.launch {
+            try {
+                val newAllowComments = !song.allowComments
+
+                repository.updateMySongCommentPermission(
+                    songId = song.id,
+                    allowComments = newAllowComments
+                )
+
+                _successMessageResId.value =
+                    if (newAllowComments) {
+                        R.string.comments_turned_on
+                    } else {
+                        R.string.comments_turned_off
+                    }
+
+                loadMyUploadedSongs()
+            } catch (e: AppException) {
+                _errorMessageResId.value = e.messageResId
+            } catch (_: Exception) {
+                _errorMessageResId.value = R.string.update_comment_permission_failed
+            }
+        }
+    }
+
+    fun reportSong(
+        song: Song,
+        reason: String
+    ) {
+        if (reason.isBlank()) {
+            _errorMessageResId.value = R.string.report_reason_empty
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                repository.reportSong(
+                    songId = song.id,
+                    reason = reason.trim()
+                )
+
+                _successMessageResId.value = R.string.report_success
+            } catch (e: AppException) {
+                _errorMessageResId.value = e.messageResId
+            } catch (_: Exception) {
+                _errorMessageResId.value = R.string.report_failed
             }
         }
     }
 
     fun clearErrorMessage() {
         _errorMessageResId.value = null
+    }
+
+    fun clearSuccessMessage() {
+        _successMessageResId.value = null
     }
 }

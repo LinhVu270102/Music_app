@@ -379,7 +379,6 @@
     <string name="notifications">Thông báo</string>
     <string name="no_notifications_yet">Chưa có thông báo</string>
     <string name="upload_music">Tải nhạc lên</string>
-
     <string name="artist_name">Tên nghệ sĩ</string>
     <string name="genre">Thể loại</string>
     <string name="tags_hint">Thẻ, cách nhau bằng dấu phẩy</string>
@@ -393,4 +392,15 @@
     <string name="upload_music_failed">Tải nhạc lên thất bại</string>
     <string name="selected_file">File đã chọn</string>
     <string name="unknown_artist">Nghệ sĩ không xác định</string>
+    <string name="song_options">Tùy chọn bài hát</string>
+    <string name="delete_song">Xóa bài hát</string>
+    <string name="delete_song_confirm">Bạn có chắc muốn xóa bài hát này không?</string>
+    <string name="delete_song_failed">Xóa bài hát thất bại</string>
+    <string name="lock_comments">Khóa bình luận</string>
+    <string name="unlock_comments">Mở bình luận</string>
+    <string name="update_comment_permission_failed">Cập nhật quyền bình luận thất bại</string>
+    <string name="report_song">Báo cáo bài hát</string>
+    <string name="report">Báo cáo</string>
+    <string name="enter_report_reason">Nhập lý do báo cáo</string>
+    <string name="report_failed">Báo cáo thất bại</string>
 </resources>

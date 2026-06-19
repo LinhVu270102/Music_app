@@ -1,6 +1,7 @@
 package com.example.music_app.ui.song
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -10,16 +11,14 @@ import com.example.music_app.databinding.ItemSongBinding
 
 class SongAdapter(
     private val onItemClick: (Song) -> Unit,
-    private val onItemLongClick: ((Song) -> Unit)? = null
+    private val onItemLongClick: ((Song) -> Unit)? = null,
+    private val onMoreClick: ((Song, View) -> Unit)? = null
 ) : RecyclerView.Adapter<SongAdapter.SongViewHolder>() {
 
     private val songs = mutableListOf<Song>()
 
     fun setData(newSongs: List<Song>) {
-        val oldIds = songs.map { song -> song.id }
-        val newIds = newSongs.map { song -> song.id }
-
-        if (oldIds == newIds) return
+        if (songs == newSongs) return
 
         songs.clear()
         songs.addAll(newSongs)
@@ -35,12 +34,19 @@ class SongAdapter(
             binding.txtArtist.text = song.artist
 
             Glide.with(binding.root)
-                .load(song.coverUrl)
+                .load(song.coverUrl.ifBlank { R.drawable.music_orange })
                 .placeholder(R.drawable.music_orange)
                 .error(R.drawable.music_orange)
                 .dontAnimate()
                 .centerCrop()
                 .into(binding.imgCover)
+
+            binding.btnMore.visibility =
+                if (onMoreClick != null) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
+                }
 
             binding.root.setOnClickListener {
                 onItemClick(song)
@@ -53,6 +59,10 @@ class SongAdapter(
                 } else {
                     false
                 }
+            }
+
+            binding.btnMore.setOnClickListener { anchor ->
+                onMoreClick?.invoke(song, anchor)
             }
         }
     }
