@@ -2,18 +2,24 @@ package com.example.music_app.data.remote.soundcloud
 
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.SongStatus
+import com.example.music_app.data.remote.soundcloud.model.SoundCloudTrackDto
 
 fun SoundCloudTrackDto.toSong(): Song {
-    val finalId = if (id.startsWith("soundcloud_")) {
-        id
-    } else {
-        "soundcloud_$soundCloudId"
-    }
+    val finalSoundCloudId = resolveSoundCloudId()
+    val finalId = "soundcloud_$finalSoundCloudId"
+
+    val now = System.currentTimeMillis()
+
+    val canResolveStream =
+        finalSoundCloudId > 0L &&
+                streamable &&
+                permalinkUrl.isNotBlank() &&
+                access.isPlayableAccess()
 
     return Song(
         id = finalId,
-        title = title,
-        artist = artist,
+        title = title.trim(),
+        artist = artist.trim(),
         coverUrl = coverUrl,
         songUrl = "",
         duration = duration,
@@ -26,33 +32,37 @@ fun SoundCloudTrackDto.toSong(): Song {
         genre = genre,
         tags = listOf("online", "soundcloud"),
 
-        status = SongStatus.APPROVED,
+        status = if (canResolveStream) {
+            SongStatus.APPROVED
+        } else {
+            SongStatus.PENDING
+        },
         rejectReason = "",
         reviewedBy = "system",
-        reviewedAt = System.currentTimeMillis(),
-        createdAt = System.currentTimeMillis(),
-        updatedAt = System.currentTimeMillis(),
+        reviewedAt = now,
+        createdAt = now,
+        updatedAt = now,
 
         source = "soundcloud",
-        soundCloudId = soundCloudId,
+        soundCloudId = finalSoundCloudId,
         permalinkUrl = permalinkUrl,
         streamable = streamable,
         access = access
     )
 }
 
-fun Song.getSoundCloudTrackId(): Long {
+private fun SoundCloudTrackDto.resolveSoundCloudId(): Long {
     if (soundCloudId > 0L) {
         return soundCloudId
     }
 
-    if (id.startsWith("soundcloud_")) {
-        return id.removePrefix("soundcloud_").toLongOrNull() ?: 0L
+    if (id.startsWith("soundcloud_", ignoreCase = true)) {
+        return id.substringAfter("soundcloud_").toLongOrNull() ?: 0L
     }
 
-    return 0L
+    return id.toLongOrNull() ?: 0L
 }
 
-fun Song.isSoundCloudSong(): Boolean {
-    return source == "soundcloud" || id.startsWith("soundcloud_")
+private fun String.isPlayableAccess(): Boolean {
+    return isBlank() || equals("playable", ignoreCase = true)
 }

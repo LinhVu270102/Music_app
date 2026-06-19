@@ -1,8 +1,4 @@
-package com.example.music_app.data.remote.soundcloud
-
-data class SoundCloudSearchResponse(
-    val results: List<SoundCloudTrackDto> = emptyList()
-)
+package com.example.music_app.data.remote.soundcloud.model
 
 data class SoundCloudTrackDto(
     val id: String = "",
@@ -17,13 +13,4 @@ data class SoundCloudTrackDto(
     val likesCount: Long = 0L,
     val streamable: Boolean = false,
     val access: String = ""
-)
-
-data class SoundCloudStreamResponse(
-    val streamUrl: String = "",
-    val protocol: String = "",
-    val mimeType: String = "",
-    val duration: Int = 0,
-    val access: String = "",
-    val streamable: Boolean = false
 )
