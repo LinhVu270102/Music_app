@@ -416,4 +416,22 @@
     <string name="hide_song">Hide song</string>
     <string name="update_comment_permission_success">Comment permission updated.</string>
     <string name="update_comment_permission_failed">Could not update comment permission.</string>
+    <string name="report_management">Report management</string>
+    <string name="open_reports">Open reports</string>
+    <string name="no_pending_reports">No pending reports.</string>
+    <string name="load_reports_failed">Could not load reports.</string>
+    <string name="report_resolved_success">Report resolved.</string>
+    <string name="report_rejected_success">Report rejected.</string>
+    <string name="report_update_failed">Could not update report.</string>
+    <string name="report_target_hidden_success">Reported target hidden.</string>
+    <string name="report_target_hidden_failed">Could not hide reported target.</string>
+    <string name="no_report_description">No description.</string>
+    <string name="report_target_format">%1$s: %2$s</string>
+    <string name="reporter_format">Reporter: %1$s</string>
+    <string name="report_target_placeholder">Target</string>
+    <string name="reporter_placeholder">Reporter</string>
+    <string name="resolve_report">Resolve report</string>
+    <string name="reject_report">Reject report</string>
+    <string name="hide_reported_target">Hide reported target</string>
+    <string name="report_reason">Report reason</string>
 </resources>

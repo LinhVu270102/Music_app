@@ -104,6 +104,17 @@
                 android:textColor="@color/white"
                 android:textStyle="bold" />
 
+            <Button
+                android:id="@+id/btnOpenReports"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:layout_marginTop="10dp"
+                android:backgroundTint="#424242"
+                android:text="@string/open_reports"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textStyle="bold" />
+
         </LinearLayout>
 
         <!-- ADMIN NOTIFICATION CARD -->

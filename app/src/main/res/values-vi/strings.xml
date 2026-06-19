@@ -416,4 +416,22 @@
     <string name="hide_song">Ẩn bài hát</string>
     <string name="update_comment_permission_success">Đã cập nhật quyền bình luận.</string>
     <string name="update_comment_permission_failed">Không thể cập nhật quyền bình luận.</string>
+    <string name="report_management">Quản lý báo cáo</string>
+    <string name="open_reports">Mở báo cáo</string>
+    <string name="no_pending_reports">Không có báo cáo đang chờ xử lý.</string>
+    <string name="load_reports_failed">Không thể tải danh sách báo cáo.</string>
+    <string name="report_resolved_success">Đã xử lý báo cáo.</string>
+    <string name="report_rejected_success">Đã từ chối báo cáo.</string>
+    <string name="report_update_failed">Không thể cập nhật báo cáo.</string>
+    <string name="report_target_hidden_success">Đã ẩn nội dung bị báo cáo.</string>
+    <string name="report_target_hidden_failed">Không thể ẩn nội dung bị báo cáo.</string>
+    <string name="no_report_description">Không có mô tả.</string>
+    <string name="report_target_format">%1$s: %2$s</string>
+    <string name="reporter_format">Người báo cáo: %1$s</string>
+    <string name="report_target_placeholder">Đối tượng</string>
+    <string name="reporter_placeholder">Người báo cáo</string>
+    <string name="resolve_report">Xử lý báo cáo</string>
+    <string name="reject_report">Từ chối báo cáo</string>
+    <string name="hide_reported_target">Ẩn nội dung bị báo cáo</string>
+    <string name="report_reason">Lý do báo cáo</string>
 </resources>

@@ -9,6 +9,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.remote.FirebaseService
+import com.example.music_app.data.model.Report
 
 class AdminRepository {
 
@@ -128,5 +129,60 @@ class AdminRepository {
             pendingReports = pendingReports,
             reportedSongs = reportedSongs
         )
+    }
+    suspend fun getPendingReports(): List<Report> {
+        return firebaseService.getPendingReports()
+    }
+
+    suspend fun resolveReport(reportId: String) {
+        firebaseService.updateReportStatus(
+            reportId = reportId,
+            status = REPORT_STATUS_RESOLVED,
+            reviewedBy = currentAdminId()
+        )
+    }
+
+    suspend fun rejectReport(reportId: String) {
+        firebaseService.updateReportStatus(
+            reportId = reportId,
+            status = REPORT_STATUS_REJECTED,
+            reviewedBy = currentAdminId()
+        )
+    }
+
+    suspend fun hideReportedTarget(report: Report) {
+        when (report.targetType) {
+            TARGET_TYPE_SONG -> {
+                firebaseService.softDeleteSong(
+                    songId = report.targetId,
+                    deletedBy = currentAdminId()
+                )
+            }
+
+            TARGET_TYPE_COMMENT -> {
+                val songId = report.description
+                    .split("|")
+                    .getOrNull(0)
+                    .orEmpty()
+
+                if (songId.isNotBlank()) {
+                    firebaseService.softDeleteComment(
+                        songId = songId,
+                        commentId = report.targetId,
+                        deletedBy = currentAdminId()
+                    )
+                }
+            }
+        }
+
+        resolveReport(report.id)
+    }
+
+    companion object {
+        private const val REPORT_STATUS_RESOLVED = "RESOLVED"
+        private const val REPORT_STATUS_REJECTED = "REJECTED"
+
+        private const val TARGET_TYPE_SONG = "song"
+        private const val TARGET_TYPE_COMMENT = "comment"
     }
 }
