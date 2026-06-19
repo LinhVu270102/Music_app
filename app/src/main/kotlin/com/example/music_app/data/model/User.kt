@@ -8,6 +8,17 @@ data class User(
     val avatarUrl: String = "",
     val bio: String = "",
 
+    // Thông tin hồ sơ mở rộng
+    val fullName: String = "",
+    val phoneNumber: String = "",
+    val dateOfBirth: Long = 0L,
+    val gender: String = "",
+    val country: String = "",
+
+    // Sở thích âm nhạc dùng cho AI gợi ý
+    val favoriteGenres: List<String> = emptyList(),
+    val musicMoodTags: List<String> = emptyList(),
+
     // Role
     val role: String = UserRole.USER,
     val accountStatus: String = AccountStatus.ACTIVE,
