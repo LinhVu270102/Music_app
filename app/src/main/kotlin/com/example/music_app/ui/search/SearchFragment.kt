@@ -45,8 +45,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         ALL,
         TRACKS,
         PROFILES,
-        PLAYLISTS,
-        ALBUMS
+        PLAYLISTS
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -192,10 +191,6 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         binding.tabPlaylists.setOnClickListener {
             selectTab(SearchTab.PLAYLISTS)
         }
-
-        binding.tabAlbums.setOnClickListener {
-            selectTab(SearchTab.ALBUMS)
-        }
     }
 
     private fun observeViewModel() {
@@ -259,11 +254,6 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 binding.tabPlaylists.setBackgroundResource(R.drawable.bg_search_tab_selected)
                 binding.tabPlaylists.setTextColor(Color.BLACK)
             }
-
-            SearchTab.ALBUMS -> {
-                binding.tabAlbums.setBackgroundResource(R.drawable.bg_search_tab_selected)
-                binding.tabAlbums.setTextColor(Color.BLACK)
-            }
         }
 
         val keyword = binding.edtSearch.text.toString().trim()
@@ -283,8 +273,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             binding.tabAll,
             binding.tabTracks,
             binding.tabProfiles,
-            binding.tabPlaylists,
-            binding.tabAlbums
+            binding.tabPlaylists
         )
 
         tabs.forEach { tab ->
@@ -299,7 +288,6 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             SearchTab.TRACKS -> getString(R.string.tracks)
             SearchTab.PROFILES -> getString(R.string.profiles)
             SearchTab.PLAYLISTS -> getString(R.string.playlists)
-            SearchTab.ALBUMS -> getString(R.string.albums)
         }
     }
 
@@ -328,10 +316,6 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             }
 
             SearchTab.PLAYLISTS -> {
-                emptyList()
-            }
-
-            SearchTab.ALBUMS -> {
                 emptyList()
             }
         }
