@@ -403,4 +403,8 @@
     <string name="report">Báo cáo</string>
     <string name="enter_report_reason">Nhập lý do báo cáo</string>
     <string name="report_failed">Báo cáo thất bại</string>
+    <string name="admin_notifications">Thông báo quản trị</string>
+    <string name="no_admin_notifications">Không có thông báo kiểm duyệt khẩn cấp.</string>
+    <string name="admin_notification_summary">Có %1$d bài hát đang chờ duyệt, %2$d báo cáo đang chờ xử lý và %3$d bài hát đã bị báo cáo.</string>
+    <string name="load_admin_dashboard_failed">Không thể tải bảng quản trị.</string>
 </resources>

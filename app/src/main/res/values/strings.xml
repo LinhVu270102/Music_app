@@ -403,4 +403,8 @@
     <string name="report">Report</string>
     <string name="enter_report_reason">Enter report reason</string>
     <string name="report_failed">Report failed</string>
+    <string name="admin_notifications">Admin notifications</string>
+    <string name="no_admin_notifications">No urgent moderation notifications.</string>
+    <string name="admin_notification_summary">%1$d songs are waiting for review, %2$d reports are pending, and %3$d songs have been reported.</string>
+    <string name="load_admin_dashboard_failed">Could not load admin dashboard.</string>
 </resources>
