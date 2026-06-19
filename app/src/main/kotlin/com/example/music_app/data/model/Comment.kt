@@ -7,5 +7,14 @@ data class Comment(
     val displayName: String = "",
     val avatarUrl: String = "",
     val content: String = "",
-    val createdAt: Long = 0L
+
+    // Report / moderation
+    val reportsCount: Long = 0L,
+    val isDeleted: Boolean = false,
+    val deletedAt: Long = 0L,
+    val deletedBy: String = "",
+
+    // Time
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
 )

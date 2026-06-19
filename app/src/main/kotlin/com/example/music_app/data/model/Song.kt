@@ -14,6 +14,7 @@ data class Song(
     val plays: Long = 0L,
     val likes: Long = 0L,
     val commentsCount: Long = 0L,
+    val reportsCount: Long = 0L,
 
     // Người đăng
     val uploaderId: String = "",
@@ -27,6 +28,14 @@ data class Song(
     val rejectReason: String = "",
     val reviewedBy: String = "",
     val reviewedAt: Long = 0L,
+
+    // Quyền tương tác của bài đăng
+    val allowComments: Boolean = true,
+
+    // Xóa mềm bài hát
+    val isDeleted: Boolean = false,
+    val deletedAt: Long = 0L,
+    val deletedBy: String = "",
 
     // Thời gian
     val createdAt: Long = 0L,
