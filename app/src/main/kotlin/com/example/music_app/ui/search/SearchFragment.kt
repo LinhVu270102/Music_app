@@ -20,7 +20,6 @@ import com.example.music_app.databinding.FragmentSearchBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.player.PlaybackLauncher
-import com.example.music_app.ui.player.PlayerFragment
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -35,7 +34,6 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     private lateinit var searchAdapter: SearchAdapter
 
     private var allSongs: List<Song> = emptyList()
-
     private var currentSearchSongs: List<Song> = emptyList()
     private var currentTab = SearchTab.ALL
 
@@ -143,7 +141,9 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
                 if (keyword.isBlank()) {
                     allSongs = emptyList()
+                    currentSearchSongs = emptyList()
                     searchAdapter.setData(emptyList())
+                    PlayerManager.setFallbackSongs(emptyList())
                     viewModel.clearSearchResult()
                     return
                 }
@@ -170,7 +170,9 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             binding.tvSearchSectionTitle.text = getString(R.string.recently_searched)
 
             allSongs = emptyList()
+            currentSearchSongs = emptyList()
             searchAdapter.setData(emptyList())
+            PlayerManager.setFallbackSongs(emptyList())
             viewModel.clearSearchResult()
         }
     }
@@ -203,15 +205,11 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
         viewModel.playSongEvent.observe(viewLifecycleOwner) { song ->
             song?.let {
-                PlayerManager.playPlaylist(
-                    songs = currentSearchSongs.ifEmpty { allSongs },
-                    startSong = it
+                PlaybackLauncher.openPlayer(
+                    fragment = this,
+                    song = it,
+                    playlist = currentSearchSongs.ifEmpty { allSongs }
                 )
-
-                parentFragmentManager.beginTransaction()
-                    .replace(R.id.fragmentContainer, PlayerFragment.newInstance(it.id))
-                    .addToBackStack(null)
-                    .commit()
 
                 viewModel.donePlaySong()
             }
@@ -295,6 +293,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         if (keyword.isBlank()) {
             currentSearchSongs = emptyList()
             searchAdapter.setData(emptyList())
+            PlayerManager.setFallbackSongs(emptyList())
             return
         }
 
@@ -322,6 +321,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
         currentSearchSongs = result
         searchAdapter.setData(result)
+        PlayerManager.setFallbackSongs(result)
     }
 
     private fun hideKeyboard() {

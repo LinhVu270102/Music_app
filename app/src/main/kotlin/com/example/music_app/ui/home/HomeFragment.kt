@@ -14,8 +14,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentHomeBinding
+import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.library.YourLikesFragment
-import com.example.music_app.ui.library.YourUploadFragment
 import com.example.music_app.ui.notification.NotificationFragment
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
@@ -32,6 +32,11 @@ class HomeFragment : Fragment() {
     private lateinit var moreLikeAdapter: SongAdapter
     private lateinit var hotForYouAdapter: SongAdapter
     private lateinit var trendingAdapter: SongAdapter
+
+    private var relatedSongs: List<Song> = emptyList()
+    private var moreLikeSongs: List<Song> = emptyList()
+    private var hotForYouSongs: List<Song> = emptyList()
+    private var trendingSongs: List<Song> = emptyList()
 
     private val homeRowCount = 2
 
@@ -67,40 +72,40 @@ class HomeFragment : Fragment() {
 
     private fun setupRecyclerViews() {
         binding.btnNotification.setOnClickListener {
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, NotificationFragment())
-                .addToBackStack(null)
-                .commit()
+            parentFragmentManager.commit {
+                replace(R.id.fragmentContainer, NotificationFragment())
+                addToBackStack(null)
+            }
         }
 
         binding.btnUpload.setOnClickListener {
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, UploadMusicFragment())
-                .addToBackStack(null)
-                .commit()
+            parentFragmentManager.commit {
+                replace(R.id.fragmentContainer, UploadMusicFragment())
+                addToBackStack(null)
+            }
         }
 
         relatedAdapter = SongAdapter(
             onItemClick = { song ->
-                openPlayer(song)
+                openPlayer(song, relatedSongs)
             }
         )
 
         moreLikeAdapter = SongAdapter(
             onItemClick = { song ->
-                openPlayer(song)
+                openPlayer(song, moreLikeSongs)
             }
         )
 
         hotForYouAdapter = SongAdapter(
             onItemClick = { song ->
-                openPlayer(song)
+                openPlayer(song, hotForYouSongs)
             }
         )
 
         trendingAdapter = SongAdapter(
             onItemClick = { song ->
-                openPlayer(song)
+                openPlayer(song, trendingSongs)
             }
         )
 
@@ -178,19 +183,27 @@ class HomeFragment : Fragment() {
 
     private fun observeViewModel() {
         viewModel.relatedTracks.observe(viewLifecycleOwner) { songs ->
+            relatedSongs = songs
             relatedAdapter.setData(songs)
+            updateFallbackSongs()
         }
 
         viewModel.moreLike.observe(viewLifecycleOwner) { songs ->
+            moreLikeSongs = songs
             moreLikeAdapter.setData(songs)
+            updateFallbackSongs()
         }
 
         viewModel.hotForYou.observe(viewLifecycleOwner) { songs ->
+            hotForYouSongs = songs
             hotForYouAdapter.setData(songs)
+            updateFallbackSongs()
         }
 
         viewModel.trendingByGenre.observe(viewLifecycleOwner) { songs ->
+            trendingSongs = songs
             trendingAdapter.setData(songs)
+            updateFallbackSongs()
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
@@ -201,10 +214,25 @@ class HomeFragment : Fragment() {
         }
     }
 
-    private fun openPlayer(song: Song) {
+    private fun updateFallbackSongs() {
+        val fallbackSongs = (
+                relatedSongs +
+                        moreLikeSongs +
+                        hotForYouSongs +
+                        trendingSongs
+                ).distinctBy { it.id }
+
+        PlayerManager.setFallbackSongs(fallbackSongs)
+    }
+
+    private fun openPlayer(
+        song: Song,
+        playlist: List<Song>
+    ) {
         PlaybackLauncher.openPlayer(
             fragment = this,
-            song = song
+            song = song,
+            playlist = playlist
         )
     }
 
