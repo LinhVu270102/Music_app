@@ -65,7 +65,8 @@ class CommentViewModel : ViewModel() {
     fun reportComment(
         songId: String,
         comment: Comment,
-        reason: String
+        reason: String,
+        description: String = ""
     ) {
         if (reason.isBlank()) {
             _errorMessageResId.value = R.string.report_reason_empty
@@ -74,12 +75,20 @@ class CommentViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
+                val finalDescription =
+                    if (description.isBlank()) {
+                        comment.content
+                    } else {
+                        description
+                    }
+
                 songRepository.reportComment(
                     songId = songId,
                     commentId = comment.id,
                     reason = reason,
-                    description = comment.content
+                    description = finalDescription
                 )
+
                 _successMessageResId.value = R.string.report_comment_success
             } catch (e: AppException) {
                 _errorMessageResId.value = e.messageResId

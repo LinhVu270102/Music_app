@@ -32,6 +32,10 @@ import android.text.InputType
 import android.widget.EditText
 import android.widget.PopupMenu
 import com.google.firebase.auth.FirebaseAuth
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import com.example.music_app.databinding.DialogReportSongBinding
+import com.example.music_app.databinding.DialogSongOptionsBinding
 
 class PlayerFragment : Fragment() {
 
@@ -111,6 +115,9 @@ class PlayerFragment : Fragment() {
     }
 
     private fun setupActions() {
+        binding.btnSongOptions.setOnClickListener { anchor ->
+            showSongOptions(anchor)
+        }
         binding.btnPlayPause.setOnClickListener {
             PlayerManager.toggle()
             updatePlayPauseIcon()
@@ -508,60 +515,99 @@ class PlayerFragment : Fragment() {
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
         val isOwner = song.uploaderId.isNotBlank() && song.uploaderId == currentUserId
 
-        val popup = PopupMenu(requireContext(), anchor)
+        val dialogBinding = DialogSongOptionsBinding.inflate(layoutInflater)
 
-        if (isOwner) {
-            popup.menu.add(
-                0,
-                MENU_DELETE_SONG,
-                0,
-                getString(R.string.delete_song)
-            )
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogBinding.root)
+            .create()
 
-            val commentTextResId =
-                if (song.allowComments) {
-                    R.string.lock_comments
-                } else {
-                    R.string.unlock_comments
-                }
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
-            popup.menu.add(
-                0,
-                MENU_TOGGLE_COMMENTS,
-                1,
-                getString(commentTextResId)
-            )
-        }
+        dialogBinding.txtOptionsSongTitle.text = song.title
+        dialogBinding.txtOptionsSongArtist.text = song.artist
 
-        popup.menu.add(
-            0,
-            MENU_REPORT_SONG,
-            2,
-            getString(R.string.report_song)
-        )
+        dialogBinding.actionDeleteSong.visibility =
+            if (isOwner) View.VISIBLE else View.GONE
 
-        popup.setOnMenuItemClickListener { item ->
-            when (item.itemId) {
-                MENU_DELETE_SONG -> {
-                    confirmDeleteCurrentSong(song)
-                    true
-                }
+        dialogBinding.actionToggleComments.visibility =
+            if (isOwner) View.VISIBLE else View.GONE
 
-                MENU_TOGGLE_COMMENTS -> {
-                    toggleCurrentSongComments(song)
-                    true
-                }
-
-                MENU_REPORT_SONG -> {
-                    showReportSongDialog(song)
-                    true
-                }
-
-                else -> false
+        dialogBinding.txtToggleCommentsAction.text =
+            if (song.allowComments) {
+                getString(R.string.lock_comments)
+            } else {
+                getString(R.string.unlock_comments)
             }
+
+        dialogBinding.actionReportSong.setOnClickListener {
+            dialog.dismiss()
+            showReportSongDialog(song)
         }
 
-        popup.show()
+        dialogBinding.actionToggleComments.setOnClickListener {
+            dialog.dismiss()
+            toggleCurrentSongComments(song)
+        }
+
+        dialogBinding.actionDeleteSong.setOnClickListener {
+            dialog.dismiss()
+            confirmDeleteCurrentSong(song)
+        }
+
+        dialog.show()
+    }
+
+    private fun showReportSongDialog(song: Song) {
+        val dialogBinding = DialogReportSongBinding.inflate(layoutInflater)
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogBinding.root)
+            .create()
+
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        dialogBinding.txtReportSongName.text =
+            getString(
+                R.string.report_song_name_format,
+                song.title,
+                song.artist
+            )
+
+        dialogBinding.radioSpam.isChecked = true
+
+        dialogBinding.btnCancelReport.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnSubmitReport.setOnClickListener {
+            val reason = when (dialogBinding.radioReportReasons.checkedRadioButtonId) {
+                R.id.radioSpam -> getString(R.string.report_reason_spam)
+                R.id.radioOffensive -> getString(R.string.report_reason_offensive)
+                R.id.radioCopyright -> getString(R.string.report_reason_copyright)
+                R.id.radioOther -> getString(R.string.report_reason_other)
+                else -> ""
+            }
+
+            if (reason.isBlank()) {
+                showToast(getString(R.string.report_reason_empty))
+                return@setOnClickListener
+            }
+
+            val description = dialogBinding.edtReportDescription.text
+                ?.toString()
+                ?.trim()
+                .orEmpty()
+
+            dialog.dismiss()
+
+            reportCurrentSong(
+                song = song,
+                reason = reason,
+                description = description
+            )
+        }
+
+        dialog.show()
     }
 
     private fun confirmDeleteCurrentSong(song: Song) {
@@ -628,31 +674,11 @@ class PlayerFragment : Fragment() {
         }
     }
 
-    private fun showReportSongDialog(song: Song) {
-        val input = EditText(requireContext()).apply {
-            hint = getString(R.string.enter_report_reason)
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            minLines = 3
-            maxLines = 5
-            setPadding(32, 24, 32, 24)
-        }
-
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.report_song))
-            .setView(input)
-            .setPositiveButton(getString(R.string.report)) { _, _ ->
-                reportCurrentSong(
-                    song = song,
-                    reason = input.text.toString()
-                )
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
-    }
 
     private fun reportCurrentSong(
         song: Song,
-        reason: String
+        reason: String,
+        description: String = ""
     ) {
         if (reason.isBlank()) {
             showToast(getString(R.string.report_reason_empty))
@@ -663,7 +689,8 @@ class PlayerFragment : Fragment() {
             try {
                 songRepository.reportSong(
                     songId = song.id,
-                    reason = reason
+                    reason = reason,
+                    description = description
                 )
 
                 withContext(Dispatchers.Main) {

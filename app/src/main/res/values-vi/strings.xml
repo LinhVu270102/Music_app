@@ -470,4 +470,19 @@
     <string name="following_count_format">%1$d đang theo dõi</string>
     <string name="my_uploaded_music_count">Nhạc của tôi (%1$d)</string>
     <string name="profile_extra_info_full_format">Họ tên: %1$s\nSố điện thoại: %2$s\nGiới tính: %3$s\nQuốc gia: %4$s\nThể loại yêu thích: %5$s\nTâm trạng nghe nhạc: %6$s</string>
+    <string name="report_icon">⚠</string>
+    <string name="comment_icon">💬</string>
+    <string name="delete_icon">🗑</string>
+
+    <string name="report_song_subtitle">Cho quản trị viên biết lý do bài hát này cần được xem xét.</string>
+    <string name="report_song_name_format">%1$s - %2$s</string>
+    <string name="report_reason_spam">Spam hoặc nội dung gây hiểu nhầm</string>
+    <string name="report_reason_offensive">Nội dung phản cảm hoặc không phù hợp</string>
+    <string name="report_reason_copyright">Vấn đề bản quyền</string>
+    <string name="report_reason_other">Lý do khác</string>
+    <string name="report_description_optional">Nhập thêm mô tả nếu cần</string>
+    <string name="comment_options">Tùy chọn bình luận</string>
+    <string name="report_comment_subtitle">Cho quản trị viên biết lý do bình luận này cần được xem xét.</string>
+    <string name="report_comment_content_format">%1$s: %2$s</string>
+    <string name="report_reason_harassment">Quấy rối hoặc bắt nạt</string>
 </resources>
