@@ -1,5 +1,7 @@
 package com.example.music_app.data.remote.soundcloud
 
+import com.example.music_app.data.remote.soundcloud.model.SoundCloudSearchResponse
+import com.example.music_app.data.remote.soundcloud.model.SoundCloudStreamResponse
 import retrofit2.http.GET
 import retrofit2.http.Query
 
