@@ -8,7 +8,7 @@ interface SoundCloudProxyApi {
     @GET("searchSoundCloudTracks")
     suspend fun searchTracks(
         @Query("q") query: String,
-        @Query("limit") limit: Int = 20
+        @Query("limit") limit: Int = 10
     ): SoundCloudSearchResponse
 
     @GET("getSoundCloudStreamUrl")

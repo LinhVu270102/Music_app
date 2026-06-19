@@ -136,7 +136,8 @@ object PlayerManager {
 
         if (
             song.tags.contains("hls") ||
-            song.songUrl.contains(".m3u8", ignoreCase = true)
+            song.songUrl.contains(".m3u8", ignoreCase = true) ||
+            song.songUrl.contains("/hls", ignoreCase = true)
         ) {
             builder.setMimeType(MimeTypes.APPLICATION_M3U8)
         }

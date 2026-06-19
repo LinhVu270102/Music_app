@@ -10,8 +10,7 @@ class SoundCloudRepository {
 
     private val api = SoundCloudRetrofitClient.api
 
-    suspend fun searchTracks(query: String, limit: Int = 20): List<Song> {
-
+    suspend fun searchTracks(query: String, limit: Int = 10): List<Song> {
         if (query.isBlank()) return emptyList()
 
         val response = api.searchTracks(
@@ -20,26 +19,39 @@ class SoundCloudRepository {
         )
 
         return response.results
-            .filter { it.soundCloudId != 0L }
             .filter { it.title.isNotBlank() }
-            .filter { it.streamable }
             .filter { it.access.isBlank() || it.access == "playable" }
             .map { it.toSong() }
     }
 
     suspend fun getPlayableSong(song: Song): Song {
         val trackId = song.getSoundCloudTrackId()
+
+        Log.d("SoundCloudRepository", "song.id = ${song.id}")
+        Log.d("SoundCloudRepository", "song.soundCloudId = ${song.soundCloudId}")
+        Log.d("SoundCloudRepository", "resolved trackId = $trackId")
+
         if (trackId == 0L) {
+            Log.e("SoundCloudRepository", "Invalid SoundCloud trackId")
             return song
         }
 
         val response = api.getStreamUrl(trackId)
 
+        Log.d("SoundCloudRepository", "streamUrl = ${response.streamUrl}")
+        Log.d("SoundCloudRepository", "protocol = ${response.protocol}")
+        Log.d("SoundCloudRepository", "mimeType = ${response.mimeType}")
+
         val newTags = song.tags
             .filterNot { it == "hls" || it == "progressive" }
             .toMutableList()
 
-        if (response.protocol == "hls") {
+        if (
+            response.protocol == "hls" ||
+            response.mimeType.contains("mpegURL", ignoreCase = true) ||
+            response.streamUrl.contains("/hls", ignoreCase = true) ||
+            response.streamUrl.contains(".m3u8", ignoreCase = true)
+        ) {
             newTags.add("hls")
         } else {
             newTags.add("progressive")
@@ -47,6 +59,10 @@ class SoundCloudRepository {
 
         return song.copy(
             songUrl = response.streamUrl,
+            soundCloudId = trackId,
+            source = "soundcloud",
+            streamable = true,
+            access = if (response.access.isNotBlank()) response.access else song.access,
             duration = if (response.duration > 0) {
                 response.duration
             } else {
