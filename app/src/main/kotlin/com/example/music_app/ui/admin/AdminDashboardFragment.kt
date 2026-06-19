@@ -1,18 +1,26 @@
 package com.example.music_app.ui.admin
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.commit
+import androidx.fragment.app.viewModels
 import com.example.music_app.R
+import com.example.music_app.data.model.AdminDashboardStats
 import com.example.music_app.databinding.FragmentAdminDashboardBinding
-import android.content.Intent
+import com.example.music_app.main.MainActivity
 import com.example.music_app.ui.auth.LoginActivity
+import com.example.music_app.ui.home.HomeFragment
 import com.google.firebase.auth.FirebaseAuth
 
 class AdminDashboardFragment : Fragment(R.layout.fragment_admin_dashboard) {
 
     private var _binding: FragmentAdminDashboardBinding? = null
     private val binding get() = _binding!!
+
+    private val viewModel: AdminDashboardViewModel by viewModels()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -21,6 +29,73 @@ class AdminDashboardFragment : Fragment(R.layout.fragment_admin_dashboard) {
 
         setupListeners()
         setupCommunityRules()
+        observeViewModel()
+
+        viewModel.loadDashboard()
+    }
+
+    private fun setupListeners() {
+        binding.btnBack.setOnClickListener {
+            logout()
+        }
+
+        binding.btnOpenModeration.setOnClickListener {
+            showToast(getString(R.string.open_moderation_queue))
+        }
+    }
+
+    private fun observeViewModel() {
+        viewModel.isAdmin.observe(viewLifecycleOwner) { isAdmin ->
+            if (!isAdmin) {
+                openHomeForNonAdmin()
+            }
+        }
+
+        viewModel.stats.observe(viewLifecycleOwner) { stats ->
+            renderStats(stats)
+            renderNotification(stats)
+        }
+
+        viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                showToast(getString(it))
+                viewModel.clearErrorMessage()
+            }
+        }
+    }
+
+    private fun renderStats(stats: AdminDashboardStats) {
+        binding.txtPendingValue.text = stats.pendingSongs.toString()
+        binding.txtApprovedValue.text = stats.approvedSongs.toString()
+        binding.txtRejectedValue.text = stats.rejectedSongs.toString()
+        binding.txtHiddenValue.text = stats.hiddenSongs.toString()
+    }
+
+    private fun renderNotification(stats: AdminDashboardStats) {
+        val hasNotification =
+            stats.pendingSongs > 0 ||
+                    stats.pendingReports > 0 ||
+                    stats.reportedSongs > 0
+
+        binding.txtAdminNotificationMessage.text =
+            if (hasNotification) {
+                getString(
+                    R.string.admin_notification_summary,
+                    stats.pendingSongs,
+                    stats.pendingReports,
+                    stats.reportedSongs
+                )
+            } else {
+                getString(R.string.no_admin_notifications)
+            }
+    }
+
+    private fun openHomeForNonAdmin() {
+        parentFragmentManager.commit {
+            replace(R.id.fragmentContainer, HomeFragment())
+        }
+
+        (requireActivity() as? MainActivity)?.updateMainChromeVisibility()
     }
 
     private fun logout() {
@@ -31,16 +106,6 @@ class AdminDashboardFragment : Fragment(R.layout.fragment_admin_dashboard) {
 
         startActivity(intent)
         requireActivity().finish()
-    }
-    private fun setupListeners() {
-        binding.btnBack.setOnClickListener {
-            logout()
-        }
-
-        binding.btnOpenModeration.setOnClickListener {
-            // Tạm thời chưa có AdminFragment kiểm duyệt
-            // Sau này sẽ mở AdminFragment tại đây
-        }
     }
 
     private fun setupCommunityRules() {
@@ -73,6 +138,10 @@ class AdminDashboardFragment : Fragment(R.layout.fragment_admin_dashboard) {
         binding.ruleInappropriateImage.txtRuleDescription.text =
             getString(R.string.rule_inappropriate_image_description)
         binding.ruleInappropriateImage.txtRuleIcon.text = "5"
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroyView() {

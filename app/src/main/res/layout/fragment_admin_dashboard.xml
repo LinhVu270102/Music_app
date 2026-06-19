@@ -106,6 +106,36 @@
 
         </LinearLayout>
 
+        <!-- ADMIN NOTIFICATION CARD -->
+        <LinearLayout
+            android:id="@+id/adminNotificationCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_admin_card"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/txtAdminNotificationTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/admin_notifications"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/txtAdminNotificationMessage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/no_admin_notifications"
+                android:textColor="#D0D0D0"
+                android:textSize="14sp" />
+
+        </LinearLayout>
+
         <!-- STATS -->
         <LinearLayout
             android:id="@+id/statsRowOne"
