@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/songItemRoot"
     android:layout_width="260dp"
     android:layout_height="wrap_content"
     android:gravity="center_vertical"
@@ -25,7 +26,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
-            android:singleLine="true"
+            android:maxLines="1"
             android:text="@string/song_title_placeholder"
             android:textColor="@android:color/white"
             android:textSize="16sp"
@@ -36,10 +37,20 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:ellipsize="end"
-            android:singleLine="true"
+            android:maxLines="1"
             android:text="@string/artist_placeholder"
             android:textColor="@android:color/darker_gray"
             android:textSize="14sp" />
 
     </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/btnMore"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/song_options"
+        android:src="@drawable/ic_more_vert"
+        android:visibility="gone" />
+
 </LinearLayout>
