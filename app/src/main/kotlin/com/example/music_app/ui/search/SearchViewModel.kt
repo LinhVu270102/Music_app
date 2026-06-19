@@ -5,15 +5,24 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
+import com.example.music_app.data.model.SearchResultBundle
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.repository.SearchRepository
 import com.example.music_app.data.repository.SoundCloudRepository
 import kotlinx.coroutines.launch
 
 class SearchViewModel : ViewModel() {
 
+    private val searchRepository = SearchRepository()
     private val soundCloudRepository = SoundCloudRepository()
 
-    private val _songs = MutableLiveData<List<Song>>()
+    private val _searchResults = MutableLiveData(SearchResultBundle())
+    val searchResults: LiveData<SearchResultBundle> = _searchResults
+
+    /**
+     * Giữ lại songs để không phá code cũ nếu nơi khác còn observe.
+     */
+    private val _songs = MutableLiveData<List<Song>>(emptyList())
     val songs: LiveData<List<Song>> = _songs
 
     private val _playSongEvent = MutableLiveData<Song?>()
@@ -27,12 +36,8 @@ class SearchViewModel : ViewModel() {
 
     private var isPreparingSong = false
 
-    /**
-     * Giữ lại hàm này để SearchFragment cũ không bị lỗi.
-     * Trước đây loadSongs() lấy toàn bộ bài từ Firebase.
-     * Bây giờ Search dùng SoundCloud API nên ban đầu để danh sách rỗng.
-     */
     fun loadSongs() {
+        _searchResults.value = SearchResultBundle()
         _songs.value = emptyList()
     }
 
@@ -40,7 +45,7 @@ class SearchViewModel : ViewModel() {
         val keyword = query.trim()
 
         if (keyword.isBlank()) {
-            _songs.value = emptyList()
+            clearSearchResult()
             return
         }
 
@@ -48,14 +53,12 @@ class SearchViewModel : ViewModel() {
             try {
                 _isLoading.value = true
 
-                val result = soundCloudRepository.searchTracks(
-                    query = keyword,
-                    limit = 20
-                )
+                val result = searchRepository.search(keyword)
 
-                _songs.value = result
-            } catch (e: Exception) {
-                _errorMessageResId.value = R.string.soundcloud_search_failed
+                _searchResults.value = result
+                _songs.value = result.tracks
+            } catch (_: Exception) {
+                _errorMessageResId.value = R.string.search_failed
             } finally {
                 _isLoading.value = false
             }
@@ -82,7 +85,7 @@ class SearchViewModel : ViewModel() {
                 } else {
                     _playSongEvent.value = playableSong
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _errorMessageResId.value = R.string.soundcloud_stream_failed
             } finally {
                 _isLoading.value = false
@@ -92,6 +95,7 @@ class SearchViewModel : ViewModel() {
     }
 
     fun clearSearchResult() {
+        _searchResults.value = SearchResultBundle()
         _songs.value = emptyList()
     }
 

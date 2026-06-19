@@ -443,4 +443,10 @@
     <string name="comment_song_format">Bài hát: %1$s</string>
     <string name="comment_song_placeholder">Bài hát</string>
     <string name="hide_comment">Ẩn bình luận</string>
+    <string name="search_failed">Tìm kiếm thất bại.</string>
+    <string name="search_result_count">%1$d kết quả</string>
+    <string name="search_result_count_placeholder">0 kết quả</string>
+    <string name="playlist_songs_count">%1$d bài hát</string>
+    <string name="profile_result_selected">Hồ sơ: %1$s</string>
+    <string name="playlist_result_selected">Danh sách phát: %1$s</string>
 </resources>

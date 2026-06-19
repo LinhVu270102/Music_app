@@ -15,7 +15,10 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
+import com.example.music_app.data.model.Playlist
+import com.example.music_app.data.model.SearchResultBundle
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.model.User
 import com.example.music_app.databinding.FragmentSearchBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
@@ -33,7 +36,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
     private lateinit var searchAdapter: SearchAdapter
 
-    private var allSongs: List<Song> = emptyList()
+    private var searchResults = SearchResultBundle()
     private var currentSearchSongs: List<Song> = emptyList()
     private var currentTab = SearchTab.ALL
 
@@ -61,13 +64,21 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     }
 
     private fun setupRecyclerView() {
-        searchAdapter = SearchAdapter { song ->
-            PlaybackLauncher.openPlayer(
-                fragment = this,
-                song = song,
-                playlist = currentSearchSongs
-            )
-        }
+        searchAdapter = SearchAdapter(
+            onTrackClick = { song ->
+                PlaybackLauncher.openPlayer(
+                    fragment = this,
+                    song = song,
+                    playlist = currentSearchSongs
+                )
+            },
+            onProfileClick = { user ->
+                openProfileResult(user)
+            },
+            onPlaylistClick = { playlist ->
+                openPlaylistResult(playlist)
+            }
+        )
 
         binding.rvSearchSongs.apply {
             layoutManager = LinearLayoutManager(requireContext())
@@ -140,11 +151,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 searchJob?.cancel()
 
                 if (keyword.isBlank()) {
-                    allSongs = emptyList()
-                    currentSearchSongs = emptyList()
-                    searchAdapter.setData(emptyList())
-                    PlayerManager.setFallbackSongs(emptyList())
-                    viewModel.clearSearchResult()
+                    clearSearchUi()
                     return
                 }
 
@@ -169,11 +176,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             binding.tabContainer.isVisible = false
             binding.tvSearchSectionTitle.text = getString(R.string.recently_searched)
 
-            allSongs = emptyList()
-            currentSearchSongs = emptyList()
-            searchAdapter.setData(emptyList())
-            PlayerManager.setFallbackSongs(emptyList())
-            viewModel.clearSearchResult()
+            clearSearchUi()
         }
     }
 
@@ -196,11 +199,11 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     }
 
     private fun observeViewModel() {
-        viewModel.songs.observe(viewLifecycleOwner) { songs ->
-            allSongs = songs
+        viewModel.searchResults.observe(viewLifecycleOwner) { result ->
+            searchResults = result
 
             val keyword = binding.edtSearch.text.toString().trim()
-            filterSongsByCurrentTab(keyword)
+            filterResultsByCurrentTab(keyword)
         }
 
         viewModel.playSongEvent.observe(viewLifecycleOwner) { song ->
@@ -208,7 +211,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 PlaybackLauncher.openPlayer(
                     fragment = this,
                     song = it,
-                    playlist = currentSearchSongs.ifEmpty { allSongs }
+                    playlist = currentSearchSongs.ifEmpty { searchResults.tracks }
                 )
 
                 viewModel.donePlaySong()
@@ -263,7 +266,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 getString(R.string.recently_searched)
             }
 
-        filterSongsByCurrentTab(keyword)
+        filterResultsByCurrentTab(keyword)
     }
 
     private fun resetTabStyle() {
@@ -289,7 +292,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         }
     }
 
-    private fun filterSongsByCurrentTab(keyword: String) {
+    private fun filterResultsByCurrentTab(keyword: String) {
         if (keyword.isBlank()) {
             currentSearchSongs = emptyList()
             searchAdapter.setData(emptyList())
@@ -297,31 +300,116 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             return
         }
 
-        val result = when (currentTab) {
-            SearchTab.ALL -> {
-                allSongs
-            }
+        val items = when (currentTab) {
+            SearchTab.ALL -> buildAllResultItems(searchResults)
 
             SearchTab.TRACKS -> {
-                allSongs.filter { song ->
-                    song.title.contains(keyword, ignoreCase = true)
+                currentSearchSongs = searchResults.tracks
+                searchResults.tracks.map { song ->
+                    SearchResultItem.Track(song)
                 }
             }
 
             SearchTab.PROFILES -> {
-                allSongs.filter { song ->
-                    song.artist.contains(keyword, ignoreCase = true)
+                currentSearchSongs = emptyList()
+                searchResults.profiles.map { user ->
+                    SearchResultItem.Profile(user)
                 }
             }
 
             SearchTab.PLAYLISTS -> {
-                emptyList()
+                currentSearchSongs = emptyList()
+                searchResults.playlists.map { playlist ->
+                    SearchResultItem.PlaylistItem(playlist)
+                }
             }
         }
 
-        currentSearchSongs = result
-        searchAdapter.setData(result)
-        PlayerManager.setFallbackSongs(result)
+        if (currentTab == SearchTab.ALL) {
+            currentSearchSongs = searchResults.tracks
+        }
+
+        searchAdapter.setData(items)
+        PlayerManager.setFallbackSongs(currentSearchSongs)
+    }
+
+    private fun buildAllResultItems(
+        result: SearchResultBundle
+    ): List<SearchResultItem> {
+        val items = mutableListOf<SearchResultItem>()
+
+        if (result.tracks.isNotEmpty()) {
+            items.add(
+                SearchResultItem.Header(
+                    titleResId = R.string.tracks,
+                    count = result.tracks.size
+                )
+            )
+
+            items.addAll(
+                result.tracks.map { song ->
+                    SearchResultItem.Track(song)
+                }
+            )
+        }
+
+        if (result.profiles.isNotEmpty()) {
+            items.add(
+                SearchResultItem.Header(
+                    titleResId = R.string.profiles,
+                    count = result.profiles.size
+                )
+            )
+
+            items.addAll(
+                result.profiles.map { user ->
+                    SearchResultItem.Profile(user)
+                }
+            )
+        }
+
+        if (result.playlists.isNotEmpty()) {
+            items.add(
+                SearchResultItem.Header(
+                    titleResId = R.string.playlists,
+                    count = result.playlists.size
+                )
+            )
+
+            items.addAll(
+                result.playlists.map { playlist ->
+                    SearchResultItem.PlaylistItem(playlist)
+                }
+            )
+        }
+
+        return items
+    }
+
+    private fun clearSearchUi() {
+        searchResults = SearchResultBundle()
+        currentSearchSongs = emptyList()
+        searchAdapter.setData(emptyList())
+        PlayerManager.setFallbackSongs(emptyList())
+        viewModel.clearSearchResult()
+    }
+
+    private fun openProfileResult(user: User) {
+        showToast(
+            getString(
+                R.string.profile_result_selected,
+                user.displayName.ifBlank { user.email }
+            )
+        )
+    }
+
+    private fun openPlaylistResult(playlist: Playlist) {
+        showToast(
+            getString(
+                R.string.playlist_result_selected,
+                playlist.name
+            )
+        )
     }
 
     private fun hideKeyboard() {
