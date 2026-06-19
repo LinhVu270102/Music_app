@@ -1,35 +1,13 @@
-# Gradle
-.gradle/
-build/
-**/build/
+node_modules/
 
-# Local config
-local.properties
-
-# Android Studio
-.idea/
-*.iml
-
-# Android generated
-captures/
-.externalNativeBuild/
-.cxx/
-*.apk
-*.aab
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Keystore / secrets
-*.jks
-*.keystore
 .env
 .env.*
-*.key
-*.pem
-serviceAccountKey.json
+!.env.example
 
-# Firebase config - repo public thì nên ignore
-google-services.json
-app/google-services.json
+.soundcloud-token-cache.json
+
+serviceAccountKey.json
+*serviceAccountKey*.json
+
+output/
+tools_backup/
