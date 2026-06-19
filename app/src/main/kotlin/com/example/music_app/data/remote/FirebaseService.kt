@@ -603,7 +603,8 @@ class FirebaseService(
     suspend fun addComment(
         songId: String,
         user: User,
-        content: String
+        content: String,
+        timelinePositionMs: Long = 0L
     ): Comment {
         if (songId.isBlank()) {
             throw AppException(R.string.invalid_song)
@@ -642,6 +643,7 @@ class FirebaseService(
             displayName = user.displayName.ifBlank { user.email },
             avatarUrl = user.avatarUrl,
             content = content,
+            timelinePositionMs = timelinePositionMs,
             createdAt = now,
             updatedAt = now
         )

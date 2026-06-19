@@ -36,9 +36,10 @@ class CommentAdapter(
             binding.txtCommentContent.text = comment.content
 
             binding.txtCommentSongTime.text =
-                context.getString(R.string.comment_song_time_placeholder)
+                formatTimelinePosition(comment.timelinePositionMs)
 
-            binding.txtCommentTimeAgo.text = formatTimeAgo(comment.createdAt)
+            binding.txtCommentTimeAgo.text =
+                formatTimeAgo(context, comment.createdAt)
 
             binding.txtCommentLikeCount.text =
                 context.getString(R.string.default_comment_like_count)
@@ -87,8 +88,25 @@ class CommentAdapter(
 
     override fun getItemCount(): Int = comments.size
 
-    private fun formatTimeAgo(createdAt: Long): String {
-        if (createdAt <= 0L) return "now"
+    private fun formatTimelinePosition(positionMs: Long): String {
+        if (positionMs <= 0L) {
+            return "00:00"
+        }
+
+        val totalSeconds = positionMs / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+
+        return "%02d:%02d".format(minutes, seconds)
+    }
+
+    private fun formatTimeAgo(
+        context: android.content.Context,
+        createdAt: Long
+    ): String {
+        if (createdAt <= 0L) {
+            return context.getString(R.string.time_now)
+        }
 
         val now = System.currentTimeMillis()
         val diff = now - createdAt
@@ -101,12 +119,12 @@ class CommentAdapter(
         val years = days / 365
 
         return when {
-            years > 0 -> "${years}y"
-            months > 0 -> "${months}mo"
-            days > 0 -> "${days}d"
-            hours > 0 -> "${hours}h"
-            minutes > 0 -> "${minutes}m"
-            else -> "now"
+            years > 0 -> context.getString(R.string.time_years_ago, years)
+            months > 0 -> context.getString(R.string.time_months_ago, months)
+            days > 0 -> context.getString(R.string.time_days_ago, days)
+            hours > 0 -> context.getString(R.string.time_hours_ago, hours)
+            minutes > 0 -> context.getString(R.string.time_minutes_ago, minutes)
+            else -> context.getString(R.string.time_now)
         }
     }
 }
