@@ -25,6 +25,17 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
+    <!-- MINI PLAYER GHOST -->
+    <include
+        android:id="@+id/miniPlayerGhost"
+        layout="@layout/item_now_playing"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/appFooter"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <!-- FOOTER -->
     <LinearLayout
         android:id="@+id/appFooter"

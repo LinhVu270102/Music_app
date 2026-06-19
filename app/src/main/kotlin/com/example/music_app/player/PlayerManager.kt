@@ -396,11 +396,6 @@ object PlayerManager {
     }
 
     private fun playRandomFallback() {
-        if (isPreparingRandomSong) {
-            Log.d(TAG, "playRandomFallback ignored: already preparing")
-            return
-        }
-
         val currentId = _currentSong.value?.id
 
         val candidates = _fallbackSongs.value
@@ -416,24 +411,31 @@ object PlayerManager {
         }
 
         val randomSong = candidates[Random.nextInt(candidates.size)]
+        playPreparedSong(randomSong)
+    }
+    fun playPreparedSong(song: Song) {
+        if (isPreparingRandomSong) {
+            Log.d(TAG, "playPreparedSong ignored: already preparing")
+            return
+        }
 
         isPreparingRandomSong = true
 
         playerScope.launch {
             try {
                 val playableSong = withContext(Dispatchers.IO) {
-                    musicInteractionRepository.preparePlayableSong(randomSong)
+                    musicInteractionRepository.preparePlayableSong(song)
                 }
 
                 if (playableSong.songUrl.isBlank()) {
-                    Log.e(TAG, "random fallback failed: songUrl blank")
+                    Log.e(TAG, "playPreparedSong failed: songUrl blank")
                     _errorMessageResId.value = R.string.song_url_empty
                     return@launch
                 }
 
                 play(playableSong)
             } catch (e: Exception) {
-                Log.e(TAG, "playRandomFallback failed: ${e.message}", e)
+                Log.e(TAG, "playPreparedSong failed: ${e.message}", e)
                 _errorMessageResId.value = R.string.playback_failed
             } finally {
                 isPreparingRandomSong = false
