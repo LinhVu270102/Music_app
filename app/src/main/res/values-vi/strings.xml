@@ -459,4 +459,15 @@
     <string name="report_song_failed">Không thể báo cáo bài hát.</string>
     <string name="comments_locked_success">Đã khóa bình luận.</string>
     <string name="comments_unlocked_success">Đã mở bình luận.</string>
+    <string name="username_format">@%1$s</string>
+    <string name="username_not_updated">Chưa cập nhật tên người dùng</string>
+    <string name="email_not_updated">Chưa cập nhật email</string>
+    <string name="default_liked_song_count">0 đã thích</string>
+    <string name="default_followers_count">0 người theo dõi</string>
+    <string name="default_following_count">0 đang theo dõi</string>
+    <string name="liked_song_count_format">%1$d đã thích</string>
+    <string name="followers_count_format">%1$d người theo dõi</string>
+    <string name="following_count_format">%1$d đang theo dõi</string>
+    <string name="my_uploaded_music_count">Nhạc của tôi (%1$d)</string>
+    <string name="profile_extra_info_full_format">Họ tên: %1$s\nSố điện thoại: %2$s\nGiới tính: %3$s\nQuốc gia: %4$s\nThể loại yêu thích: %5$s\nTâm trạng nghe nhạc: %6$s</string>
 </resources>
