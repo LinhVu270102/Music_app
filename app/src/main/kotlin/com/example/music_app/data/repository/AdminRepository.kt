@@ -23,6 +23,13 @@ class AdminRepository {
     // =========================
     // ADMIN AUTH GUARD
     // =========================
+    suspend fun isCurrentUserAdmin(): Boolean {
+        val userId = auth.currentUser?.uid ?: return false
+
+        val user = firebaseService.getUserById(userId) ?: return false
+
+        return user.role == UserRole.ADMIN
+    }
 
     private suspend fun requireAdmin(): String {
         val userId = auth.currentUser?.uid
