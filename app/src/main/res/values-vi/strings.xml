@@ -509,4 +509,7 @@
     <string name="no_artist_songs">Chưa tìm thấy bài hát nào của nghệ sĩ này.</string>
     <string name="open_artist_profile_failed">Không thể mở hồ sơ nghệ sĩ.</string>
     <string name="online_song_cannot_follow">Bài hát online không có người đăng để theo dõi.</string>
+    <string name="soundcloud_playlist_count_format">SoundCloud • %1$d bài hát</string>
+    <string name="soundcloud_api_playlist_subtitle">Danh sách SoundCloud được lưu trong Orange Music</string>
+    <string name="api_playlist_delete_not_supported">Chưa hỗ trợ xóa danh sách phát SoundCloud trên server.</string>
 </resources>

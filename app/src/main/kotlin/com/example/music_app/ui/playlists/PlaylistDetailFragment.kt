@@ -15,6 +15,7 @@ import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
 import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
+import com.example.music_app.data.repository.SoundCloudSocialRepository
 
 class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
 
@@ -70,6 +71,17 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
 
         binding.tvPlaylistName.text =
             playlistName.ifBlank { getString(R.string.playlist) }
+        binding.tvPlaylistSubtitle.text =
+            if (
+                SoundCloudSocialRepository.isSoundCloudApiPlaylist(
+                    playlistId = playlistId,
+                    ownerId = ownerId
+                )
+            ) {
+                getString(R.string.soundcloud_api_playlist_subtitle)
+            } else {
+                getString(R.string.playlist_detail_subtitle)
+            }
 
         setupRecyclerView()
         setupListeners()
@@ -85,7 +97,10 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         super.onResume()
 
         if (playlistId.isNotBlank()) {
-            viewModel.loadPlaylistSongs(playlistId)
+            viewModel.loadPlaylistSongs(
+                playlistId = playlistId,
+                ownerId = ownerId
+            )
         }
     }
 
@@ -165,7 +180,8 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             .setPositiveButton(getString(R.string.delete)) { _, _ ->
                 viewModel.removeSongFromPlaylist(
                     playlistId = playlistId,
-                    songId = song.id
+                    songId = song.id,
+                    ownerId = ownerId
                 )
             }
             .setNegativeButton(getString(R.string.cancel), null)

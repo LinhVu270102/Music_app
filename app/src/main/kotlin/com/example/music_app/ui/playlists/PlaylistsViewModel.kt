@@ -9,10 +9,12 @@ import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
+import com.example.music_app.data.repository.SoundCloudSocialRepository
 
 class PlaylistsViewModel : ViewModel() {
 
     private val repository = SongRepository()
+    private val soundCloudSocialRepository = SoundCloudSocialRepository()
 
     private val _playlists = MutableLiveData<List<Playlist>>()
     val playlists: LiveData<List<Playlist>> = _playlists
@@ -23,10 +25,28 @@ class PlaylistsViewModel : ViewModel() {
     fun loadPlaylists() {
         viewModelScope.launch {
             try {
-                _playlists.value = repository.getMyPlaylists()
+                val firebasePlaylists = repository.getMyPlaylists()
+
+                val apiPlaylists =
+                    try {
+                        soundCloudSocialRepository.getUserApiPlaylists()
+                            .map { playlist ->
+                                with(soundCloudSocialRepository) {
+                                    playlist.toPlaylist()
+                                }
+                            }
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+
+                _playlists.value =
+                    (firebasePlaylists + apiPlaylists)
+                        .sortedByDescending { playlist ->
+                            playlist.updatedAt
+                        }
             } catch (e: AppException) {
                 _errorMessageResId.value = e.messageResId
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _errorMessageResId.value = R.string.load_playlists_failed
             }
         }

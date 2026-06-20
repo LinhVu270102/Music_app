@@ -12,6 +12,7 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
 import com.example.music_app.databinding.FragmentPlaylistsBinding
+import com.example.music_app.data.repository.SoundCloudSocialRepository
 
 class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
 
@@ -40,19 +41,23 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
     private fun setupRecyclerView() {
         adapter = PlaylistAdapter(
             onItemClick = { playlist ->
-                parentFragmentManager.commit {
-                    replace(
-                        R.id.fragmentContainer,
-                        PlaylistDetailFragment.newInstance(
-                            playlistId = playlist.id,
-                            playlistName = playlist.name
-                        )
-                    )
-                    addToBackStack(null)
-                }
+                PlaylistDetailFragment.newInstance(
+                    playlistId = playlist.id,
+                    playlistName = playlist.name,
+                    ownerId = playlist.ownerId,
+                    coverUrl = playlist.coverUrl
+                )
             },
             onDeleteClick = { playlist ->
-                confirmDeletePlaylist(playlist.id)
+                if (SoundCloudSocialRepository.isSoundCloudApiPlaylist(playlist)) {
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.api_playlist_delete_not_supported),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    confirmDeletePlaylist(playlist.id)
+                }
             }
         )
 
