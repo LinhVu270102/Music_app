@@ -68,11 +68,23 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginTop="18dp"
-            android:layout_marginBottom="22dp"
+            android:layout_marginBottom="0dp"
             android:backgroundTint="@color/orange"
             android:text="@string/edit_profile"
             android:textColor="@android:color/white"
             android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btnFollowProfile"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="22dp"
+            android:backgroundTint="@color/orange"
+            android:text="@string/follow"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"
+            android:visibility="gone" />
 
         <LinearLayout
             android:id="@+id/profileStatsRowOne"

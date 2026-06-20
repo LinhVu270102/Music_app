@@ -245,6 +245,32 @@ class SongRepository {
                 song.status == SongStatus.APPROVED && !song.isDeleted
             }
     }
+    suspend fun getPublicPlaylistsByUserId(userId: String): List<Playlist> {
+        if (userId.isBlank()) return emptyList()
+
+        return firebaseService.getUserPlaylists(userId)
+            .filter { playlist ->
+                playlist.isPublic
+            }
+    }
+
+    suspend fun getPlaylistSongs(
+        ownerId: String,
+        playlistId: String
+    ): List<Song> {
+        val finalOwnerId = ownerId.ifBlank {
+            auth.currentUser?.uid.orEmpty()
+        }
+
+        if (finalOwnerId.isBlank() || playlistId.isBlank()) {
+            return emptyList()
+        }
+
+        return firebaseService.getPlaylistSongs(finalOwnerId, playlistId)
+            .filter { song ->
+                song.status == SongStatus.APPROVED && !song.isDeleted
+            }
+    }
 
     // =========================
     // FOLLOW USER
