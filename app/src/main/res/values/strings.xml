@@ -498,4 +498,14 @@
     <string name="play_all">Play all</string>
     <string name="no_songs_in_playlist">No songs in this playlist.</string>
     <string name="seek_to_comment_timeline">Jumped to %1$s</string>
+    <string name="soundcloud_source">SoundCloud</string>
+    <string name="orange_music_source">Orange Music</string>
+    <string name="api_artist_search_subtitle">%1$s • %2$d tracks</string>
+    <string name="artist_profile">Artist profile</string>
+    <string name="api_artist_profile">API artist profile</string>
+    <string name="api_artist_source_format">Source: %1$s</string>
+    <string name="artist_profile_songs_count">%1$d songs from this artist</string>
+    <string name="artist_profile_songs_count_placeholder">0 songs from this artist</string>
+    <string name="no_artist_songs">No songs found for this artist.</string>
+    <string name="open_artist_profile_failed">Could not open artist profile.</string>
 </resources>

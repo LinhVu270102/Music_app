@@ -23,4 +23,11 @@ sealed class SearchResultItem {
     data class PlaylistItem(
         val playlist: Playlist
     ) : SearchResultItem()
+
+    data class ApiArtistProfile(
+        val artistName: String,
+        val source: String,
+        val avatarUrl: String,
+        val trackCount: Int
+    ) : SearchResultItem()
 }

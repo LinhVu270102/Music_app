@@ -29,6 +29,8 @@ import kotlinx.coroutines.launch
 import androidx.fragment.app.commit
 import com.example.music_app.ui.library.PlaylistDetailFragment
 import com.example.music_app.ui.profile.ProfileFragment
+import com.example.music_app.ui.profile.ApiArtistProfileFragment
+
 
 class SearchFragment : Fragment(R.layout.fragment_search) {
 
@@ -77,6 +79,9 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             },
             onProfileClick = { user ->
                 openProfileResult(user)
+            },
+            onApiArtistProfileClick = { profile ->
+                openApiArtistProfileResult(profile)
             },
             onPlaylistClick = { playlist ->
                 openPlaylistResult(playlist)
@@ -315,9 +320,14 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
             SearchTab.PROFILES -> {
                 currentSearchSongs = emptyList()
-                searchResults.profiles.map { user ->
+
+                val firebaseProfiles = searchResults.profiles.map { user ->
                     SearchResultItem.Profile(user)
                 }
+
+                val apiProfiles = buildApiArtistProfiles(searchResults.tracks)
+
+                firebaseProfiles + apiProfiles
             }
 
             SearchTab.PLAYLISTS -> {
@@ -340,6 +350,10 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         result: SearchResultBundle
     ): List<SearchResultItem> {
         val items = mutableListOf<SearchResultItem>()
+        val apiProfiles = buildApiArtistProfiles(result.tracks)
+        val allProfiles = result.profiles.map { user ->
+            SearchResultItem.Profile(user)
+        } + apiProfiles
 
         if (result.tracks.isNotEmpty()) {
             items.add(
@@ -356,19 +370,15 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             )
         }
 
-        if (result.profiles.isNotEmpty()) {
+        if (allProfiles.isNotEmpty()) {
             items.add(
                 SearchResultItem.Header(
                     titleResId = R.string.profiles,
-                    count = result.profiles.size
+                    count = allProfiles.size
                 )
             )
 
-            items.addAll(
-                result.profiles.map { user ->
-                    SearchResultItem.Profile(user)
-                }
-            )
+            items.addAll(allProfiles)
         }
 
         if (result.playlists.isNotEmpty()) {
@@ -388,7 +398,58 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
         return items
     }
+    private fun buildApiArtistProfiles(
+        tracks: List<Song>
+    ): List<SearchResultItem.ApiArtistProfile> {
+        return tracks
+            .filter { song ->
+                song.artist.isNotBlank()
+            }
+            .groupBy { song ->
+                song.artist.trim().lowercase()
+            }
+            .map { (_, songsByArtist) ->
+                val firstSong = songsByArtist.first()
 
+                SearchResultItem.ApiArtistProfile(
+                    artistName = firstSong.artist,
+                    source = firstSong.source.ifBlank { getSongSource(firstSong) },
+                    avatarUrl = firstSong.coverUrl,
+                    trackCount = songsByArtist.size
+                )
+            }
+            .sortedBy { profile ->
+                profile.artistName.lowercase()
+            }
+    }
+    private fun getSongSource(song: Song): String {
+        return if (
+            song.id.startsWith("soundcloud_", ignoreCase = true) ||
+            song.uploaderId.startsWith("soundcloud", ignoreCase = true)
+        ) {
+            "soundcloud"
+        } else {
+            "orange_music"
+        }
+    }
+    private fun openApiArtistProfileResult(
+        profile: SearchResultItem.ApiArtistProfile
+    ) {
+        hideKeyboard()
+        binding.edtSearch.clearFocus()
+
+        parentFragmentManager.commit {
+            replace(
+                R.id.fragmentContainer,
+                ApiArtistProfileFragment.newInstance(
+                    artistName = profile.artistName,
+                    source = profile.source,
+                    coverUrl = profile.avatarUrl
+                )
+            )
+            addToBackStack(null)
+        }
+    }
     private fun clearSearchUi() {
         searchResults = SearchResultBundle()
         currentSearchSongs = emptyList()
