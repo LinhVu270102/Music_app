@@ -6,5 +6,6 @@ data class AdminDashboardStats(
     val rejectedSongs: Int = 0,
     val hiddenSongs: Int = 0,
     val pendingReports: Int = 0,
-    val reportedSongs: Int = 0
+    val reportedSongs: Int = 0,
+    val reportedComments: Int = 0
 )

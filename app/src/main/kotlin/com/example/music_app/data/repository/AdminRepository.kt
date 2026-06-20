@@ -1,37 +1,96 @@
 package com.example.music_app.data.repository
 
+import com.example.music_app.R
 import com.example.music_app.data.model.AdminDashboardStats
+import com.example.music_app.data.model.Comment
+import com.example.music_app.data.model.Report
 import com.example.music_app.data.model.ReportStatus
+import com.example.music_app.data.model.ReportTargetType
+import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.SongStatus
 import com.example.music_app.data.model.UserRole
+import com.example.music_app.data.remote.FirebaseService
+import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.tasks.await
-import com.example.music_app.data.model.Song
-import com.example.music_app.data.remote.FirebaseService
-import com.example.music_app.data.model.Report
-import com.example.music_app.data.model.Comment
 
 class AdminRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
+    private val firebaseService = FirebaseService(firestore)
     private val auth = FirebaseAuth.getInstance()
 
-    private val firebaseService = FirebaseService(firestore)
+    // =========================
+    // ADMIN AUTH GUARD
+    // =========================
 
-    private fun currentAdminId(): String {
-        return auth.currentUser?.uid.orEmpty()
+    private suspend fun requireAdmin(): String {
+        val userId = auth.currentUser?.uid
+            ?: throw AppException(R.string.not_logged_in)
+
+        val user = firebaseService.getUserById(userId)
+            ?: throw AppException(R.string.account_not_found)
+
+        if (user.role != UserRole.ADMIN) {
+            throw AppException(R.string.no_admin_permission)
+        }
+
+        return userId
     }
 
+    // =========================
+    // DASHBOARD
+    // =========================
+
+    suspend fun getDashboardStats(): AdminDashboardStats {
+        requireAdmin()
+
+        val songs = firebaseService.getAllSongsWithIds()
+        val reports = firebaseService.getPendingReports()
+        val reportedComments = firebaseService.getReportedComments()
+
+        return AdminDashboardStats(
+            pendingSongs = songs.count { song ->
+                song.status == SongStatus.PENDING && !song.isDeleted
+            },
+            approvedSongs = songs.count { song ->
+                song.status == SongStatus.APPROVED && !song.isDeleted
+            },
+            rejectedSongs = songs.count { song ->
+                song.status == SongStatus.REJECTED && !song.isDeleted
+            },
+            hiddenSongs = songs.count { song ->
+                song.isDeleted
+            },
+            pendingReports = reports.size,
+            reportedSongs = songs.count { song ->
+                song.reportsCount > 0L && !song.isDeleted
+            },
+            reportedComments = reportedComments.size
+        )
+    }
+
+    // =========================
+    // SONG MODERATION
+    // =========================
+
     suspend fun getPendingSongs(): List<Song> {
+        requireAdmin()
+
         return firebaseService.getSongsByStatus(SongStatus.PENDING)
+            .filter { song ->
+                !song.isDeleted
+            }
     }
 
     suspend fun approveSong(songId: String) {
+        val adminId = requireAdmin()
+
         firebaseService.updateSongStatus(
             songId = songId,
             status = SongStatus.APPROVED,
-            reviewedBy = currentAdminId()
+            reviewedBy = adminId,
+            rejectReason = ""
         )
     }
 
@@ -39,18 +98,22 @@ class AdminRepository {
         songId: String,
         reason: String
     ) {
+        val adminId = requireAdmin()
+
         firebaseService.updateSongStatus(
             songId = songId,
             status = SongStatus.REJECTED,
-            reviewedBy = currentAdminId(),
+            reviewedBy = adminId,
             rejectReason = reason
         )
     }
 
     suspend fun hideSong(songId: String) {
+        val adminId = requireAdmin()
+
         firebaseService.softDeleteSong(
             songId = songId,
-            deletedBy = currentAdminId()
+            deletedBy = adminId
         )
     }
 
@@ -58,109 +121,55 @@ class AdminRepository {
         songId: String,
         allowComments: Boolean
     ) {
+        requireAdmin()
+
         firebaseService.updateSongCommentPermission(
             songId = songId,
             allowComments = allowComments
         )
     }
 
-    suspend fun isCurrentUserAdmin(): Boolean {
-        val uid = auth.currentUser?.uid ?: return false
+    // =========================
+    // REPORT MANAGEMENT
+    // =========================
 
-        val userDoc = firestore.collection("users")
-            .document(uid)
-            .get()
-            .await()
-
-        val role = userDoc.getString("role").orEmpty()
-
-        return role == UserRole.ADMIN
-    }
-
-    suspend fun getDashboardStats(): AdminDashboardStats {
-        val pendingSongs = firestore.collection("songs")
-            .whereEqualTo("status", SongStatus.PENDING)
-            .whereEqualTo("isDeleted", false)
-            .get()
-            .await()
-            .size()
-
-        val approvedSongs = firestore.collection("songs")
-            .whereEqualTo("status", SongStatus.APPROVED)
-            .whereEqualTo("isDeleted", false)
-            .get()
-            .await()
-            .size()
-
-        val rejectedSongs = firestore.collection("songs")
-            .whereEqualTo("status", SongStatus.REJECTED)
-            .whereEqualTo("isDeleted", false)
-            .get()
-            .await()
-            .size()
-
-        val hiddenSongs = firestore.collection("songs")
-            .whereEqualTo("isDeleted", true)
-            .get()
-            .await()
-            .size()
-
-        val pendingReports = firestore.collection("reports")
-            .whereEqualTo("status", ReportStatus.PENDING)
-            .get()
-            .await()
-            .size()
-
-        val reportedSongs = firestore.collection("songs")
-            .get()
-            .await()
-            .documents
-            .count { doc ->
-                val reportsCount = doc.getLong("reportsCount") ?: 0L
-                val isDeleted = doc.getBoolean("isDeleted") ?: false
-
-                reportsCount > 0L && !isDeleted
-            }
-
-        return AdminDashboardStats(
-            pendingSongs = pendingSongs,
-            approvedSongs = approvedSongs,
-            rejectedSongs = rejectedSongs,
-            hiddenSongs = hiddenSongs,
-            pendingReports = pendingReports,
-            reportedSongs = reportedSongs
-        )
-    }
     suspend fun getPendingReports(): List<Report> {
+        requireAdmin()
         return firebaseService.getPendingReports()
     }
 
     suspend fun resolveReport(reportId: String) {
+        val adminId = requireAdmin()
+
         firebaseService.updateReportStatus(
             reportId = reportId,
-            status = REPORT_STATUS_RESOLVED,
-            reviewedBy = currentAdminId()
+            status = ReportStatus.RESOLVED,
+            reviewedBy = adminId
         )
     }
 
     suspend fun rejectReport(reportId: String) {
+        val adminId = requireAdmin()
+
         firebaseService.updateReportStatus(
             reportId = reportId,
-            status = REPORT_STATUS_REJECTED,
-            reviewedBy = currentAdminId()
+            status = ReportStatus.REJECTED,
+            reviewedBy = adminId
         )
     }
 
     suspend fun hideReportedTarget(report: Report) {
+        val adminId = requireAdmin()
+
         when (report.targetType) {
-            TARGET_TYPE_SONG -> {
+            ReportTargetType.SONG -> {
                 firebaseService.softDeleteSong(
                     songId = report.targetId,
-                    deletedBy = currentAdminId()
+                    deletedBy = adminId
                 )
             }
 
-            TARGET_TYPE_COMMENT -> {
+            ReportTargetType.COMMENT -> {
                 val songId = report.description
                     .split("|")
                     .getOrNull(0)
@@ -170,31 +179,35 @@ class AdminRepository {
                     firebaseService.softDeleteComment(
                         songId = songId,
                         commentId = report.targetId,
-                        deletedBy = currentAdminId()
+                        deletedBy = adminId
                     )
                 }
             }
         }
 
-        resolveReport(report.id)
+        firebaseService.updateReportStatus(
+            reportId = report.id,
+            status = ReportStatus.RESOLVED,
+            reviewedBy = adminId
+        )
     }
+
+    // =========================
+    // COMMENT MODERATION
+    // =========================
+
     suspend fun getReportedComments(): List<Comment> {
+        requireAdmin()
         return firebaseService.getReportedComments()
     }
 
     suspend fun hideComment(comment: Comment) {
+        val adminId = requireAdmin()
+
         firebaseService.softDeleteComment(
             songId = comment.songId,
             commentId = comment.id,
-            deletedBy = currentAdminId()
+            deletedBy = adminId
         )
-    }
-
-    companion object {
-        private const val REPORT_STATUS_RESOLVED = "RESOLVED"
-        private const val REPORT_STATUS_REJECTED = "REJECTED"
-
-        private const val TARGET_TYPE_SONG = "song"
-        private const val TARGET_TYPE_COMMENT = "comment"
     }
 }
