@@ -2,7 +2,9 @@ package com.example.music_app.data.repository
 
 import com.example.music_app.R
 import com.example.music_app.data.model.Comment
+import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.model.SongStatus
 import com.example.music_app.data.remote.soundcloud.SoundCloudRetrofitClient
 import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
@@ -20,10 +22,27 @@ data class SoundCloudApiPlaylist(
     val name: String = "",
     val description: String = "",
     val coverUrl: String = "",
-    val songsCount: Int = 0
+    val songsCount: Int = 0,
+    val tracks: List<Song> = emptyList()
 )
 
 class SoundCloudSocialRepository {
+    companion object {
+        const val SOUNDCLOUD_API_PLAYLIST_OWNER_ID = "soundcloud_api_playlist"
+
+        fun isSoundCloudApiPlaylist(playlist: Playlist): Boolean {
+            return playlist.ownerId == SOUNDCLOUD_API_PLAYLIST_OWNER_ID ||
+                    playlist.id.startsWith("api_playlist", ignoreCase = true)
+        }
+
+        fun isSoundCloudApiPlaylist(
+            playlistId: String,
+            ownerId: String
+        ): Boolean {
+            return ownerId == SOUNDCLOUD_API_PLAYLIST_OWNER_ID ||
+                    playlistId.startsWith("api_playlist", ignoreCase = true)
+        }
+    }
 
     private val api = SoundCloudRetrofitClient.api
     private val auth = FirebaseAuth.getInstance()
@@ -37,7 +56,17 @@ class SoundCloudSocialRepository {
     fun isSoundCloudSongId(songId: String): Boolean {
         return songId.startsWith("soundcloud_", ignoreCase = true)
     }
-
+    fun SoundCloudApiPlaylist.toPlaylist(): Playlist {
+        return Playlist(
+            id = id,
+            name = name,
+            description = description,
+            coverUrl = coverUrl,
+            ownerId = SOUNDCLOUD_API_PLAYLIST_OWNER_ID,
+            isPublic = true,
+            songsCount = songsCount.toLong()
+        )
+    }
     private fun currentUserId(): String {
         return auth.currentUser?.uid
             ?: throw AppException(R.string.not_logged_in)
@@ -205,6 +234,15 @@ class SoundCloudSocialRepository {
 
         for (index in 0 until results.length()) {
             val item = results.optJSONObject(index) ?: continue
+            val tracksJson = item.optJSONArray("tracks")
+            val tracks = mutableListOf<Song>()
+
+            if (tracksJson != null) {
+                for (trackIndex in 0 until tracksJson.length()) {
+                    val trackJson = tracksJson.optJSONObject(trackIndex) ?: continue
+                    tracks.add(trackJson.toSong())
+                }
+            }
 
             playlists.add(
                 SoundCloudApiPlaylist(
@@ -212,14 +250,39 @@ class SoundCloudSocialRepository {
                     name = item.optString("name"),
                     description = item.optString("description"),
                     coverUrl = item.optString("coverUrl"),
-                    songsCount = item.optInt("songsCount")
+                    songsCount = item.optInt("songsCount"),
+                    tracks = tracks
                 )
             )
         }
 
         return playlists
     }
+    suspend fun getUserApiPlaylistSongs(playlistId: String): List<Song> {
+        return getUserApiPlaylists()
+            .firstOrNull { playlist ->
+                playlist.id == playlistId
+            }
+            ?.tracks
+            .orEmpty()
+    }
+    suspend fun removeTrackFromUserApiPlaylist(
+        playlistId: String,
+        songId: String
+    ) {
+        val response = api.removeTrackFromUserApiPlaylist(
+            mapOf(
+                "playlistId" to playlistId,
+                "trackId" to songId
+            )
+        )
 
+        readBodyOrThrow(
+            isSuccessful = response.isSuccessful,
+            code = response.code(),
+            bodyText = response.body()?.string()
+        )
+    }
     suspend fun createUserApiPlaylist(name: String): SoundCloudApiPlaylist {
         val response = api.createUserApiPlaylist(
             mapOf(
@@ -284,6 +347,37 @@ class SoundCloudSocialRepository {
             "source" to source.ifBlank { "soundcloud" },
             "sourceLabel" to "SoundCloud",
             "uploaderId" to uploaderId.ifBlank { "soundcloud" }
+        )
+    }
+    private fun JSONObject.toSong(): Song {
+        val rawId = optString("id")
+        val soundCloudId = optLong("soundCloudId")
+
+        val finalId =
+            if (rawId.startsWith("soundcloud_", ignoreCase = true)) {
+                rawId
+            } else {
+                "soundcloud_$soundCloudId"
+            }
+
+        return Song(
+            id = finalId,
+            title = optString("title"),
+            artist = optString("artist"),
+            coverUrl = optString("coverUrl"),
+            songUrl = "",
+            duration = optInt("duration"),
+            plays = optLong("plays", optLong("playbackCount")),
+            likes = optLong("likes", optLong("likesCount")),
+            commentsCount = optLong("commentsCount"),
+            uploaderId = optString("uploaderId", "soundcloud"),
+            genre = optString("genre"),
+            status = SongStatus.APPROVED,
+            source = optString("source", "soundcloud"),
+            soundCloudId = soundCloudId,
+            permalinkUrl = optString("permalinkUrl"),
+            streamable = optBoolean("streamable"),
+            access = optString("access")
         )
     }
 }

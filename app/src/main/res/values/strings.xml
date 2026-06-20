@@ -509,4 +509,7 @@
     <string name="no_artist_songs">No songs found for this artist.</string>
     <string name="open_artist_profile_failed">Could not open artist profile.</string>
     <string name="online_song_cannot_follow">Online songs do not have a followable uploader.</string>
+    <string name="soundcloud_playlist_count_format">SoundCloud • %1$d songs</string>
+    <string name="soundcloud_api_playlist_subtitle">SoundCloud playlist saved in Orange Music</string>
+    <string name="api_playlist_delete_not_supported">SoundCloud server playlist deletion is not supported yet.</string>
 </resources>

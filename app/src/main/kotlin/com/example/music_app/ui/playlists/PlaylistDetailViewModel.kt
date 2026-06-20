@@ -9,10 +9,12 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
+import com.example.music_app.data.repository.SoundCloudSocialRepository
 
 class PlaylistDetailViewModel : ViewModel() {
 
     private val repository = SongRepository()
+    private val soundCloudSocialRepository = SoundCloudSocialRepository()
 
     private val _songs = MutableLiveData<List<Song>>()
     val songs: LiveData<List<Song>> = _songs
@@ -26,10 +28,20 @@ class PlaylistDetailViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                _songs.value = repository.getPlaylistSongs(
-                    ownerId = ownerId,
-                    playlistId = playlistId
-                )
+                _songs.value =
+                    if (
+                        SoundCloudSocialRepository.isSoundCloudApiPlaylist(
+                            playlistId = playlistId,
+                            ownerId = ownerId
+                        )
+                    ) {
+                        soundCloudSocialRepository.getUserApiPlaylistSongs(playlistId)
+                    } else {
+                        repository.getPlaylistSongs(
+                            ownerId = ownerId,
+                            playlistId = playlistId
+                        )
+                    }
             } catch (e: AppException) {
                 _errorMessageResId.value = e.messageResId
             } catch (_: Exception) {
@@ -40,19 +52,35 @@ class PlaylistDetailViewModel : ViewModel() {
 
     fun removeSongFromPlaylist(
         playlistId: String,
-        songId: String
+        songId: String,
+        ownerId: String = ""
     ) {
         viewModelScope.launch {
             try {
-                repository.removeSongFromPlaylist(
-                    playlistId = playlistId,
-                    songId = songId
-                )
+                if (
+                    SoundCloudSocialRepository.isSoundCloudApiPlaylist(
+                        playlistId = playlistId,
+                        ownerId = ownerId
+                    )
+                ) {
+                    soundCloudSocialRepository.removeTrackFromUserApiPlaylist(
+                        playlistId = playlistId,
+                        songId = songId
+                    )
+                } else {
+                    repository.removeSongFromPlaylist(
+                        playlistId = playlistId,
+                        songId = songId
+                    )
+                }
 
-                loadPlaylistSongs(playlistId)
+                loadPlaylistSongs(
+                    playlistId = playlistId,
+                    ownerId = ownerId
+                )
             } catch (e: AppException) {
                 _errorMessageResId.value = e.messageResId
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _errorMessageResId.value = R.string.remove_song_from_playlist_failed
             }
         }
