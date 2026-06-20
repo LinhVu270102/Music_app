@@ -191,7 +191,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
     }
 
     @OptIn(UnstableApi::class)
-    private fun startMusicService() {
+   fun startMusicService() {
         val intent = Intent(this, MusicService::class.java)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

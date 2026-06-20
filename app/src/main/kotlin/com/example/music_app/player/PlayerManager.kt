@@ -23,6 +23,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.random.Random
+import androidx.media3.common.MediaMetadata
 
 object PlayerManager {
 
@@ -42,6 +43,10 @@ object PlayerManager {
     private val playerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val musicInteractionRepository = MusicInteractionRepository()
     private var isPreparingRandomSong = false
+    private var isExtendingRandomTail = false
+
+    private const val RANDOM_TAIL_SIZE = 5
+    private const val MIN_REMAINING_BEFORE_EXTEND = 3
 
     private val _playlistSongs = MutableLiveData<List<Song>>(emptyList())
     val playlistSongs: LiveData<List<Song>> = _playlistSongs
@@ -93,6 +98,13 @@ object PlayerManager {
                     }
 
                     override fun onPlaybackStateChanged(playbackState: Int) {
+                        if (playbackState == Player.STATE_READY) {
+                            Log.d(
+                                TAG,
+                                "STATE_READY duration=${exoPlayer?.duration}, seekable=${exoPlayer?.isCurrentMediaItemSeekable}"
+                            )
+                        }
+
                         if (playbackState == Player.STATE_ENDED) {
                             Log.d(TAG, "Playback ended, play next")
                             playNext()
@@ -111,6 +123,8 @@ object PlayerManager {
                             currentPlaylistIndex = index
                             _currentIndex.value = index
                             _currentSong.value = song
+
+                            extendRandomTailIfNeeded()
                         }
                     }
 
@@ -151,9 +165,15 @@ object PlayerManager {
     }
 
     private fun createMediaItem(song: Song): MediaItem {
+        val metadata = MediaMetadata.Builder()
+            .setTitle(song.title)
+            .setArtist(song.artist)
+            .build()
+
         val builder = MediaItem.Builder()
             .setUri(song.songUrl)
             .setMediaId(song.id)
+            .setMediaMetadata(metadata)
 
         if (
             song.tags.any { it.equals("hls", ignoreCase = true) } ||
@@ -346,13 +366,12 @@ object PlayerManager {
         )
 
         if (songs.size > 1 && currentIndex in songs.indices) {
-            val nextIndex = if (currentIndex + 1 < songs.size) {
-                currentIndex + 1
-            } else {
-                0
+            if (currentIndex + 1 < songs.size) {
+                playSongAt(currentIndex + 1)
+                return
             }
 
-            playSongAt(nextIndex)
+            playRandomFallback()
             return
         }
 
@@ -369,19 +388,92 @@ object PlayerManager {
         )
 
         if (songs.size > 1 && currentIndex in songs.indices) {
-            val previousIndex = if (currentIndex - 1 >= 0) {
-                currentIndex - 1
-            } else {
-                songs.lastIndex
+            if (currentIndex - 1 >= 0) {
+                playSongAt(currentIndex - 1)
+                return
             }
 
-            playSongAt(previousIndex)
+            playRandomFallback()
             return
         }
 
         playRandomFallback()
     }
+    private fun extendRandomTailIfNeeded() {
+        val player = exoPlayer ?: return
+        val currentIndex = _currentIndex.value ?: -1
+        val currentSongs = _playlistSongs.value.orEmpty()
 
+        if (isExtendingRandomTail) return
+        if (currentIndex < 0) return
+        if (currentSongs.isEmpty()) return
+
+        val remainingSongs = currentSongs.lastIndex - currentIndex
+
+        if (remainingSongs > MIN_REMAINING_BEFORE_EXTEND) return
+
+        val currentIds = currentSongs.map { it.id }.toSet()
+
+        val candidates = _fallbackSongs.value
+            .orEmpty()
+            .filter { it.id.isNotBlank() }
+            .filter { it.id !in currentIds }
+            .filter { it.status == SongStatus.APPROVED }
+            .filter { !it.isDeleted }
+            .filter { it.songUrl.isNotBlank() || it.isSoundCloudSong() }
+            .shuffled()
+            .take(RANDOM_TAIL_SIZE)
+
+        if (candidates.isEmpty()) {
+            Log.d(TAG, "extendRandomTailIfNeeded: no random candidates")
+            return
+        }
+
+        isExtendingRandomTail = true
+
+        playerScope.launch {
+            try {
+                val preparedSongs = withContext(Dispatchers.IO) {
+                    candidates.mapNotNull { song ->
+                        runCatching {
+                            if (song.songUrl.isBlank() || song.isSoundCloudSong()) {
+                                musicInteractionRepository.preparePlayableSong(song)
+                            } else {
+                                song
+                            }
+                        }.getOrNull()
+                    }
+                        .filter { it.id.isNotBlank() }
+                        .filter { it.songUrl.isNotBlank() }
+                        .distinctBy { it.id }
+                }
+
+                if (preparedSongs.isEmpty()) {
+                    Log.d(TAG, "extendRandomTailIfNeeded: prepared songs empty")
+                    return@launch
+                }
+
+                playlist.addAll(preparedSongs)
+
+                val mediaItems = preparedSongs.map { song ->
+                    createMediaItem(song)
+                }
+
+                player.addMediaItems(mediaItems)
+
+                _playlistSongs.value = playlist.toList()
+
+                Log.d(
+                    TAG,
+                    "extendRandomTailIfNeeded: added=${preparedSongs.size}, total=${playlist.size}"
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "extendRandomTailIfNeeded failed: ${e.message}", e)
+            } finally {
+                isExtendingRandomTail = false
+            }
+        }
+    }
     fun setFallbackSongs(songs: List<Song>) {
         val validSongs = songs
             .filter { it.id.isNotBlank() }

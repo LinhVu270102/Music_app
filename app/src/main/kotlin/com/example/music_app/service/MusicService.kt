@@ -44,7 +44,20 @@ class MusicService : Service() {
 
         val player = PlayerManager.getPlayer() ?: return
 
-        mediaSession = MediaSession.Builder(this, player).build()
+        val contentIntent = Intent(this, MainActivity::class.java)
+
+        val contentPendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            contentIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val session = MediaSession.Builder(this, player)
+            .setSessionActivity(contentPendingIntent)
+            .build()
+
+        mediaSession = session
 
         playerNotificationManager = PlayerNotificationManager.Builder(
             this,
@@ -58,8 +71,15 @@ class MusicService : Service() {
             .build()
             .apply {
                 setPlayer(player)
+
+                setUsePlayPauseActions(true)
+
                 setUseNextAction(true)
                 setUsePreviousAction(true)
+
+                setUseNextActionInCompactView(true)
+                setUsePreviousActionInCompactView(true)
+
                 setUseFastForwardAction(false)
                 setUseRewindAction(false)
             }
@@ -140,6 +160,7 @@ class MusicService : Service() {
                 notificationId: Int,
                 dismissedByUser: Boolean
             ) {
+                PlayerManager.pause()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
