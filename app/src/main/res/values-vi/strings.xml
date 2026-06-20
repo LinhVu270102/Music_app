@@ -508,4 +508,5 @@
     <string name="artist_profile_songs_count_placeholder">0 bài hát của nghệ sĩ này</string>
     <string name="no_artist_songs">Chưa tìm thấy bài hát nào của nghệ sĩ này.</string>
     <string name="open_artist_profile_failed">Không thể mở hồ sơ nghệ sĩ.</string>
+    <string name="online_song_cannot_follow">Bài hát online không có người đăng để theo dõi.</string>
 </resources>

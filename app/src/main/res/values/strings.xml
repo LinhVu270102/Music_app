@@ -508,4 +508,5 @@
     <string name="artist_profile_songs_count_placeholder">0 songs from this artist</string>
     <string name="no_artist_songs">No songs found for this artist.</string>
     <string name="open_artist_profile_failed">Could not open artist profile.</string>
+    <string name="online_song_cannot_follow">Online songs do not have a followable uploader.</string>
 </resources>
