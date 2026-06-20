@@ -26,6 +26,9 @@ import com.example.music_app.ui.player.PlaybackLauncher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.fragment.app.commit
+import com.example.music_app.ui.library.PlaylistDetailFragment
+import com.example.music_app.ui.profile.ProfileFragment
 
 class SearchFragment : Fragment(R.layout.fragment_search) {
 
@@ -395,21 +398,44 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     }
 
     private fun openProfileResult(user: User) {
-        showToast(
-            getString(
-                R.string.profile_result_selected,
-                user.displayName.ifBlank { user.email }
+        if (user.uid.isBlank()) {
+            showToast(getString(R.string.target_user_not_found))
+            return
+        }
+
+        hideKeyboard()
+        binding.edtSearch.clearFocus()
+
+        parentFragmentManager.commit {
+            replace(
+                R.id.fragmentContainer,
+                ProfileFragment.newInstance(user.uid)
             )
-        )
+            addToBackStack(null)
+        }
     }
 
     private fun openPlaylistResult(playlist: Playlist) {
-        showToast(
-            getString(
-                R.string.playlist_result_selected,
-                playlist.name
+        if (playlist.id.isBlank() || playlist.ownerId.isBlank()) {
+            showToast(getString(R.string.playlist_not_found))
+            return
+        }
+
+        hideKeyboard()
+        binding.edtSearch.clearFocus()
+
+        parentFragmentManager.commit {
+            replace(
+                R.id.fragmentContainer,
+                PlaylistDetailFragment.newInstance(
+                    playlistId = playlist.id,
+                    playlistName = playlist.name,
+                    ownerId = playlist.ownerId,
+                    coverUrl = playlist.coverUrl
+                )
             )
-        )
+            addToBackStack(null)
+        }
     }
 
     private fun hideKeyboard() {

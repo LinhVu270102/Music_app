@@ -491,4 +491,10 @@
     <string name="time_days_ago">%1$d d ago</string>
     <string name="time_months_ago">%1$d mo ago</string>
     <string name="time_years_ago">%1$d y ago</string>
+    <string name="follow_user_failed">Could not follow this user.</string>
+    <string name="playlist_not_found">Playlist not found.</string>
+    <string name="playlist_detail_subtitle">Public playlist</string>
+    <string name="playlist_song_count_format">%1$d songs</string>
+    <string name="play_all">Play all</string>
+    <string name="no_songs_in_playlist">No songs in this playlist.</string>
 </resources>

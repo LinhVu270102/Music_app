@@ -491,4 +491,10 @@
     <string name="time_days_ago">%1$d ngày</string>
     <string name="time_months_ago">%1$d tháng</string>
     <string name="time_years_ago">%1$d năm</string>
+    <string name="follow_user_failed">Không thể theo dõi người dùng này.</string>
+    <string name="playlist_not_found">Không tìm thấy danh sách phát.</string>
+    <string name="playlist_detail_subtitle">Danh sách phát công khai</string>
+    <string name="playlist_song_count_format">%1$d bài hát</string>
+    <string name="play_all">Phát tất cả</string>
+    <string name="no_songs_in_playlist">Chưa có bài hát trong danh sách phát này.</string>
 </resources>

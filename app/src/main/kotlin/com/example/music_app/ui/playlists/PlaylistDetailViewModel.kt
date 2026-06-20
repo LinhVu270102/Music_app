@@ -20,13 +20,19 @@ class PlaylistDetailViewModel : ViewModel() {
     private val _errorMessageResId = MutableLiveData<Int?>()
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
 
-    fun loadPlaylistSongs(playlistId: String) {
+    fun loadPlaylistSongs(
+        playlistId: String,
+        ownerId: String = ""
+    ) {
         viewModelScope.launch {
             try {
-                _songs.value = repository.getPlaylistSongs(playlistId)
+                _songs.value = repository.getPlaylistSongs(
+                    ownerId = ownerId,
+                    playlistId = playlistId
+                )
             } catch (e: AppException) {
                 _errorMessageResId.value = e.messageResId
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 _errorMessageResId.value = R.string.load_playlist_songs_failed
             }
         }

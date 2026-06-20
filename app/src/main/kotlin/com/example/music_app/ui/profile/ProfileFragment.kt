@@ -27,6 +27,20 @@ class ProfileFragment : Fragment() {
     private lateinit var adapter: SongAdapter
     private var currentSongs: List<Song> = emptyList()
 
+    private var targetUserId: String = ""
+
+    companion object {
+        private const val ARG_USER_ID = "userId"
+
+        fun newInstance(userId: String): ProfileFragment {
+            return ProfileFragment().apply {
+                arguments = Bundle().apply {
+                    putString(ARG_USER_ID, userId)
+                }
+            }
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -42,16 +56,17 @@ class ProfileFragment : Fragment() {
     ) {
         super.onViewCreated(view, savedInstanceState)
 
+        targetUserId = arguments?.getString(ARG_USER_ID).orEmpty()
         setupRecyclerView()
         setupClickListeners()
         observeViewModel()
 
-        viewModel.loadProfile()
+        viewModel.loadProfile(targetUserId)
     }
 
     override fun onResume() {
         super.onResume()
-        viewModel.loadProfile()
+        viewModel.loadProfile(targetUserId)
     }
 
     private fun setupClickListeners() {
@@ -60,6 +75,9 @@ class ProfileFragment : Fragment() {
                 .replace(R.id.fragmentContainer, EditProfileFragment())
                 .addToBackStack(null)
                 .commit()
+        }
+        binding.btnFollowProfile.setOnClickListener {
+            viewModel.toggleFollow()
         }
     }
 
@@ -112,6 +130,19 @@ class ProfileFragment : Fragment() {
 
                 viewModel.clearErrorMessage()
             }
+        }
+        viewModel.isOwnProfile.observe(viewLifecycleOwner) { isOwnProfile ->
+            binding.btnEditProfile.isVisible = isOwnProfile
+            binding.btnFollowProfile.isVisible = !isOwnProfile
+        }
+
+        viewModel.isFollowing.observe(viewLifecycleOwner) { isFollowing ->
+            binding.btnFollowProfile.text =
+                if (isFollowing) {
+                    getString(R.string.following)
+                } else {
+                    getString(R.string.follow)
+                }
         }
     }
 
