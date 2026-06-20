@@ -28,9 +28,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
-import android.text.InputType
-import android.widget.EditText
-import android.widget.PopupMenu
 import com.google.firebase.auth.FirebaseAuth
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -115,9 +112,7 @@ class PlayerFragment : Fragment() {
     }
 
     private fun setupActions() {
-        binding.btnSongOptions.setOnClickListener { anchor ->
-            showSongOptions(anchor)
-        }
+
         binding.btnPlayPause.setOnClickListener {
             PlayerManager.toggle()
             updatePlayPauseIcon()

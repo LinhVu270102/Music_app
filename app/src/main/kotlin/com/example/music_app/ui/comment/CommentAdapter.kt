@@ -10,7 +10,8 @@ import com.example.music_app.data.model.Comment
 import com.example.music_app.databinding.ItemCommentBinding
 
 class CommentAdapter(
-    private val onMoreClick: (Comment, View) -> Unit
+    private val onMoreClick: (Comment, View) -> Unit,
+    private val onTimelineClick: (Comment) -> Unit
 ) : RecyclerView.Adapter<CommentAdapter.CommentViewHolder>() {
 
     private val comments = mutableListOf<Comment>()
@@ -37,6 +38,10 @@ class CommentAdapter(
 
             binding.txtCommentSongTime.text =
                 formatTimelinePosition(comment.timelinePositionMs)
+
+            binding.txtCommentSongTime.setOnClickListener {
+                onTimelineClick(comment)
+            }
 
             binding.txtCommentTimeAgo.text =
                 formatTimeAgo(context, comment.createdAt)
