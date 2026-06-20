@@ -5,6 +5,7 @@ node_modules/
 !.env.example
 
 .soundcloud-token-cache.json
+data/orange-music-store.json
 
 serviceAccountKey.json
 *serviceAccountKey*.json

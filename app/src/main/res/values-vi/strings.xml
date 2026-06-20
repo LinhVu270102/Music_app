@@ -498,4 +498,14 @@
     <string name="play_all">Phát tất cả</string>
     <string name="no_songs_in_playlist">Chưa có bài hát trong danh sách phát này.</string>
     <string name="seek_to_comment_timeline">Đã tua đến %1$s</string>
+    <string name="soundcloud_source">SoundCloud</string>
+    <string name="orange_music_source">Orange Music</string>
+    <string name="api_artist_search_subtitle">%1$s • %2$d bài hát</string>
+    <string name="artist_profile">Hồ sơ nghệ sĩ</string>
+    <string name="api_artist_profile">Hồ sơ nghệ sĩ từ API</string>
+    <string name="api_artist_source_format">Nguồn: %1$s</string>
+    <string name="artist_profile_songs_count">%1$d bài hát của nghệ sĩ này</string>
+    <string name="artist_profile_songs_count_placeholder">0 bài hát của nghệ sĩ này</string>
+    <string name="no_artist_songs">Chưa tìm thấy bài hát nào của nghệ sĩ này.</string>
+    <string name="open_artist_profile_failed">Không thể mở hồ sơ nghệ sĩ.</string>
 </resources>

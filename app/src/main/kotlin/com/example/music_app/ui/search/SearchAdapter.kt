@@ -14,6 +14,7 @@ import com.example.music_app.databinding.ItemSearchSectionHeaderBinding
 class SearchAdapter(
     private val onTrackClick: (Song) -> Unit,
     private val onProfileClick: (User) -> Unit,
+    private val onApiArtistProfileClick: (SearchResultItem.ApiArtistProfile) -> Unit,
     private val onPlaylistClick: (Playlist) -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -30,6 +31,7 @@ class SearchAdapter(
             is SearchResultItem.Header -> VIEW_TYPE_HEADER
             is SearchResultItem.Track -> VIEW_TYPE_RESULT
             is SearchResultItem.Profile -> VIEW_TYPE_RESULT
+            is SearchResultItem.ApiArtistProfile -> VIEW_TYPE_RESULT
             is SearchResultItem.PlaylistItem -> VIEW_TYPE_RESULT
         }
     }
@@ -70,6 +72,10 @@ class SearchAdapter(
 
             is SearchResultItem.Profile -> {
                 (holder as ResultViewHolder).bindProfile(item.user)
+            }
+
+            is SearchResultItem.ApiArtistProfile -> {
+                (holder as ResultViewHolder).bindApiArtistProfile(item)
             }
 
             is SearchResultItem.PlaylistItem -> {
@@ -154,6 +160,42 @@ class SearchAdapter(
 
             binding.root.setOnClickListener {
                 onPlaylistClick(playlist)
+            }
+        }
+        fun bindApiArtistProfile(profile: SearchResultItem.ApiArtistProfile) {
+            val context = binding.root.context
+
+            binding.txtTitle.text =
+                profile.artistName.ifBlank {
+                    context.getString(R.string.unknown_artist)
+                }
+
+            binding.txtArtist.text =
+                context.getString(
+                    R.string.api_artist_search_subtitle,
+                    getSourceLabel(profile.source),
+                    profile.trackCount
+                )
+
+            Glide.with(binding.root)
+                .load(profile.avatarUrl.ifBlank { R.drawable.music_orange })
+                .placeholder(R.drawable.music_orange)
+                .error(R.drawable.music_orange)
+                .centerCrop()
+                .into(binding.imgCover)
+
+            binding.root.setOnClickListener {
+                onApiArtistProfileClick(profile)
+            }
+        }
+
+        private fun getSourceLabel(source: String): String {
+            val context = binding.root.context
+
+            return if (source.equals("soundcloud", ignoreCase = true)) {
+                context.getString(R.string.soundcloud_source)
+            } else {
+                context.getString(R.string.orange_music_source)
             }
         }
     }

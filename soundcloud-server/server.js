@@ -16,6 +16,7 @@ const SOUNDCLOUD_CLIENT_ID = process.env.SOUNDCLOUD_CLIENT_ID;
 const SOUNDCLOUD_CLIENT_SECRET = process.env.SOUNDCLOUD_CLIENT_SECRET;
 
 const TOKEN_CACHE_FILE = path.join(__dirname, ".soundcloud-token-cache.json");
+const ORANGE_STORE_FILE = path.join(__dirname, "data", "orange-music-store.json");
 
 const SEARCH_CACHE_TTL_MS = 2 * 60 * 1000;
 
@@ -129,6 +130,98 @@ function setToCache(cacheMap, key, data, ttlMs) {
     data: data,
     expiresAt: Date.now() + ttlMs
   });
+}
+function createEmptyOrangeStore() {
+  return {
+    users: {},
+    playlists: {},
+    commentsByTrack: {},
+    likesByTrack: {}
+  };
+}
+
+function readOrangeStore() {
+  try {
+    if (!fs.existsSync(ORANGE_STORE_FILE)) {
+      return createEmptyOrangeStore();
+    }
+
+    const raw = fs.readFileSync(ORANGE_STORE_FILE, "utf8");
+    const data = JSON.parse(raw);
+
+    return {
+      users: data.users || {},
+      playlists: data.playlists || {},
+      commentsByTrack: data.commentsByTrack || {},
+      likesByTrack: data.likesByTrack || {}
+    };
+  } catch (error) {
+    console.log("Read orange store failed:", error.message);
+    return createEmptyOrangeStore();
+  }
+}
+
+function saveOrangeStore(store) {
+  try {
+    const dir = path.dirname(ORANGE_STORE_FILE);
+
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, {
+        recursive: true
+      });
+    }
+
+    fs.writeFileSync(
+      ORANGE_STORE_FILE,
+      JSON.stringify(store, null, 2)
+    );
+  } catch (error) {
+    console.log("Save orange store failed:", error.message);
+  }
+}
+
+function createId(prefix) {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function getSafeUserId(value) {
+  return String(value || "").trim() || "guest";
+}
+
+function getTrackKey(trackId) {
+  return normalizeTrackId(trackId);
+}
+
+function getTrackDocumentId(trackKey) {
+  return trackKey.startsWith("soundcloud_")
+    ? trackKey
+    : `soundcloud_${trackKey}`;
+}
+
+function normalizeStoredTrack(track) {
+  if (!track) return null;
+
+  const trackId = track.id || track.soundCloudId || "";
+
+  return {
+    ...track,
+    id: String(trackId).startsWith("soundcloud_")
+      ? String(trackId)
+      : `soundcloud_${trackId}`,
+    source: track.source || "soundcloud",
+    sourceLabel: track.sourceLabel || "SoundCloud"
+  };
+}
+
+function getPublicUser(userId, fallback = {}) {
+  return {
+    userId: userId,
+    displayName: fallback.displayName || fallback.username || "Orange Music User",
+    username: fallback.username || "",
+    avatarUrl: fallback.avatarUrl || "",
+    bio: fallback.bio || "",
+    source: "orange_music"
+  };
 }
 
 async function getSoundCloudAccessToken() {
@@ -310,19 +403,163 @@ function getMimeTypeFromUrl(url) {
 }
 
 function mapTrackToAndroid(track) {
+  const soundCloudUser = track.user || {};
+
   return {
     id: `soundcloud_${track.id}`,
     soundCloudId: track.id || 0,
+
     title: track.title || "",
-    artist: track.user ? track.user.username || "" : "",
-    coverUrl: track.artwork_url || (track.user ? track.user.avatar_url || "" : ""),
+    artist: soundCloudUser.username || "",
+    coverUrl: track.artwork_url || soundCloudUser.avatar_url || "",
+
     duration: Math.floor((track.duration || 0) / 1000),
     genre: track.genre || "",
     permalinkUrl: track.permalink_url || "",
+
     playbackCount: track.playback_count || 0,
     likesCount: track.likes_count || 0,
+    commentsCount: track.comment_count || 0,
+
+    plays: track.playback_count || 0,
+    likes: track.likes_count || 0,
+
     streamable: track.streamable === true,
-    access: track.access || ""
+    access: track.access || "",
+
+    source: "soundcloud",
+    sourceLabel: "SoundCloud",
+
+    uploaderId: soundCloudUser.id
+      ? `soundcloud_user_${soundCloudUser.id}`
+      : "soundcloud",
+
+    uploaderName: soundCloudUser.username || "",
+    uploaderUsername: soundCloudUser.username || "",
+    uploaderAvatarUrl: soundCloudUser.avatar_url || "",
+    uploaderPermalinkUrl: soundCloudUser.permalink_url || ""
+  };
+}
+
+function normalizeSurfaceLimit(value) {
+  const limit = Number(value || 20);
+
+  if (Number.isNaN(limit)) return 20;
+  if (limit < 1) return 1;
+  if (limit > 50) return 50;
+
+  return limit;
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function isSameArtist(track, artistName) {
+  const trackArtist = normalizeText(track.artist);
+  const targetArtist = normalizeText(artistName);
+
+  if (!trackArtist || !targetArtist) {
+    return false;
+  }
+
+  return (
+    trackArtist === targetArtist ||
+    trackArtist.includes(targetArtist) ||
+    targetArtist.includes(trackArtist)
+  );
+}
+
+async function searchSoundCloudTracksInternal(query, limit = 20) {
+  const finalQuery = String(query || "").trim();
+  const finalLimit = normalizeSurfaceLimit(limit);
+
+  if (!finalQuery) {
+    return [];
+  }
+
+  const cacheKey = `${finalQuery.toLowerCase()}_${finalLimit}`;
+  const cachedResult = getFromCache(searchCache, cacheKey);
+
+  if (cachedResult && Array.isArray(cachedResult.results)) {
+    return cachedResult.results;
+  }
+
+  const accessToken = await getSoundCloudAccessToken();
+
+  const response = await axios.get("https://api.soundcloud.com/tracks", {
+    headers: getSoundCloudHeaders(accessToken),
+    params: {
+      q: finalQuery,
+      limit: finalLimit,
+      access: "playable"
+    }
+  });
+
+  const tracks = Array.isArray(response.data) ? response.data : [];
+
+  const results = tracks
+    .filter((track) => track.id)
+    .filter((track) => track.title)
+    .filter((track) => {
+      if (track.access) {
+        return track.access === "playable";
+      }
+
+      return track.streamable === true;
+    })
+    .map(mapTrackToAndroid);
+
+  setToCache(
+    searchCache,
+    cacheKey,
+    {
+      results: results
+    },
+    SEARCH_CACHE_TTL_MS
+  );
+
+  return results;
+}
+
+function createApiArtistProfile(artistName, tracks) {
+  const firstTrack = tracks[0] || {};
+
+  return {
+    id: `soundcloud_artist_${encodeURIComponent(artistName)}`,
+    artistName: artistName,
+    displayName: artistName,
+    username: artistName,
+    source: "soundcloud",
+    sourceLabel: "SoundCloud",
+    avatarUrl: firstTrack.uploaderAvatarUrl || firstTrack.coverUrl || "",
+    bannerUrl: firstTrack.coverUrl || "",
+    bio: "Artist profile generated from available SoundCloud track data.",
+    followersCount: 0,
+    followingCount: 0,
+    tracksCount: tracks.length,
+    playlistsCount: 0,
+    topTracks: tracks
+  };
+}
+
+function createApiPlaylist(query, tracks) {
+  const firstTrack = tracks[0] || {};
+
+  return {
+    id: `soundcloud_playlist_${encodeURIComponent(query)}`,
+    name: query || "SoundCloud Playlist",
+    description: "Playlist generated from available SoundCloud search results.",
+    source: "soundcloud",
+    sourceLabel: "SoundCloud",
+    coverUrl: firstTrack.coverUrl || "",
+    ownerId: "soundcloud",
+    ownerName: "SoundCloud",
+    isPublic: true,
+    songsCount: tracks.length,
+    tracks: tracks
   };
 }
 
@@ -413,7 +650,26 @@ app.get("/", (req, res) => {
     endpoints: [
       "/health",
       "/searchSoundCloudTracks?q=lofi&limit=10",
-      "/getSoundCloudStreamUrl?trackId=123456789"
+      "/getSoundCloudStreamUrl?trackId=123456789",
+
+      "/getSoundCloudArtistProfile?artist=Alan%20Walker&limit=20",
+      "/getSoundCloudArtistTracks?artist=Alan%20Walker&limit=20",
+      "/getSoundCloudApiPlaylist?q=chill&limit=30",
+
+      "/upsertOrangeMusicUser",
+      "/getOrangeMusicUser?userId=demo_user",
+
+      "/getUserApiPlaylists?userId=demo_user",
+      "/createUserApiPlaylist",
+      "/addTrackToUserApiPlaylist",
+      "/removeTrackFromUserApiPlaylist",
+
+      "/getSoundCloudTrackComments?trackId=soundcloud_123456789",
+      "/addSoundCloudTrackComment",
+      "/deleteSoundCloudTrackComment",
+
+      "/getSoundCloudTrackSocial?trackId=soundcloud_123456789&userId=demo_user",
+      "/toggleSoundCloudTrackLike"
     ]
   });
 });
@@ -443,46 +699,11 @@ app.get("/searchSoundCloudTracks", async (req, res) => {
       });
     }
 
-    const cacheKey = `${query.toLowerCase()}_${limit}`;
-    const cachedResult = getFromCache(searchCache, cacheKey);
+    const results = await searchSoundCloudTracksInternal(query, limit);
 
-    if (cachedResult) {
-      console.log(`Return cached search: "${query}"`);
-      return res.status(200).json(cachedResult);
-    }
-
-    const accessToken = await getSoundCloudAccessToken();
-
-    const response = await axios.get("https://api.soundcloud.com/tracks", {
-      headers: getSoundCloudHeaders(accessToken),
-      params: {
-        q: query,
-        limit: limit,
-        access: "playable"
-      }
-    });
-
-    const tracks = Array.isArray(response.data) ? response.data : [];
-
-    const results = tracks
-      .filter((track) => track.id)
-      .filter((track) => track.title)
-      .filter((track) => {
-        if (track.access) {
-          return track.access === "playable";
-        }
-
-        return track.streamable === true;
-      })
-      .map(mapTrackToAndroid);
-
-    const result = {
+    return res.status(200).json({
       results: results
-    };
-
-    setToCache(searchCache, cacheKey, result, SEARCH_CACHE_TTL_MS);
-
-    return res.status(200).json(result);
+    });
   } catch (error) {
     logSoundCloudError("searchSoundCloudTracks", error);
 
@@ -503,7 +724,6 @@ app.get("/searchSoundCloudTracks", async (req, res) => {
     );
   }
 });
-
 // Proxy audio progressive MP3.
 // Android ExoPlayer sẽ gọi URL này thay vì gọi trực tiếp api.soundcloud.com.
 app.get("/soundcloud/proxy/media", async (req, res) => {
@@ -733,8 +953,731 @@ app.get("/getSoundCloudStreamUrl", async (req, res) => {
     );
   }
 });
+// =========================
+// MUSIC SURFACE API
+// Profile / Playlist / Comment / Like
+// =========================
 
+app.get("/getSoundCloudArtistProfile", async (req, res) => {
+  try {
+    const artist = String(req.query.artist || "").trim();
+    const limit = normalizeSurfaceLimit(req.query.limit);
+
+    if (!artist) {
+      return res.status(400).json({
+        message: "Missing artist query parameter"
+      });
+    }
+
+    const tracks = await searchSoundCloudTracksInternal(artist, limit);
+
+    const artistTracks = tracks.filter((track) => {
+      return isSameArtist(track, artist);
+    });
+
+    const finalTracks = artistTracks.length > 0 ? artistTracks : tracks;
+
+    return res.status(200).json({
+      profile: createApiArtistProfile(artist, finalTracks),
+      results: finalTracks
+    });
+  } catch (error) {
+    logSoundCloudError("getSoundCloudArtistProfile", error);
+
+    return res.status(error.response?.status || 500).json(
+      buildErrorResponse(
+        "Failed to load SoundCloud artist profile.",
+        error
+      )
+    );
+  }
+});
+
+app.get("/getSoundCloudArtistTracks", async (req, res) => {
+  try {
+    const artist = String(req.query.artist || "").trim();
+    const limit = normalizeSurfaceLimit(req.query.limit);
+
+    if (!artist) {
+      return res.status(400).json({
+        message: "Missing artist query parameter"
+      });
+    }
+
+    const tracks = await searchSoundCloudTracksInternal(artist, limit);
+
+    const artistTracks = tracks.filter((track) => {
+      return isSameArtist(track, artist);
+    });
+
+    return res.status(200).json({
+      artistName: artist,
+      source: "soundcloud",
+      results: artistTracks.length > 0 ? artistTracks : tracks
+    });
+  } catch (error) {
+    logSoundCloudError("getSoundCloudArtistTracks", error);
+
+    return res.status(error.response?.status || 500).json(
+      buildErrorResponse(
+        "Failed to load SoundCloud artist tracks.",
+        error
+      )
+    );
+  }
+});
+
+app.get("/getSoundCloudApiPlaylist", async (req, res) => {
+  try {
+    const query = String(req.query.q || req.query.query || "").trim();
+    const limit = normalizeSurfaceLimit(req.query.limit);
+
+    if (!query) {
+      return res.status(400).json({
+        message: "Missing q query parameter"
+      });
+    }
+
+    const tracks = await searchSoundCloudTracksInternal(query, limit);
+
+    return res.status(200).json({
+      playlist: createApiPlaylist(query, tracks),
+      results: tracks
+    });
+  } catch (error) {
+    logSoundCloudError("getSoundCloudApiPlaylist", error);
+
+    return res.status(error.response?.status || 500).json(
+      buildErrorResponse(
+        "Failed to load SoundCloud API playlist.",
+        error
+      )
+    );
+  }
+});
+
+app.post("/upsertOrangeMusicUser", (req, res) => {
+  try {
+    const store = readOrangeStore();
+
+    const userId = getSafeUserId(req.body.userId);
+    const currentUser = store.users[userId] || {};
+
+    const user = {
+      ...currentUser,
+      userId: userId,
+      displayName: req.body.displayName || currentUser.displayName || "",
+      username: req.body.username || currentUser.username || "",
+      email: req.body.email || currentUser.email || "",
+      avatarUrl: req.body.avatarUrl || currentUser.avatarUrl || "",
+      bio: req.body.bio || currentUser.bio || "",
+      updatedAt: Date.now(),
+      createdAt: currentUser.createdAt || Date.now()
+    };
+
+    store.users[userId] = user;
+    saveOrangeStore(store);
+
+    return res.status(200).json({
+      user: user
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to upsert Orange Music user",
+      detail: error.message
+    });
+  }
+});
+
+app.get("/getOrangeMusicUser", (req, res) => {
+  try {
+    const store = readOrangeStore();
+    const userId = getSafeUserId(req.query.userId);
+    const user = store.users[userId] || getPublicUser(userId);
+
+    return res.status(200).json({
+      user: user
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to load Orange Music user",
+      detail: error.message
+    });
+  }
+});
+
+app.get("/getUserApiPlaylists", (req, res) => {
+  try {
+    const store = readOrangeStore();
+    const userId = getSafeUserId(req.query.userId);
+
+    const playlists = Object.values(store.playlists)
+      .filter((playlist) => playlist.ownerId === userId)
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+
+    return res.status(200).json({
+      results: playlists
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to load user API playlists",
+      detail: error.message
+    });
+  }
+});
+
+app.post("/createUserApiPlaylist", (req, res) => {
+  try {
+    const store = readOrangeStore();
+
+    const ownerId = getSafeUserId(req.body.userId);
+    const name = String(req.body.name || "").trim();
+
+    if (!name) {
+      return res.status(400).json({
+        message: "Missing playlist name"
+      });
+    }
+
+    const playlistId = createId("api_playlist");
+
+    const playlist = {
+      id: playlistId,
+      name: name,
+      description: req.body.description || "",
+      source: "orange_music_soundcloud",
+      sourceLabel: "Orange Music",
+      ownerId: ownerId,
+      ownerName: req.body.ownerName || "",
+      coverUrl: req.body.coverUrl || "",
+      isPublic: req.body.isPublic !== false,
+      songsCount: 0,
+      tracks: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    store.playlists[playlistId] = playlist;
+    saveOrangeStore(store);
+
+    return res.status(201).json({
+      playlist: playlist
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to create API playlist",
+      detail: error.message
+    });
+  }
+});
+
+app.post("/addTrackToUserApiPlaylist", (req, res) => {
+  try {
+    const store = readOrangeStore();
+
+    const playlistId = String(req.body.playlistId || "").trim();
+    const track = normalizeStoredTrack(req.body.track);
+
+    if (!playlistId || !store.playlists[playlistId]) {
+      return res.status(404).json({
+        message: "Playlist not found"
+      });
+    }
+
+    if (!track || !track.id) {
+      return res.status(400).json({
+        message: "Missing track"
+      });
+    }
+
+    const playlist = store.playlists[playlistId];
+
+    const exists = playlist.tracks.some((item) => item.id === track.id);
+
+    if (!exists) {
+      playlist.tracks.push(track);
+    }
+
+    playlist.coverUrl = playlist.coverUrl || track.coverUrl || "";
+    playlist.songsCount = playlist.tracks.length;
+    playlist.updatedAt = Date.now();
+
+    store.playlists[playlistId] = playlist;
+    saveOrangeStore(store);
+
+    return res.status(200).json({
+      playlist: playlist
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to add track to API playlist",
+      detail: error.message
+    });
+  }
+});
+
+app.post("/removeTrackFromUserApiPlaylist", (req, res) => {
+  try {
+    const store = readOrangeStore();
+
+    const playlistId = String(req.body.playlistId || "").trim();
+    const trackId = String(req.body.trackId || "").trim();
+
+    if (!playlistId || !store.playlists[playlistId]) {
+      return res.status(404).json({
+        message: "Playlist not found"
+      });
+    }
+
+    const playlist = store.playlists[playlistId];
+
+    playlist.tracks = playlist.tracks.filter((track) => {
+      return track.id !== trackId;
+    });
+
+    playlist.songsCount = playlist.tracks.length;
+    playlist.updatedAt = Date.now();
+
+    store.playlists[playlistId] = playlist;
+    saveOrangeStore(store);
+
+    return res.status(200).json({
+      playlist: playlist
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to remove track from API playlist",
+      detail: error.message
+    });
+  }
+});
+
+app.get("/getSoundCloudTrackComments", (req, res) => {
+  try {
+    const store = readOrangeStore();
+
+    const trackKey = getTrackKey(req.query.trackId);
+
+    if (!trackKey) {
+      return res.status(400).json({
+        message: "Missing trackId query parameter"
+      });
+    }
+
+    const comments = store.commentsByTrack[trackKey] || [];
+
+    return res.status(200).json({
+      trackId: getTrackDocumentId(trackKey),
+      source: "orange_music_server",
+      sourceLabel: "Orange Music",
+      commentsSupportedByProxy: true,
+      comments: comments.filter((comment) => !comment.isDeleted)
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to load SoundCloud track comments",
+      detail: error.message
+    });
+  }
+});
+
+app.post("/addSoundCloudTrackComment", (req, res) => {
+  try {
+    const store = readOrangeStore();
+
+    const trackKey = getTrackKey(req.body.trackId);
+    const content = String(req.body.content || "").trim();
+
+    if (!trackKey) {
+      return res.status(400).json({
+        message: "Missing trackId"
+      });
+    }
+
+    if (!content) {
+      return res.status(400).json({
+        message: "Missing comment content"
+      });
+    }
+
+    const userId = getSafeUserId(req.body.userId);
+    const user = store.users[userId] || getPublicUser(userId, req.body);
+
+    store.users[userId] = {
+      ...user,
+      displayName: req.body.displayName || user.displayName || "",
+      username: req.body.username || user.username || "",
+      avatarUrl: req.body.avatarUrl || user.avatarUrl || "",
+      updatedAt: Date.now(),
+      createdAt: user.createdAt || Date.now()
+    };
+
+    const comment = {
+      id: createId("comment"),
+      trackId: getTrackDocumentId(trackKey),
+      userId: userId,
+      displayName: store.users[userId].displayName || store.users[userId].username || "",
+      avatarUrl: store.users[userId].avatarUrl || "",
+      content: content,
+      timelinePositionMs: Number(req.body.timelinePositionMs || 0),
+      likesCount: 0,
+      isDeleted: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+
+    if (!Array.isArray(store.commentsByTrack[trackKey])) {
+      store.commentsByTrack[trackKey] = [];
+    }
+
+    store.commentsByTrack[trackKey].push(comment);
+    saveOrangeStore(store);
+
+    return res.status(201).json({
+      comment: comment
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to add SoundCloud track comment",
+      detail: error.message
+    });
+  }
+});
+
+app.post("/deleteSoundCloudTrackComment", (req, res) => {
+  try {
+    const store = readOrangeStore();
+
+    const trackKey = getTrackKey(req.body.trackId);
+    const commentId = String(req.body.commentId || "").trim();
+    const userId = getSafeUserId(req.body.userId);
+
+    if (!trackKey || !commentId) {
+      return res.status(400).json({
+        message: "Missing trackId or commentId"
+      });
+    }
+
+    const comments = store.commentsByTrack[trackKey] || [];
+    const comment = comments.find((item) => item.id === commentId);
+
+    if (!comment) {
+      return res.status(404).json({
+        message: "Comment not found"
+      });
+    }
+
+    if (comment.userId !== userId) {
+      return res.status(403).json({
+        message: "No permission to delete this comment"
+      });
+    }
+
+    comment.isDeleted = true;
+    comment.updatedAt = Date.now();
+
+    saveOrangeStore(store);
+
+    return res.status(200).json({
+      comment: comment
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to delete SoundCloud track comment",
+      detail: error.message
+    });
+  }
+});
+
+app.get("/getSoundCloudTrackSocial", (req, res) => {
+  try {
+    const store = readOrangeStore();
+
+    const trackKey = getTrackKey(req.query.trackId);
+    const userId = getSafeUserId(req.query.userId);
+
+    if (!trackKey) {
+      return res.status(400).json({
+        message: "Missing trackId"
+      });
+    }
+
+    const likes = store.likesByTrack[trackKey] || {};
+    const comments = store.commentsByTrack[trackKey] || [];
+
+    return res.status(200).json({
+      trackId: getTrackDocumentId(trackKey),
+      liked: Boolean(likes[userId]),
+      likesCount: Object.keys(likes).length,
+      commentsCount: comments.filter((comment) => !comment.isDeleted).length
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to load SoundCloud track social data",
+      detail: error.message
+    });
+  }
+});
+
+app.post("/toggleSoundCloudTrackLike", (req, res) => {
+  try {
+    const store = readOrangeStore();
+
+    const trackKey = getTrackKey(req.body.trackId);
+    const userId = getSafeUserId(req.body.userId);
+
+    if (!trackKey) {
+      return res.status(400).json({
+        message: "Missing trackId"
+      });
+    }
+
+    if (!store.likesByTrack[trackKey]) {
+      store.likesByTrack[trackKey] = {};
+    }
+
+    const currentlyLiked = Boolean(store.likesByTrack[trackKey][userId]);
+
+    if (currentlyLiked) {
+      delete store.likesByTrack[trackKey][userId];
+    } else {
+      store.likesByTrack[trackKey][userId] = {
+        userId: userId,
+        createdAt: Date.now()
+      };
+    }
+
+    saveOrangeStore(store);
+
+    return res.status(200).json({
+      trackId: getTrackDocumentId(trackKey),
+      liked: !currentlyLiked,
+      likesCount: Object.keys(store.likesByTrack[trackKey]).length
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to toggle SoundCloud track like",
+      detail: error.message
+    });
+  }
+});
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Orange Music SoundCloud server is running on http://localhost:${PORT}`);
   console.log("Mode: progressive-only");
 });
+
+// =========================
+// MUSIC SURFACE API
+// Profile / Playlist / Comment
+// =========================
+
+function normalizeText(value) {
+    return String(value || "")
+        .trim()
+        .toLowerCase()
+}
+
+function isSameArtist(track, artistName) {
+    const trackArtist = normalizeText(track.artist)
+    const targetArtist = normalizeText(artistName)
+
+    if (!trackArtist || !targetArtist) {
+        return false
+    }
+
+    return trackArtist === targetArtist ||
+        trackArtist.includes(targetArtist) ||
+        targetArtist.includes(trackArtist)
+}
+
+function buildBaseUrl(req) {
+    return `${req.protocol}://${req.get("host")}`
+}
+
+async function fetchSoundCloudSearchFromSelf(req, query, limit = 20) {
+    const baseUrl = buildBaseUrl(req)
+    const url = `${baseUrl}/searchSoundCloudTracks?q=${encodeURIComponent(query)}&limit=${limit}`
+
+    const response = await fetch(url)
+
+    if (!response.ok) {
+        throw new Error(`Search failed with status ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    if (Array.isArray(data)) {
+        return data
+    }
+
+    if (Array.isArray(data.results)) {
+        return data.results
+    }
+
+    if (Array.isArray(data.tracks)) {
+        return data.tracks
+    }
+
+    return []
+}
+
+function createApiArtistProfile(artistName, tracks) {
+    const firstTrack = tracks[0] || {}
+
+    return {
+        id: `soundcloud_artist_${encodeURIComponent(artistName)}`,
+        artistName,
+        displayName: artistName,
+        username: artistName,
+        source: "soundcloud",
+        sourceLabel: "SoundCloud",
+        avatarUrl: firstTrack.coverUrl || "",
+        bannerUrl: firstTrack.coverUrl || "",
+        bio: "Artist profile generated from available SoundCloud track data.",
+        followersCount: 0,
+        followingCount: 0,
+        tracksCount: tracks.length,
+        playlistsCount: 0,
+        topTracks: tracks
+    }
+}
+
+function createApiPlaylist(query, tracks) {
+    const firstTrack = tracks[0] || {}
+
+    return {
+        id: `soundcloud_playlist_${encodeURIComponent(query)}`,
+        name: query || "SoundCloud Playlist",
+        description: "Playlist generated from available SoundCloud search results.",
+        source: "soundcloud",
+        sourceLabel: "SoundCloud",
+        coverUrl: firstTrack.coverUrl || "",
+        ownerId: "soundcloud",
+        ownerName: "SoundCloud",
+        isPublic: true,
+        songsCount: tracks.length,
+        tracks
+    }
+}
+
+// Artist profile from available SoundCloud tracks
+app.get("/getSoundCloudArtistProfile", async (req, res) => {
+    try {
+        const artist = String(req.query.artist || "").trim()
+        const limit = Number(req.query.limit || 20)
+
+        if (!artist) {
+            return res.status(400).json({
+                error: "Missing artist query parameter"
+            })
+        }
+
+        const tracks = await fetchSoundCloudSearchFromSelf(req, artist, limit)
+
+        const artistTracks = tracks.filter((track) => {
+            return isSameArtist(track, artist)
+        })
+
+        const finalTracks = artistTracks.length > 0 ? artistTracks : tracks
+
+        return res.json({
+            profile: createApiArtistProfile(artist, finalTracks),
+            results: finalTracks
+        })
+    } catch (error) {
+        console.error("getSoundCloudArtistProfile error:", error)
+
+        return res.status(500).json({
+            error: "Failed to load SoundCloud artist profile"
+        })
+    }
+})
+
+// Artist tracks from available SoundCloud search
+app.get("/getSoundCloudArtistTracks", async (req, res) => {
+    try {
+        const artist = String(req.query.artist || "").trim()
+        const limit = Number(req.query.limit || 20)
+
+        if (!artist) {
+            return res.status(400).json({
+                error: "Missing artist query parameter"
+            })
+        }
+
+        const tracks = await fetchSoundCloudSearchFromSelf(req, artist, limit)
+
+        const artistTracks = tracks.filter((track) => {
+            return isSameArtist(track, artist)
+        })
+
+        return res.json({
+            artistName: artist,
+            source: "soundcloud",
+            results: artistTracks.length > 0 ? artistTracks : tracks
+        })
+    } catch (error) {
+        console.error("getSoundCloudArtistTracks error:", error)
+
+        return res.status(500).json({
+            error: "Failed to load SoundCloud artist tracks"
+        })
+    }
+})
+
+// Playlist surface from available SoundCloud search
+app.get("/getSoundCloudApiPlaylist", async (req, res) => {
+    try {
+        const query = String(req.query.q || req.query.query || "").trim()
+        const limit = Number(req.query.limit || 30)
+
+        if (!query) {
+            return res.status(400).json({
+                error: "Missing q query parameter"
+            })
+        }
+
+        const tracks = await fetchSoundCloudSearchFromSelf(req, query, limit)
+
+        return res.json({
+            playlist: createApiPlaylist(query, tracks),
+            results: tracks
+        })
+    } catch (error) {
+        console.error("getSoundCloudApiPlaylist error:", error)
+
+        return res.status(500).json({
+            error: "Failed to load SoundCloud API playlist"
+        })
+    }
+})
+
+// Comment surface.
+// SoundCloud comments are not handled by the current proxy.
+// App comments should still be stored in Firebase by Android.
+app.get("/getSoundCloudTrackComments", async (req, res) => {
+    try {
+        const trackId = String(req.query.trackId || "").trim()
+
+        if (!trackId) {
+            return res.status(400).json({
+                error: "Missing trackId query parameter"
+            })
+        }
+
+        return res.json({
+            trackId,
+            source: "orange_music_firestore",
+            sourceLabel: "Orange Music",
+            commentsSupportedByProxy: false,
+            message: "Comments for SoundCloud tracks are stored in Firebase by the Android app.",
+            comments: []
+        })
+    } catch (error) {
+        console.error("getSoundCloudTrackComments error:", error)
+
+        return res.status(500).json({
+            error: "Failed to load SoundCloud track comments"
+        })
+    }
+})
