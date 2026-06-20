@@ -14,7 +14,7 @@ import com.example.music_app.data.remote.FirebaseService
 import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.tasks.await
+
 
 class SongRepository {
 
@@ -30,11 +30,6 @@ class SongRepository {
         return firebaseService.getSongById(songId)
     }
 
-    /**
-     * Public song list.
-     * Home/Search/Library chỉ nên hiển thị bài đã được admin duyệt
-     * và chưa bị xóa mềm.
-     */
     suspend fun getAllSongs(): List<Song> {
         return firebaseService.getAllSongsWithIds()
             .filter { song ->
@@ -42,10 +37,7 @@ class SongRepository {
             }
     }
 
-    /**
-     * Dùng khi tạo/cập nhật bài hát.
-     * Nếu user upload bài mới, Song.kt nên mặc định status = pending.
-     */
+
     suspend fun upsertSong(song: Song) {
         firebaseService.upsertSong(song)
     }
@@ -77,20 +69,13 @@ class SongRepository {
         return firebaseService.getUserById(userId)
     }
 
-    /**
-     * Dùng cho màn Your Upload.
-     * Chủ tài khoản nên thấy cả pending / approved / rejected.
-     * Không lọc isDeleted ở đây để nếu muốn sau này vẫn có thể hiện trạng thái đã xóa.
-     */
+
     suspend fun getMyUploadedSongs(): List<Song> {
         val userId = auth.currentUser?.uid ?: return emptyList()
         return firebaseService.getSongsByUploaderId(userId)
     }
 
-    /**
-     * 2.3
-     * Người đăng hoặc admin xóa mềm bài hát.
-     */
+
     suspend fun softDeleteMySong(songId: String) {
         val userId = auth.currentUser?.uid
             ?: throw AppException(R.string.not_logged_in)
@@ -114,10 +99,6 @@ class SongRepository {
         )
     }
 
-    /**
-     * 2.4
-     * Người đăng hoặc admin bật/tắt bình luận của bài hát.
-     */
     suspend fun updateMySongCommentPermission(
         songId: String,
         allowComments: Boolean
@@ -144,10 +125,7 @@ class SongRepository {
         )
     }
 
-    /**
-     * Dùng khi người khác xem profile user.
-     * Chỉ hiển thị bài đã được duyệt và chưa bị xóa.
-     */
+
     suspend fun getSongsByUserId(userId: String): List<Song> {
         return firebaseService.getSongsByUploaderId(userId)
             .filter { song ->
@@ -157,76 +135,6 @@ class SongRepository {
 
     suspend fun getUserById(userId: String): User? {
         return firebaseService.getUserById(userId)
-    }
-
-    // =========================
-    // ADMIN MODERATION
-    // =========================
-
-    suspend fun getPendingSongs(): List<Song> {
-        requireAdmin()
-
-        val snapshot = db.collection("songs")
-            .whereEqualTo("status", SongStatus.PENDING)
-            .get()
-            .await()
-
-        return snapshot.documents.mapNotNull { document ->
-            document.toObject(Song::class.java)?.copy(id = document.id)
-        }.filter { song ->
-            !song.isDeleted
-        }
-    }
-
-    suspend fun approveSong(songId: String) {
-        val adminId = requireAdmin()
-
-        db.collection("songs")
-            .document(songId)
-            .update(
-                mapOf(
-                    "status" to SongStatus.APPROVED,
-                    "rejectReason" to "",
-                    "reviewedBy" to adminId,
-                    "reviewedAt" to System.currentTimeMillis(),
-                    "updatedAt" to System.currentTimeMillis()
-                )
-            )
-            .await()
-    }
-
-    suspend fun rejectSong(
-        songId: String,
-        reason: String
-    ) {
-        val adminId = requireAdmin()
-
-        db.collection("songs")
-            .document(songId)
-            .update(
-                mapOf(
-                    "status" to SongStatus.REJECTED,
-                    "rejectReason" to reason,
-                    "reviewedBy" to adminId,
-                    "reviewedAt" to System.currentTimeMillis(),
-                    "updatedAt" to System.currentTimeMillis()
-                )
-            )
-            .await()
-    }
-
-    private suspend fun requireAdmin(): String {
-        val userId = auth.currentUser?.uid
-            ?: throw AppException(R.string.not_logged_in)
-
-        val user = firebaseService.getUserById(userId)
-            ?: throw AppException(R.string.account_not_found)
-
-        if (user.role != UserRole.ADMIN) {
-            throw AppException(R.string.no_admin_permission)
-        }
-
-        return userId
     }
 
     // =========================
@@ -396,10 +304,7 @@ class SongRepository {
     // REPORT
     // =========================
 
-    /**
-     * 2.5
-     * User report bài hát.
-     */
+
     suspend fun reportSong(
         songId: String,
         reason: String,
@@ -431,15 +336,7 @@ class SongRepository {
         return firebaseService.createReport(report)
     }
 
-    /**
-     * 2.6
-     * User report comment.
-     *
-     * description lưu dạng:
-     * songId|nội dung mô tả
-     *
-     * để FirebaseService biết comment này thuộc bài nào.
-     */
+
     suspend fun reportComment(
         songId: String,
         commentId: String,
@@ -492,15 +389,6 @@ class SongRepository {
         return firebaseService.getComments(songId)
     }
 
-    /**
-     * 2.7
-     * Xóa mềm comment.
-     *
-     * Người được xóa:
-     * - chủ comment
-     * - chủ bài hát
-     * - admin
-     */
     suspend fun softDeleteComment(
         songId: String,
         commentId: String
