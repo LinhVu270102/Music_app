@@ -60,7 +60,15 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         setupListeners()
         observeViewModel()
 
-        viewModel.loadSong(songId)
+        val fallbackSong =
+            PlayerManager.currentSong.value?.takeIf { song ->
+                song.id == songId
+            }
+
+        viewModel.loadSong(
+            songId = songId,
+            fallbackSong = fallbackSong
+        )
         viewModel.loadComments(songId)
     }
 

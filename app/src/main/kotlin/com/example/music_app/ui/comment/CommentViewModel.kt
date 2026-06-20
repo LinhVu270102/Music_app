@@ -10,10 +10,12 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
+import com.example.music_app.data.repository.SoundCloudSocialRepository
 
 class CommentViewModel : ViewModel() {
 
     private val songRepository = SongRepository()
+    private val soundCloudSocialRepository = SoundCloudSocialRepository()
 
     private val _song = MutableLiveData<Song?>()
     val song: LiveData<Song?> = _song
@@ -27,9 +29,17 @@ class CommentViewModel : ViewModel() {
     private val _successMessageResId = MutableLiveData<Int?>()
     val successMessageResId: LiveData<Int?> = _successMessageResId
 
-    fun loadSong(songId: String) {
+    fun loadSong(
+        songId: String,
+        fallbackSong: Song? = null
+    ) {
         viewModelScope.launch {
             try {
+                if (soundCloudSocialRepository.isSoundCloudSongId(songId)) {
+                    _song.value = fallbackSong
+                    return@launch
+                }
+
                 _song.value = songRepository.getSong(songId)
             } catch (_: Exception) {
                 _errorMessageResId.value = R.string.invalid_song
@@ -40,7 +50,12 @@ class CommentViewModel : ViewModel() {
     fun loadComments(songId: String) {
         viewModelScope.launch {
             try {
-                _comments.value = songRepository.getComments(songId)
+                _comments.value =
+                    if (soundCloudSocialRepository.isSoundCloudSongId(songId)) {
+                        soundCloudSocialRepository.getComments(songId)
+                    } else {
+                        songRepository.getComments(songId)
+                    }
             } catch (_: Exception) {
                 _errorMessageResId.value = R.string.load_comments_failed
             }
@@ -54,11 +69,19 @@ class CommentViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                songRepository.addComment(
-                    songId = songId,
-                    content = content,
-                    timelinePositionMs = timelinePositionMs
-                )
+                if (soundCloudSocialRepository.isSoundCloudSongId(songId)) {
+                    soundCloudSocialRepository.addComment(
+                        songId = songId,
+                        content = content,
+                        timelinePositionMs = timelinePositionMs
+                    )
+                } else {
+                    songRepository.addComment(
+                        songId = songId,
+                        content = content,
+                        timelinePositionMs = timelinePositionMs
+                    )
+                }
 
                 _successMessageResId.value = R.string.comment_added_success
                 loadComments(songId)
@@ -113,10 +136,18 @@ class CommentViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                songRepository.softDeleteComment(
-                    songId = songId,
-                    commentId = comment.id
-                )
+                if (soundCloudSocialRepository.isSoundCloudSongId(songId)) {
+                    soundCloudSocialRepository.deleteComment(
+                        songId = songId,
+                        commentId = comment.id
+                    )
+                } else {
+                    songRepository.softDeleteComment(
+                        songId = songId,
+                        commentId = comment.id
+                    )
+                }
+
                 _successMessageResId.value = R.string.comment_hidden_success
                 loadComments(songId)
                 loadSong(songId)

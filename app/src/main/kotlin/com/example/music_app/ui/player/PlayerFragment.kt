@@ -33,6 +33,8 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import com.example.music_app.databinding.DialogReportSongBinding
 import com.example.music_app.databinding.DialogSongOptionsBinding
+import android.widget.EditText
+import com.example.music_app.data.repository.SoundCloudSocialRepository
 
 class PlayerFragment : Fragment() {
 
@@ -41,7 +43,7 @@ class PlayerFragment : Fragment() {
 
     private val viewModel: PlayerViewModel by viewModels()
     private val songRepository = SongRepository()
-
+    private val soundCloudSocialRepository = SoundCloudSocialRepository()
     private val handler = Handler(Looper.getMainLooper())
 
     private var isCurrentSongLiked = false
@@ -274,11 +276,22 @@ class PlayerFragment : Fragment() {
     private fun loadLikeState(song: Song) {
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val liked = songRepository.isSongLiked(song.id)
+                if (soundCloudSocialRepository.isSoundCloudSong(song)) {
+                    val social = soundCloudSocialRepository.getTrackSocial(song.id)
 
-                withContext(Dispatchers.Main) {
-                    isCurrentSongLiked = liked
-                    updateLikeIcon()
+                    withContext(Dispatchers.Main) {
+                        isCurrentSongLiked = social.liked
+                        binding.tvLikeCount.text = formatCount(social.likesCount)
+                        binding.tvCommentCount.text = formatCount(social.commentsCount)
+                        updateLikeIcon()
+                    }
+                } else {
+                    val liked = songRepository.isSongLiked(song.id)
+
+                    withContext(Dispatchers.Main) {
+                        isCurrentSongLiked = liked
+                        updateLikeIcon()
+                    }
                 }
             } catch (_: Exception) {
                 withContext(Dispatchers.Main) {
@@ -288,45 +301,62 @@ class PlayerFragment : Fragment() {
             }
         }
     }
-
     private fun toggleLikeCurrentSong() {
         val song = PlayerManager.currentSong.value ?: return
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val liked = songRepository.toggleLikeSong(song)
+                if (soundCloudSocialRepository.isSoundCloudSong(song)) {
+                    val social = soundCloudSocialRepository.toggleTrackLike(song.id)
 
-                withContext(Dispatchers.Main) {
-                    isCurrentSongLiked = liked
-                    updateLikeIcon()
+                    withContext(Dispatchers.Main) {
+                        isCurrentSongLiked = social.liked
+                        binding.tvLikeCount.text = formatCount(social.likesCount)
+                        updateLikeIcon()
 
-                    val currentCount =
-                        binding.tvLikeCount.text.toString()
-                            .replace("K", "000")
-                            .replace("M", "000000")
-                            .toLongOrNull() ?: song.likes
-
-                    val newCount = if (liked) {
-                        currentCount + 1
-                    } else {
-                        (currentCount - 1).coerceAtLeast(0)
+                        showToast(
+                            if (social.liked) {
+                                getString(R.string.added_to_your_likes)
+                            } else {
+                                getString(R.string.removed_from_your_likes)
+                            }
+                        )
                     }
+                } else {
+                    val liked = songRepository.toggleLikeSong(song)
 
-                    binding.tvLikeCount.text = formatCount(newCount)
+                    withContext(Dispatchers.Main) {
+                        isCurrentSongLiked = liked
+                        updateLikeIcon()
 
-                    showToast(
-                        if (liked) {
-                            getString(R.string.added_to_your_likes)
+                        val currentCount =
+                            binding.tvLikeCount.text.toString()
+                                .replace("K", "000")
+                                .replace("M", "000000")
+                                .toLongOrNull() ?: song.likes
+
+                        val newCount = if (liked) {
+                            currentCount + 1
                         } else {
-                            getString(R.string.removed_from_your_likes)
+                            (currentCount - 1).coerceAtLeast(0)
                         }
-                    )
+
+                        binding.tvLikeCount.text = formatCount(newCount)
+
+                        showToast(
+                            if (liked) {
+                                getString(R.string.added_to_your_likes)
+                            } else {
+                                getString(R.string.removed_from_your_likes)
+                            }
+                        )
+                    }
                 }
             } catch (e: AppException) {
                 withContext(Dispatchers.Main) {
                     showToast(getString(e.messageResId))
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 withContext(Dispatchers.Main) {
                     showToast(getString(R.string.update_like_failed))
                 }
@@ -341,8 +371,10 @@ class PlayerFragment : Fragment() {
     private fun loadFollowState(song: Song) {
         binding.tvFollowCount.text = getString(R.string.default_follow_count)
 
-        if (song.uploaderId.isBlank()) {
+        if (song.uploaderId.isBlank()|| soundCloudSocialRepository.isSoundCloudSong(song)) {
             isCurrentArtistFollowed = false
+            binding.btnFollow.isEnabled = false
+            binding.tvFollowCount.text = getString(R.string.soundcloud_source)
             updateFollowIcon()
             return
         }
@@ -366,6 +398,11 @@ class PlayerFragment : Fragment() {
 
     private fun toggleFollowCurrentArtist() {
         val song = PlayerManager.currentSong.value ?: return
+
+        if (soundCloudSocialRepository.isSoundCloudSong(song)) {
+            showToast(getString(R.string.online_song_cannot_follow))
+            return
+        }
 
         if (song.uploaderId.isBlank()) {
             showToast(getString(R.string.song_has_no_uploader))
@@ -446,6 +483,10 @@ class PlayerFragment : Fragment() {
     }
 
     private fun showAddToPlaylistDialog(song: Song) {
+        if (soundCloudSocialRepository.isSoundCloudSong(song)) {
+            showAddToApiPlaylistDialog(song)
+            return
+        }
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val playlists = songRepository.getMyPlaylists()
@@ -498,6 +539,126 @@ class PlayerFragment : Fragment() {
                     showToast(getString(e.messageResId))
                 }
             } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(R.string.add_song_to_playlist_failed))
+                }
+            }
+        }
+    }
+
+    private fun showAddToApiPlaylistDialog(song: Song) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val playlists = soundCloudSocialRepository.getUserApiPlaylists()
+
+                withContext(Dispatchers.Main) {
+                    if (playlists.isEmpty()) {
+                        showCreateApiPlaylistDialog(song)
+                        return@withContext
+                    }
+
+                    val playlistNames = playlists.map { playlist ->
+                        "${playlist.name} (${playlist.songsCount})"
+                    }.toTypedArray()
+
+                    AlertDialog.Builder(requireContext())
+                        .setTitle(getString(R.string.add_to_playlist))
+                        .setItems(playlistNames) { _, which ->
+                            addSoundCloudSongToApiPlaylist(
+                                playlistId = playlists[which].id,
+                                song = song
+                            )
+                        }
+                        .setPositiveButton(getString(R.string.create_playlist)) { _, _ ->
+                            showCreateApiPlaylistDialog(song)
+                        }
+                        .setNegativeButton(getString(R.string.cancel), null)
+                        .show()
+                }
+            } catch (e: AppException) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(e.messageResId))
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(R.string.load_playlists_failed))
+                }
+            }
+        }
+    }
+
+    private fun showCreateApiPlaylistDialog(song: Song) {
+        val input = EditText(requireContext()).apply {
+            hint = getString(R.string.playlist_name_hint)
+            setSingleLine(true)
+        }
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.create_playlist))
+            .setView(input)
+            .setPositiveButton(getString(R.string.create)) { _, _ ->
+                val name = input.text.toString().trim()
+
+                if (name.isBlank()) {
+                    showToast(getString(R.string.playlist_name_empty))
+                } else {
+                    createApiPlaylistAndAddSong(
+                        name = name,
+                        song = song
+                    )
+                }
+            }
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show()
+    }
+
+    private fun createApiPlaylistAndAddSong(
+        name: String,
+        song: Song
+    ) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val playlist = soundCloudSocialRepository.createUserApiPlaylist(name)
+
+                soundCloudSocialRepository.addTrackToUserApiPlaylist(
+                    playlistId = playlist.id,
+                    song = song
+                )
+
+                withContext(Dispatchers.Main) {
+                    showToast(getString(R.string.added_to_playlist_success))
+                }
+            } catch (e: AppException) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(e.messageResId))
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(R.string.add_song_to_playlist_failed))
+                }
+            }
+        }
+    }
+
+    private fun addSoundCloudSongToApiPlaylist(
+        playlistId: String,
+        song: Song
+    ) {
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                soundCloudSocialRepository.addTrackToUserApiPlaylist(
+                    playlistId = playlistId,
+                    song = song
+                )
+
+                withContext(Dispatchers.Main) {
+                    showToast(getString(R.string.added_to_playlist_success))
+                }
+            } catch (e: AppException) {
+                withContext(Dispatchers.Main) {
+                    showToast(getString(e.messageResId))
+                }
+            } catch (_: Exception) {
                 withContext(Dispatchers.Main) {
                     showToast(getString(R.string.add_song_to_playlist_failed))
                 }
