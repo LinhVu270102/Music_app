@@ -497,4 +497,5 @@
     <string name="playlist_song_count_format">%1$d bài hát</string>
     <string name="play_all">Phát tất cả</string>
     <string name="no_songs_in_playlist">Chưa có bài hát trong danh sách phát này.</string>
+    <string name="seek_to_comment_timeline">Đã tua đến %1$s</string>
 </resources>

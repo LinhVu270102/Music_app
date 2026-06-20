@@ -19,6 +19,10 @@ import android.graphics.drawable.ColorDrawable
 import com.example.music_app.databinding.DialogCommentOptionsBinding
 import com.example.music_app.databinding.DialogReportCommentBinding
 import com.example.music_app.player.PlayerManager
+import androidx.lifecycle.lifecycleScope
+import com.example.music_app.ui.player.PlaybackLauncher
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 class CommentFragment : Fragment(R.layout.fragment_comment) {
 
     private var _binding: FragmentCommentBinding? = null
@@ -35,9 +39,6 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
 
     companion object {
         private const val ARG_SONG_ID = "songId"
-
-        private const val MENU_REPORT_COMMENT = 1
-        private const val MENU_HIDE_COMMENT = 2
 
         fun newInstance(songId: String): CommentFragment {
             return CommentFragment().apply {
@@ -67,6 +68,9 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         adapter = CommentAdapter(
             onMoreClick = { comment, anchor ->
                 showCommentOptions(comment, anchor)
+            },
+            onTimelineClick = { comment ->
+                seekToCommentTimeline(comment)
             }
         )
 
@@ -142,6 +146,55 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         binding.edtComment.isEnabled = allowComments
         binding.btnSendComment.isEnabled = allowComments
         binding.tvCommentsLocked.isVisible = !allowComments
+    }
+    private fun seekToCommentTimeline(comment: Comment) {
+        val positionMs = comment.timelinePositionMs.coerceAtLeast(0L)
+        val song = currentSong
+
+        if (song == null) {
+            showToast(getString(R.string.invalid_song))
+            return
+        }
+
+        val playingSongId = PlayerManager.currentSong.value?.id.orEmpty()
+
+        if (playingSongId == songId) {
+            PlayerManager.seekTo(positionMs)
+            showToast(
+                getString(
+                    R.string.seek_to_comment_timeline,
+                    formatTimelinePosition(positionMs)
+                )
+            )
+            return
+        }
+
+        PlaybackLauncher.openPlayer(
+            fragment = this,
+            song = song,
+            playlist = listOf(song)
+        )
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            delay(500)
+            PlayerManager.seekTo(positionMs)
+
+            showToast(
+                getString(
+                    R.string.seek_to_comment_timeline,
+                    formatTimelinePosition(positionMs)
+                )
+            )
+        }
+    }
+
+    private fun formatTimelinePosition(positionMs: Long): String {
+        val safePosition = positionMs.coerceAtLeast(0L)
+        val totalSeconds = safePosition / 1000
+        val minutes = totalSeconds / 60
+        val seconds = totalSeconds % 60
+
+        return "%02d:%02d".format(minutes, seconds)
     }
 
     private fun showCommentOptions(
