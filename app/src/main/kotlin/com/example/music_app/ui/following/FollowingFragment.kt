@@ -38,6 +38,15 @@ class FollowingFragment : Fragment(R.layout.fragment_following) {
 
     private fun setupRecyclerView() {
         adapter = FollowingAdapter { user ->
+            if (user.uid.isBlank()) {
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.invalid_user),
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@FollowingAdapter
+            }
+
             parentFragmentManager.commit {
                 replace(
                     R.id.fragmentContainer,
@@ -61,6 +70,7 @@ class FollowingFragment : Fragment(R.layout.fragment_following) {
         viewModel.followingUsers.observe(viewLifecycleOwner) { users ->
             adapter.setData(users)
             binding.tvEmpty.isVisible = users.isEmpty()
+            binding.recyclerView.isVisible = users.isNotEmpty()
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
@@ -72,6 +82,7 @@ class FollowingFragment : Fragment(R.layout.fragment_following) {
     }
 
     override fun onDestroyView() {
+        binding.recyclerView.adapter = null
         _binding = null
         super.onDestroyView()
     }

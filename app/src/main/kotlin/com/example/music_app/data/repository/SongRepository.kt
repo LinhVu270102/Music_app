@@ -2,6 +2,7 @@ package com.example.music_app.data.repository
 
 import com.example.music_app.R
 import com.example.music_app.data.model.Comment
+import com.example.music_app.data.model.FollowUser
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Report
 import com.example.music_app.data.model.ReportStatus
@@ -14,6 +15,7 @@ import com.example.music_app.data.remote.FirebaseService
 import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 
 
@@ -308,54 +310,158 @@ class SongRepository {
     // =========================
 
     suspend fun isFollowing(targetUserId: String): Boolean {
-        val userId = auth.currentUser?.uid ?: return false
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
 
-        if (targetUserId.isBlank()) {
+        if (currentUserId.isBlank() || targetUserId.isBlank()) {
             return false
         }
 
-        return firebaseService.isFollowing(
-            currentUserId = userId,
-            targetUserId = targetUserId
-        )
+        val doc = FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(currentUserId)
+            .collection("following")
+            .document(targetUserId)
+            .get()
+            .await()
+
+        return doc.exists()
     }
 
     suspend fun toggleFollowUser(targetUserId: String): Boolean {
-        val userId = auth.currentUser?.uid
-            ?: throw AppException(R.string.not_logged_in)
+        val auth = FirebaseAuth.getInstance()
+        val db = FirebaseFirestore.getInstance()
+
+        val currentUser = auth.currentUser ?: throw AppException(R.string.login_required)
+        val currentUserId = currentUser.uid
 
         if (targetUserId.isBlank()) {
-            throw AppException(R.string.target_user_not_found)
+            throw AppException(R.string.invalid_user)
         }
 
-        if (userId == targetUserId) {
+        if (targetUserId == currentUserId) {
             throw AppException(R.string.cannot_follow_yourself)
         }
 
-        val isFollowing = firebaseService.isFollowing(
-            currentUserId = userId,
-            targetUserId = targetUserId
+        val currentUserRef = db.collection("users").document(currentUserId)
+        val targetUserRef = db.collection("users").document(targetUserId)
+
+        val followingRef = currentUserRef
+            .collection("following")
+            .document(targetUserId)
+
+        val followerRef = targetUserRef
+            .collection("followers")
+            .document(currentUserId)
+
+        val followingDoc = followingRef.get().await()
+        val isCurrentlyFollowing = followingDoc.exists()
+
+        if (isCurrentlyFollowing) {
+            followingRef.delete().await()
+            followerRef.delete().await()
+            return false
+        }
+
+        val targetUserDoc = targetUserRef.get().await()
+        val targetData = targetUserDoc.data.orEmpty()
+
+        val currentUserDoc = currentUserRef.get().await()
+        val currentData = currentUserDoc.data.orEmpty()
+
+        val now = System.currentTimeMillis()
+
+        val followingData = hashMapOf(
+            "userId" to targetUserId,
+            "displayName" to (
+                    targetData["displayName"]
+                        ?: targetData["name"]
+                        ?: targetData["email"]
+                        ?: "Unknown user"
+                    ),
+            "email" to (targetData["email"] ?: ""),
+            "avatarUrl" to (targetData["avatarUrl"] ?: ""),
+            "followedAt" to now
         )
 
-        return if (isFollowing) {
-            firebaseService.unfollowUser(
-                currentUserId = userId,
-                targetUserId = targetUserId
-            )
-            false
-        } else {
-            firebaseService.followUser(
-                currentUserId = userId,
-                targetUserId = targetUserId
-            )
-            true
-        }
+        val followerData = hashMapOf(
+            "userId" to currentUserId,
+            "displayName" to (
+                    currentData["displayName"]
+                        ?: currentData["name"]
+                        ?: currentUser.email
+                        ?: "Unknown user"
+                    ),
+            "email" to (currentData["email"] ?: currentUser.email.orEmpty()),
+            "avatarUrl" to (currentData["avatarUrl"] ?: ""),
+            "followedAt" to now
+        )
+
+        followingRef.set(followingData).await()
+        followerRef.set(followerData).await()
+
+        return true
     }
 
     suspend fun getFollowingUsers(): List<User> {
-        val userId = auth.currentUser?.uid ?: return emptyList()
-        return firebaseService.getFollowingUsers(userId)
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+
+        if (currentUserId.isBlank()) {
+            return emptyList()
+        }
+
+        val db = FirebaseFirestore.getInstance()
+
+        val followingSnapshot = db.collection("users")
+            .document(currentUserId)
+            .collection("following")
+            .orderBy("followedAt", Query.Direction.DESCENDING)
+            .get()
+            .await()
+
+        if (followingSnapshot.isEmpty) {
+            return emptyList()
+        }
+
+        val result = mutableListOf<User>()
+
+        for (followingDoc in followingSnapshot.documents) {
+            val targetUserId = followingDoc.id
+
+            if (targetUserId.isBlank()) continue
+
+            val userDoc = db.collection("users")
+                .document(targetUserId)
+                .get()
+                .await()
+
+            val user = userDoc.toObject(User::class.java)
+
+            if (user != null) {
+                result.add(
+                    user.copy(
+                        uid = user.uid.ifBlank { userDoc.id }
+                    )
+                )
+            }
+        }
+
+        return result
     }
+    suspend fun getFollowerCount(targetUserId: String): Long {
+        if (targetUserId.isBlank()) {
+            return 0L
+        }
+
+        val snapshot = FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(targetUserId)
+            .collection("followers")
+            .get()
+            .await()
+
+        return snapshot.size().toLong()
+    }
+
 
     // =========================
     // REPORT

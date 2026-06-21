@@ -160,7 +160,7 @@ class MusicService : Service() {
                 notificationId: Int,
                 dismissedByUser: Boolean
             ) {
-                PlayerManager.pause()
+                PlayerManager.stop()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
@@ -183,6 +183,14 @@ class MusicService : Service() {
             getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         notificationManager.createNotificationChannel(channel)
+    }
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        PlayerManager.stop()
+
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {

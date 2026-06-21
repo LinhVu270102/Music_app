@@ -35,6 +35,8 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
     private var songId: String = ""
     private var currentSong: Song? = null
 
+    private var activeUserId: String = ""
+
     private val currentUserId: String
         get() = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
 
@@ -56,6 +58,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         (requireActivity() as? MainActivity)?.updateMainChromeVisibility()
 
         songId = arguments?.getString(ARG_SONG_ID).orEmpty()
+        activeUserId = currentUserId
 
         setupRecyclerView()
         setupListeners()
@@ -66,15 +69,20 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
                 song.id == songId
             }
 
+        // Clear comment cũ trước khi load lại
+        adapter.setData(emptyList())
+
         viewModel.loadSong(
             songId = songId,
             fallbackSong = fallbackSong
         )
+
         viewModel.loadComments(songId)
     }
 
     private fun setupRecyclerView() {
         adapter = CommentAdapter(
+            currentUserId = activeUserId,
             onMoreClick = { comment, _ ->
                 showCommentOptions(comment)
             },
@@ -131,6 +139,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         }
 
         viewModel.comments.observe(viewLifecycleOwner) { comments ->
+            adapter.updateCurrentUserId(currentUserId)
             adapter.setData(comments)
         }
 
@@ -199,13 +208,16 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
 
     private fun formatTimelinePosition(positionMs: Long): String {
         val safePosition = positionMs.coerceAtLeast(0L)
+
         val totalSeconds = safePosition / 1000
-        val minutes = totalSeconds / 60
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
         val seconds = totalSeconds % 60
 
         return String.format(
             java.util.Locale.getDefault(),
-            "%02d:%02d",
+            "%02d:%02d:%02d",
+            hours,
             minutes,
             seconds
         )
@@ -330,7 +342,19 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
 
     override fun onResume() {
         super.onResume()
+
         (requireActivity() as? MainActivity)?.updateMainChromeVisibility()
+
+        val newUserId = currentUserId
+
+        if (newUserId != activeUserId) {
+            activeUserId = newUserId
+
+            adapter.updateCurrentUserId(activeUserId)
+            adapter.setData(emptyList())
+
+            viewModel.loadComments(songId)
+        }
     }
 
     private fun showToast(message: String) {
@@ -338,6 +362,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
     }
 
     override fun onDestroyView() {
+        binding.rvComments.adapter = null
         _binding = null
         super.onDestroyView()
     }

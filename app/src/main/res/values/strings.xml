@@ -528,4 +528,5 @@
     <string name="delete_song_title">Delete song</string>
     <string name="could_not_play_this_song">Could not play this song</string>
     <string name="delete_song_confirm_with_name">Are you sure you want to delete "%1$s"?</string>
+    <string name="login_required">Please log in to continue.</string>
 </resources>

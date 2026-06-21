@@ -14,7 +14,7 @@ class FollowingViewModel : ViewModel() {
 
     private val repository = SongRepository()
 
-    private val _followingUsers = MutableLiveData<List<User>>()
+    private val _followingUsers = MutableLiveData<List<User>>(emptyList())
     val followingUsers: LiveData<List<User>> = _followingUsers
 
     private val _errorMessageResId = MutableLiveData<Int?>()
@@ -26,8 +26,10 @@ class FollowingViewModel : ViewModel() {
                 _followingUsers.value = repository.getFollowingUsers()
             } catch (e: AppException) {
                 _errorMessageResId.value = e.messageResId
-            } catch (e: Exception) {
+                _followingUsers.value = emptyList()
+            } catch (_: Exception) {
                 _errorMessageResId.value = R.string.load_following_failed
+                _followingUsers.value = emptyList()
             }
         }
     }
