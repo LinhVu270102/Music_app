@@ -1,5 +1,6 @@
 package com.example.music_app.ui.comment
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,17 +9,28 @@ import com.bumptech.glide.Glide
 import com.example.music_app.R
 import com.example.music_app.data.model.Comment
 import com.example.music_app.databinding.ItemCommentBinding
+import java.util.Locale
 
 class CommentAdapter(
+    private var currentUserId: String = "",
     private val onMoreClick: (Comment, View) -> Unit,
     private val onTimelineClick: (Comment) -> Unit
 ) : RecyclerView.Adapter<CommentAdapter.CommentViewHolder>() {
 
     private val comments = mutableListOf<Comment>()
 
+    @SuppressLint("NotifyDataSetChanged")
     fun setData(newComments: List<Comment>) {
         comments.clear()
         comments.addAll(newComments)
+        notifyDataSetChanged()
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    fun updateCurrentUserId(newUserId: String) {
+        if (currentUserId == newUserId) return
+
+        currentUserId = newUserId
         notifyDataSetChanged()
     }
 
@@ -28,6 +40,8 @@ class CommentAdapter(
 
         fun bind(comment: Comment) {
             val context = binding.root.context
+
+            val isOwner = comment.userId == currentUserId
 
             binding.txtCommentUser.text =
                 comment.displayName.ifBlank {
@@ -48,6 +62,18 @@ class CommentAdapter(
 
             binding.txtCommentLikeCount.text =
                 context.getString(R.string.default_comment_like_count)
+
+            // Quan trọng: reset trạng thái ViewHolder, tránh bị lệch khi RecyclerView tái sử dụng item
+            binding.btnLikeComment.alpha = 0.5f
+            binding.txtMore.visibility = View.VISIBLE
+
+            // Nếu muốn comment của chính mình nổi bật hơn một chút
+            binding.txtMore.alpha =
+                if (isOwner) {
+                    1f
+                } else {
+                    0.8f
+                }
 
             Glide.with(context)
                 .load(comment.avatarUrl)
@@ -94,15 +120,20 @@ class CommentAdapter(
     override fun getItemCount(): Int = comments.size
 
     private fun formatTimelinePosition(positionMs: Long): String {
-        if (positionMs <= 0L) {
-            return "00:00"
-        }
+        val safePosition = positionMs.coerceAtLeast(0L)
 
-        val totalSeconds = positionMs / 1000
-        val minutes = totalSeconds / 60
+        val totalSeconds = safePosition / 1000
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
         val seconds = totalSeconds % 60
 
-        return "%02d:%02d".format(minutes, seconds)
+        return String.format(
+            Locale.getDefault(),
+            "%02d:%02d:%02d",
+            hours,
+            minutes,
+            seconds
+        )
     }
 
     private fun formatTimeAgo(

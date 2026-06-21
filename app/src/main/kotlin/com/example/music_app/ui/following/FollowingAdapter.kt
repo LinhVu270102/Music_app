@@ -1,5 +1,6 @@
 package com.example.music_app.ui.library
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -14,6 +15,7 @@ class FollowingAdapter(
 
     private val users = mutableListOf<User>()
 
+    @SuppressLint("NotifyDataSetChanged")
     fun setData(newUsers: List<User>) {
         users.clear()
         users.addAll(newUsers)
@@ -26,14 +28,23 @@ class FollowingAdapter(
 
         fun bind(user: User) {
             binding.txtDisplayName.text =
-                user.displayName.ifBlank { user.email }
+                user.displayName.ifBlank {
+                    user.email.ifBlank {
+                        binding.root.context.getString(R.string.unknown_user)
+                    }
+                }
 
             binding.txtUsername.text =
-                if (user.username.isNotBlank()) "@${user.username}" else user.email
+                if (user.username.isNotBlank()) {
+                    "@${user.username}"
+                } else {
+                    user.email
+                }
 
             Glide.with(binding.root.context)
                 .load(user.avatarUrl)
                 .placeholder(R.drawable.music_orange)
+                .error(R.drawable.music_orange)
                 .circleCrop()
                 .into(binding.imgAvatar)
 

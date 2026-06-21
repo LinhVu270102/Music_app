@@ -528,4 +528,5 @@
     <string name="delete_song_title">Xóa bài hát</string>
     <string name="could_not_play_this_song">Không thể phát bài hát này</string>
     <string name="delete_song_confirm_with_name">Bạn có chắc muốn xóa bài hát "%1$s" không?</string>
+    <string name="login_required">Vui lòng đăng nhập để tiếp tục.</string>
 </resources>

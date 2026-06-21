@@ -876,4 +876,5 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             }
             .start()
     }
+
 }

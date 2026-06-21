@@ -10,7 +10,6 @@ import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.core.graphics.drawable.toDrawable
@@ -71,7 +70,7 @@ class PlayerFragment : Fragment() {
 
             updatePlayPauseIcon()
 
-            handler.postDelayed(this, 500)
+            handler.postDelayed(this, 1000)
         }
     }
 
@@ -115,6 +114,9 @@ class PlayerFragment : Fragment() {
         val songId = arguments?.getString(ARG_SONG_ID)
         songId?.let {
             viewModel.loadSong(it)
+        }
+        binding.btnFollow.setOnClickListener {
+            toggleFollowCurrentArtist()
         }
     }
 
@@ -377,79 +379,92 @@ class PlayerFragment : Fragment() {
     }
 
     private fun loadFollowState(song: Song) {
-        binding.tvFollowCount.text = getString(R.string.default_follow_count)
+        val targetUserId = song.uploaderId
 
-        if (song.uploaderId.isBlank()|| soundCloudSocialRepository.isSoundCloudSong(song)) {
+        if (targetUserId.isBlank()) {
             isCurrentArtistFollowed = false
             binding.btnFollow.isEnabled = false
+            binding.btnFollow.alpha = 0.4f
             binding.tvFollowCount.text = getString(R.string.soundcloud_source)
             updateFollowIcon()
             return
         }
 
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val followed = songRepository.isFollowing(song.uploaderId)
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
 
-                withContext(Dispatchers.Main) {
-                    isCurrentArtistFollowed = followed
-                    updateFollowIcon()
+        if (targetUserId == currentUserId) {
+            isCurrentArtistFollowed = false
+            binding.btnFollow.isEnabled = false
+            binding.btnFollow.alpha = 0.4f
+            binding.tvFollowCount.text = getString(R.string.cannot_follow_yourself)
+            updateFollowIcon()
+            return
+        }
+
+        binding.btnFollow.isEnabled = true
+        binding.btnFollow.alpha = 1f
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val followed = withContext(Dispatchers.IO) {
+                    songRepository.isFollowing(targetUserId)
                 }
+
+                val followerCount = withContext(Dispatchers.IO) {
+                    songRepository.getFollowerCount(targetUserId)
+                }
+
+                isCurrentArtistFollowed = followed
+                binding.tvFollowCount.text = formatCount(followerCount)
+                updateFollowIcon()
             } catch (_: Exception) {
-                withContext(Dispatchers.Main) {
-                    isCurrentArtistFollowed = false
-                    updateFollowIcon()
-                }
+                isCurrentArtistFollowed = false
+                binding.tvFollowCount.text = "0"
+                updateFollowIcon()
             }
         }
     }
 
     private fun toggleFollowCurrentArtist() {
         val song = PlayerManager.currentSong.value ?: return
+        val targetUserId = song.uploaderId
 
-        if (soundCloudSocialRepository.isSoundCloudSong(song)) {
-            showToast(getString(R.string.online_song_cannot_follow))
+        if (targetUserId.isBlank()) {
+            showToast(getString(R.string.invalid_user))
             return
         }
 
-        if (song.uploaderId.isBlank()) {
-            showToast(getString(R.string.song_has_no_uploader))
-            return
-        }
+        if (!binding.btnFollow.isEnabled) return
 
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+        binding.btnFollow.isEnabled = false
+
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val followed = songRepository.toggleFollowUser(song.uploaderId)
+                val followed = withContext(Dispatchers.IO) {
+                    songRepository.toggleFollowUser(targetUserId)
+                }
 
-                withContext(Dispatchers.Main) {
-                    isCurrentArtistFollowed = followed
-                    updateFollowIcon()
+                val followerCount = withContext(Dispatchers.IO) {
+                    songRepository.getFollowerCount(targetUserId)
+                }
 
-                    val currentCount = binding.tvFollowCount.text.toString().toLongOrNull() ?: 0L
-                    val newCount = if (followed) {
-                        currentCount + 1
+                isCurrentArtistFollowed = followed
+                binding.tvFollowCount.text = formatCount(followerCount)
+                updateFollowIcon()
+
+                showToast(
+                    if (followed) {
+                        getString(R.string.follow_artist_success)
                     } else {
-                        (currentCount - 1).coerceAtLeast(0)
+                        getString(R.string.unfollow_artist_success)
                     }
-
-                    binding.tvFollowCount.text = formatCount(newCount)
-
-                    showToast(
-                        if (followed) {
-                            getString(R.string.follow_artist_success)
-                        } else {
-                            getString(R.string.unfollow_artist_success)
-                        }
-                    )
-                }
+                )
             } catch (e: AppException) {
-                withContext(Dispatchers.Main) {
-                    showToast(getString(e.messageResId))
-                }
+                showToast(getString(e.messageResId))
             } catch (_: Exception) {
-                withContext(Dispatchers.Main) {
-                    showToast(getString(R.string.follow_failed))
-                }
+                showToast(getString(R.string.follow_failed))
+            } finally {
+                binding.btnFollow.isEnabled = true
             }
         }
     }
