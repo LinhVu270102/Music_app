@@ -1,4 +1,4 @@
-package com.example.music_app.ui.library
+package com.example.music_app.ui.playlists
 
 import android.app.AlertDialog
 import android.os.Bundle
@@ -16,6 +16,10 @@ import com.example.music_app.ui.song.SongAdapter
 import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.example.music_app.data.repository.SoundCloudSocialRepository
+import com.example.music_app.ui.library.PlaylistDetailViewModel
+import android.graphics.Color
+import androidx.core.graphics.drawable.toDrawable
+import com.example.music_app.databinding.DialogConfirmActionBinding
 
 class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
 
@@ -171,18 +175,33 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
     }
 
     private fun confirmRemoveSong(song: Song) {
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.remove_from_playlist_title))
-            .setMessage(getString(R.string.remove_song_from_playlist_confirm, song.title))
-            .setPositiveButton(getString(R.string.delete)) { _, _ ->
-                viewModel.removeSongFromPlaylist(
-                    playlistId = playlistId,
-                    songId = song.id,
-                    ownerId = ownerId
-                )
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+        val dialogBinding = DialogConfirmActionBinding.inflate(layoutInflater)
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogBinding.root)
+            .create()
+
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+
+        dialogBinding.txtDialogTitle.text = getString(R.string.remove_from_playlist_title)
+        dialogBinding.txtDialogMessage.text =
+            getString(R.string.remove_song_from_playlist_confirm, song.title)
+        dialogBinding.btnConfirm.text = getString(R.string.delete)
+
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnConfirm.setOnClickListener {
+            dialog.dismiss()
+            viewModel.removeSongFromPlaylist(
+                playlistId = playlistId,
+                songId = song.id,
+                ownerId = ownerId
+            )
+        }
+
+        dialog.show()
     }
     private fun isSoundCloudApiPlaylist(): Boolean {
         return SoundCloudSocialRepository.isSoundCloudApiPlaylist(

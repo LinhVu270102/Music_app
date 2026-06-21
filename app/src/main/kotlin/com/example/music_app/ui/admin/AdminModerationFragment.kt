@@ -2,7 +2,6 @@ package com.example.music_app.ui.admin
 
 import android.os.Bundle
 import android.view.View
-import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
@@ -11,6 +10,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentAdminModerationBinding
+import android.graphics.Color
+import androidx.core.graphics.drawable.toDrawable
+import com.example.music_app.databinding.DialogInputActionBinding
 
 class AdminModerationFragment : Fragment(R.layout.fragment_admin_moderation) {
 
@@ -85,18 +87,40 @@ class AdminModerationFragment : Fragment(R.layout.fragment_admin_moderation) {
     }
 
     private fun showRejectDialog(song: Song) {
-        val input = EditText(requireContext()).apply {
-            hint = getString(R.string.enter_reject_reason)
+        val dialogBinding = DialogInputActionBinding.inflate(layoutInflater)
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogBinding.root)
+            .create()
+
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+
+        dialogBinding.txtDialogTitle.text = getString(R.string.reject_reason)
+        dialogBinding.txtDialogMessage.text = getString(R.string.enter_reject_reason)
+        dialogBinding.edtDialogInput.hint = getString(R.string.enter_reject_reason)
+        dialogBinding.btnConfirm.text = getString(R.string.reject)
+
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
         }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.reject_reason))
-            .setView(input)
-            .setPositiveButton(getString(R.string.reject)) { _, _ ->
-                viewModel.rejectSong(song, input.text.toString())
+        dialogBinding.btnConfirm.setOnClickListener {
+            val reason = dialogBinding.edtDialogInput.text.toString().trim()
+
+            if (reason.isBlank()) {
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.enter_reject_reason),
+                    Toast.LENGTH_SHORT
+                ).show()
+                return@setOnClickListener
             }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+
+            dialog.dismiss()
+            viewModel.rejectSong(song, reason)
+        }
+
+        dialog.show()
     }
 
     override fun onDestroyView() {

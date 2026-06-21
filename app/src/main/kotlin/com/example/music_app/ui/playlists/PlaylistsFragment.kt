@@ -13,8 +13,11 @@ import com.example.music_app.R
 import com.example.music_app.databinding.FragmentPlaylistsBinding
 import com.example.music_app.data.repository.SoundCloudSocialRepository
 import com.example.music_app.data.model.Playlist
-import com.example.music_app.ui.library.PlaylistDetailFragment
 import com.example.music_app.ui.library.PlaylistsViewModel
+import android.app.Dialog
+import android.graphics.Color
+import androidx.core.graphics.drawable.toDrawable
+import com.example.music_app.databinding.DialogConfirmActionBinding
 
 class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
 
@@ -127,15 +130,27 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
     }
 
     private fun confirmDeletePlaylist(playlist: Playlist) {
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.delete_playlist_title))
-            .setIcon(R.drawable.music_orange)
-            .setMessage(getString(R.string.delete_playlist_confirm_with_name, playlist.name))
-            .setPositiveButton(getString(R.string.delete)) { _, _ ->
-                viewModel.deletePlaylist(playlist.id)
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+        val dialogBinding = DialogConfirmActionBinding.inflate(layoutInflater)
+
+        val dialog = Dialog(requireContext())
+        dialog.setContentView(dialogBinding.root)
+
+        dialogBinding.txtDialogTitle.text = getString(R.string.delete_playlist_title)
+        dialogBinding.txtDialogMessage.text =
+            getString(R.string.delete_playlist_confirm_with_name, playlist.name)
+        dialogBinding.btnConfirm.text = getString(R.string.delete)
+
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnConfirm.setOnClickListener {
+            dialog.dismiss()
+            viewModel.deletePlaylist(playlist.id)
+        }
+
+        dialog.show()
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     }
 
     override fun onDestroyView() {
