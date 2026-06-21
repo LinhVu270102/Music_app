@@ -1,4 +1,4 @@
-package com.example.music_app.ui.library
+package com.example.music_app.ui.playlists
 
 import android.app.AlertDialog
 import android.os.Bundle
@@ -7,12 +7,14 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
 import com.example.music_app.databinding.FragmentPlaylistsBinding
 import com.example.music_app.data.repository.SoundCloudSocialRepository
+import com.example.music_app.data.model.Playlist
+import com.example.music_app.ui.library.PlaylistDetailFragment
+import com.example.music_app.ui.library.PlaylistsViewModel
 
 class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
 
@@ -56,7 +58,7 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {
-                    confirmDeletePlaylist(playlist.id)
+                    confirmDeletePlaylist(playlist)
                 }
             }
         )
@@ -93,14 +95,21 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
         val input = EditText(requireContext()).apply {
             hint = getString(R.string.playlist_name_hint)
             setSingleLine(true)
+            setPadding(36, 24, 36, 24)
         }
 
-        AlertDialog.Builder(requireContext())
+        val dialog = AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.create_playlist))
+            .setIcon(R.drawable.music_orange)
+            .setMessage(getString(R.string.create_playlist_message))
             .setView(input)
-            .setPositiveButton(getString(R.string.create)) { _, _ ->
-                val name = input.text.toString().trim()
+            .setPositiveButton(getString(R.string.create), null)
+            .setNegativeButton(getString(R.string.cancel), null)
+            .create()
 
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val name = input.text.toString().trim()
                 if (name.isBlank()) {
                     Toast.makeText(
                         requireContext(),
@@ -109,18 +118,21 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
                     ).show()
                 } else {
                     viewModel.createPlaylist(name)
+                    dialog.dismiss()
                 }
             }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+        }
+
+        dialog.show()
     }
 
-    private fun confirmDeletePlaylist(playlistId: String) {
+    private fun confirmDeletePlaylist(playlist: Playlist) {
         AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.delete_playlist_title))
-            .setMessage(getString(R.string.delete_playlist_confirm))
+            .setIcon(R.drawable.music_orange)
+            .setMessage(getString(R.string.delete_playlist_confirm_with_name, playlist.name))
             .setPositiveButton(getString(R.string.delete)) { _, _ ->
-                viewModel.deletePlaylist(playlistId)
+                viewModel.deletePlaylist(playlist.id)
             }
             .setNegativeButton(getString(R.string.cancel), null)
             .show()

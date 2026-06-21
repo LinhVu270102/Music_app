@@ -258,6 +258,24 @@ class FirebaseService(
             .set(data, SetOptions.merge())
             .await()
     }
+    suspend fun resubmitSongForReview(songId: String) {
+        if (songId.isBlank()) return
+
+        val now = System.currentTimeMillis()
+        firestore.collection("songs")
+            .document(songId)
+            .set(
+                mapOf(
+                    "status" to SongStatus.PENDING,
+                    "rejectReason" to "",
+                    "reviewedBy" to "",
+                    "reviewedAt" to 0L,
+                    "updatedAt" to now
+                ),
+                SetOptions.merge()
+            )
+            .await()
+    }
 
     // =========================
     // LIKE SONG

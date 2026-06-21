@@ -1,4 +1,4 @@
-package com.example.music_app.ui.library
+package com.example.music_app.ui.yourupload
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -61,9 +61,9 @@ class YourUploadViewModel : ViewModel() {
 
                 _successMessageResId.value =
                     if (newAllowComments) {
-                        R.string.comments_turned_on
+                        R.string.comments_unlocked_success
                     } else {
-                        R.string.comments_turned_off
+                        R.string.comments_locked_success
                     }
 
                 loadMyUploadedSongs()
@@ -98,6 +98,41 @@ class YourUploadViewModel : ViewModel() {
                 _errorMessageResId.value = R.string.report_failed
             }
         }
+    }
+    private val _actionMessageResId = MutableLiveData<Int?>()
+    val actionMessageResId: LiveData<Int?> = _actionMessageResId
+
+    fun deleteMySong(song: Song) {
+        viewModelScope.launch {
+            try {
+                repository.softDeleteMySong(song.id)
+                _successMessageResId.value = R.string.delete_song_success
+                loadMyUploadedSongs()
+            } catch (e: AppException) {
+                _errorMessageResId.value = e.messageResId
+            } catch (_: Exception) {
+                _errorMessageResId.value = R.string.delete_song_failed
+            }
+        }
+    }
+
+
+    fun resubmitSong(song: Song) {
+        viewModelScope.launch {
+            try {
+                repository.resubmitMyRejectedSong(song.id)
+                _successMessageResId.value = R.string.resubmit_song_success
+                loadMyUploadedSongs()
+            } catch (e: AppException) {
+                _errorMessageResId.value = e.messageResId
+            } catch (_: Exception) {
+                _errorMessageResId.value = R.string.resubmit_song_failed
+            }
+        }
+    }
+
+    fun clearActionMessage() {
+        _successMessageResId.value = null
     }
 
     fun clearErrorMessage() {

@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.util.Log
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.remote.soundcloud.isSoundCloudSong
@@ -67,6 +68,7 @@ object PlaybackLauncher {
                     )
                 } else {
                     PlayerManager.play(playableSong)
+                    Log.d("PlayerManager", "play id=${song.id}, title=${song.title}, url=${song.songUrl}")
                 }
 
                 fragment.parentFragmentManager.commit {

@@ -43,171 +43,178 @@
 
     </LinearLayout>
 
-    <!-- BODY -->
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/homeScrollView"
+    <!-- BODY WITH PULL REFRESH -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefreshLayout"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:fillViewport="true"
-        android:paddingBottom="140dp">
+        android:layout_weight="1">
 
-        <LinearLayout
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/homeScrollView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:paddingBottom="140dp">
 
-            <!-- YOUR LIKES -->
             <LinearLayout
-                android:id="@+id/sectionYourLikes"
                 android:layout_width="match_parent"
-                android:layout_height="88dp"
-                android:layout_marginStart="20dp"
-                android:layout_marginTop="18dp"
-                android:layout_marginEnd="20dp"
-                android:background="@drawable/bg_your_likes"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="22dp"
-                android:paddingEnd="18dp">
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
 
+                <!-- YOUR LIKES -->
+                <LinearLayout
+                    android:id="@+id/sectionYourLikes"
+                    android:layout_width="match_parent"
+                    android:layout_height="88dp"
+                    android:layout_marginStart="20dp"
+                    android:layout_marginTop="18dp"
+                    android:layout_marginEnd="20dp"
+                    android:background="@drawable/bg_your_likes"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="22dp"
+                    android:paddingEnd="18dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/your_likes"
+                        android:textColor="#FFFFFF"
+                        android:textSize="20sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
+
+                <!-- RELATED TRACKS -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvRelatedTracks"
+                    android:layout_width="match_parent"
+                    android:layout_height="170dp"
+                    android:layout_marginTop="18dp"
+                    android:clipToPadding="false"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp" />
+
+                <!-- MORE OF WHAT YOU LIKE -->
                 <TextView
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/your_likes"
+                    android:layout_marginTop="26dp"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:text="@string/more_of_what_you_like"
                     android:textColor="#FFFFFF"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvMoreLike"
+                    android:layout_width="match_parent"
+                    android:layout_height="240dp"
+                    android:layout_marginTop="16dp"
+                    android:clipToPadding="false"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp" />
+
+                <!-- HOT FOR YOU -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="28dp"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:text="@string/hot_for_you"
+                    android:textColor="#FFFFFF"
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvHotForYou"
+                    android:layout_width="match_parent"
+                    android:layout_height="240dp"
+                    android:layout_marginTop="16dp"
+                    android:clipToPadding="false"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp" />
+
+                <!-- TRENDING BY GENRE -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="28dp"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:text="@string/trending_by_genre"
+                    android:textColor="#FFFFFF"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:id="@+id/genreChipContainer"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp">
+
+                        <TextView
+                            android:id="@+id/chipHipHop"
+                            style="@style/GenreChipSelected"
+                            android:text="@string/genre_hip_hop_rap" />
+
+                        <TextView
+                            android:id="@+id/chipSoundCloud"
+                            style="@style/GenreChip"
+                            android:text="@string/genre_soundcloud" />
+
+                        <TextView
+                            android:id="@+id/chipRnB"
+                            style="@style/GenreChip"
+                            android:text="@string/genre_rnb" />
+
+                        <TextView
+                            android:id="@+id/chipPop"
+                            style="@style/GenreChip"
+                            android:text="@string/genre_pop" />
+
+                        <TextView
+                            android:id="@+id/chipElectronic"
+                            style="@style/GenreChip"
+                            android:text="@string/genre_electronic" />
+
+                        <TextView
+                            android:id="@+id/chipChill"
+                            style="@style/GenreChip"
+                            android:text="@string/genre_chill" />
+
+                    </LinearLayout>
+
+                </HorizontalScrollView>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvTrendingByGenre"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:nestedScrollingEnabled="false"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:paddingBottom="40dp" />
+
             </LinearLayout>
 
-            <!-- RELATED TRACKS -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvRelatedTracks"
-                android:layout_width="match_parent"
-                android:layout_height="170dp"
-                android:layout_marginTop="18dp"
-                android:clipToPadding="false"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp" />
+        </androidx.core.widget.NestedScrollView>
 
-            <!-- MORE OF WHAT YOU LIKE -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="26dp"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp"
-                android:text="@string/more_of_what_you_like"
-                android:textColor="#FFFFFF"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvMoreLike"
-                android:layout_width="match_parent"
-                android:layout_height="240dp"
-                android:layout_marginTop="16dp"
-                android:clipToPadding="false"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp" />
-
-            <!-- HOT FOR YOU -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp"
-                android:text="@string/hot_for_you"
-                android:textColor="#FFFFFF"
-                android:textSize="20sp"
-                android:textStyle="bold" />
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvHotForYou"
-                android:layout_width="match_parent"
-                android:layout_height="240dp"
-                android:layout_marginTop="16dp"
-                android:clipToPadding="false"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp" />
-
-            <!-- TRENDING BY GENRE -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="28dp"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp"
-                android:text="@string/trending_by_genre"
-                android:textColor="#FFFFFF"
-                android:textSize="24sp"
-                android:textStyle="bold" />
-
-            <HorizontalScrollView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:scrollbars="none">
-
-                <LinearLayout
-                    android:id="@+id/genreChipContainer"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingStart="20dp"
-                    android:paddingEnd="20dp">
-
-                    <TextView
-                        android:id="@+id/chipHipHop"
-                        style="@style/GenreChipSelected"
-                        android:text="@string/genre_hip_hop_rap" />
-
-                    <TextView
-                        android:id="@+id/chipSoundCloud"
-                        style="@style/GenreChip"
-                        android:text="@string/genre_soundcloud" />
-
-                    <TextView
-                        android:id="@+id/chipRnB"
-                        style="@style/GenreChip"
-                        android:text="@string/genre_rnb" />
-
-                    <TextView
-                        android:id="@+id/chipPop"
-                        style="@style/GenreChip"
-                        android:text="@string/genre_pop" />
-
-                    <TextView
-                        android:id="@+id/chipElectronic"
-                        style="@style/GenreChip"
-                        android:text="@string/genre_electronic" />
-
-                    <TextView
-                        android:id="@+id/chipChill"
-                        style="@style/GenreChip"
-                        android:text="@string/genre_chill" />
-
-                </LinearLayout>
-
-            </HorizontalScrollView>
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvTrendingByGenre"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="18dp"
-                android:nestedScrollingEnabled="false"
-                android:paddingStart="20dp"
-                android:paddingEnd="20dp"
-                android:paddingBottom="40dp" />
-
-        </LinearLayout>
-
-    </androidx.core.widget.NestedScrollView>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <!-- MINI PLAYER -->
     <include

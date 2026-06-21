@@ -153,6 +153,21 @@ class SongRepository {
         return firebaseService.getUserById(userId)
     }
 
+    suspend fun resubmitMyRejectedSong(songId: String) {
+        val userId = auth.currentUser?.uid ?: throw AppException(R.string.not_logged_in)
+        val song = firebaseService.getSongById(songId) ?: throw AppException(R.string.invalid_song)
+
+        if (song.uploaderId != userId) {
+            throw AppException(R.string.no_permission)
+        }
+
+        if (song.status != SongStatus.REJECTED) {
+            throw AppException(R.string.only_rejected_song_can_resubmit)
+        }
+
+        firebaseService.resubmitSongForReview(songId)
+    }
+
     // =========================
     // LIKE SONG
     // =========================

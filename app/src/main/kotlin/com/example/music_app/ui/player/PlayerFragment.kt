@@ -451,35 +451,82 @@ class PlayerFragment : Fragment() {
     }
 
     private fun showCurrentPlaylistDialog() {
-        val songs = PlayerManager.getCurrentPlaylist()
+        val songs = PlayerManager.playlistSongs.value.orEmpty()
+        val currentIndex = PlayerManager.currentIndex.value ?: -1
 
         if (songs.isEmpty()) {
-            showToast(getString(R.string.current_playlist_empty))
+            showToast(getString(R.string.no_songs_in_playlist))
             return
         }
 
-        val songTitles = songs.mapIndexed { index, song ->
-            "${index + 1}. ${song.title} - ${song.artist}"
+        val items = songs.mapIndexed { index, song ->
+            val prefix = if (index == currentIndex) "▶ " else "   "
+            "$prefix${index + 1}. ${song.title}\n${song.artist}"
         }.toTypedArray()
 
-        AlertDialog.Builder(requireContext())
+        val dialog = AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.current_playlist))
-            .setItems(songTitles) { _, which ->
-                val selectedSong = songs[which]
+            .setIcon(R.drawable.music_orange)
+            .setItems(items) { _, which ->
                 PlayerManager.playSongAt(which)
-                updateUI(selectedSong)
             }
-            .setPositiveButton(getString(R.string.add_current_song_to_playlist)) { _, _ ->
-                val currentSong = PlayerManager.currentSong.value
+            .setPositiveButton(getString(R.string.add_current_song_to_playlist), null)
+            .setNegativeButton(getString(R.string.close), null)
+            .create()
 
-                if (currentSong != null) {
-                    showAddToPlaylistDialog(currentSong)
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val song = PlayerManager.currentSong.value
+                if (song == null) {
+                    showToast(getString(R.string.no_song_playing))
                 } else {
-                    showToast(getString(R.string.no_current_song))
+                    showAddToPlaylistDialog(song)
+                    dialog.dismiss()
                 }
             }
-            .setNegativeButton(getString(R.string.close), null)
-            .show()
+        }
+
+        dialog.show()
+    }
+
+    private fun showCreatePlaylistThenAddSong(song: Song) {
+        val input = EditText(requireContext()).apply {
+            hint = getString(R.string.playlist_name_hint)
+            setSingleLine(true)
+            setPadding(36, 24, 36, 24)
+        }
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setTitle(getString(R.string.create_playlist))
+            .setIcon(R.drawable.music_orange)
+            .setMessage(getString(R.string.create_playlist_message))
+            .setView(input)
+            .setPositiveButton(getString(R.string.create), null)
+            .setNegativeButton(getString(R.string.cancel), null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val name = input.text.toString().trim()
+                if (name.isBlank()) {
+                    showToast(getString(R.string.playlist_name_empty))
+                    return@setOnClickListener
+                }
+
+                lifecycleScope.launch {
+                    try {
+                        val playlist = songRepository.createPlaylist(name)
+                        songRepository.addSongToPlaylist(playlist.id, song)
+                        showToast(getString(R.string.added_to_playlist_success))
+                        dialog.dismiss()
+                    } catch (_: Exception) {
+                        showToast(getString(R.string.add_to_playlist_failed))
+                    }
+                }
+            }
+        }
+
+        dialog.show()
     }
 
     private fun showAddToPlaylistDialog(song: Song) {

@@ -10,6 +10,7 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SearchRepository
 import com.example.music_app.data.repository.SoundCloudRepository
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 
 class SearchViewModel : ViewModel() {
 
@@ -35,6 +36,7 @@ class SearchViewModel : ViewModel() {
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
 
     private var isPreparingSong = false
+    private var searchJob: Job? = null
 
     fun loadSongs() {
         _searchResults.value = SearchResultBundle()
@@ -49,14 +51,20 @@ class SearchViewModel : ViewModel() {
             return
         }
 
-        viewModelScope.launch {
+        searchJob?.cancel()
+
+        searchJob = viewModelScope.launch {
             try {
                 _isLoading.value = true
 
                 val result = searchRepository.search(keyword)
 
-                _searchResults.value = result
-                _songs.value = result.tracks
+                val resultWithQuery = result.copy(
+                    query = keyword
+                )
+
+                _searchResults.value = resultWithQuery
+                _songs.value = resultWithQuery.tracks
             } catch (_: Exception) {
                 _errorMessageResId.value = R.string.search_failed
             } finally {

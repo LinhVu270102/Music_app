@@ -360,19 +360,32 @@ object PlayerManager {
         val songs = _playlistSongs.value.orEmpty()
         val currentIndex = _currentIndex.value ?: -1
 
-        Log.d(
-            TAG,
-            "playNext: playlistSize=${songs.size}, currentIndex=$currentIndex, fallbackSize=${_fallbackSongs.value.orEmpty().size}"
-        )
-
         if (songs.size > 1 && currentIndex in songs.indices) {
-            if (currentIndex + 1 < songs.size) {
+            val isLastSong = currentIndex == songs.lastIndex
+
+            if (!isLastSong) {
                 playSongAt(currentIndex + 1)
                 return
             }
 
-            playRandomFallback()
-            return
+            when (_loopMode.value ?: LoopMode.OFF) {
+                LoopMode.ONE -> {
+                    playSongAt(currentIndex)
+                    return
+                }
+
+                LoopMode.PLAYLIST -> {
+                    playSongAt(0)
+                    return
+                }
+
+                LoopMode.OFF -> {
+                    playRandomFallback(
+                        excludeIds = songs.map { song -> song.id }.toSet()
+                    )
+                    return
+                }
+            }
         }
 
         playRandomFallback()
@@ -476,33 +489,56 @@ object PlayerManager {
     }
     fun setFallbackSongs(songs: List<Song>) {
         val validSongs = songs
-            .filter { it.id.isNotBlank() }
-            .filter { it.status == SongStatus.APPROVED }
-            .filter { !it.isDeleted }
-            .filter { it.songUrl.isNotBlank() || it.isSoundCloudSong() }
-            .distinctBy { it.id }
+            .filter { song ->
+                !song.isDeleted &&
+                        song.status == SongStatus.APPROVED &&
+                        (song.songUrl.isNotBlank() || song.isSoundCloudSong())
+            }
+            .distinctBy { song -> song.id }
+
+        if (validSongs.isEmpty()) {
+            Log.d(TAG, "setFallbackSongs ignored empty list")
+            return
+        }
+
+        val oldIds = _fallbackSongs.value.orEmpty().map { song -> song.id }
+        val newIds = validSongs.map { song -> song.id }
+
+        if (oldIds == newIds) {
+            Log.d(TAG, "setFallbackSongs ignored same list: ${validSongs.size}")
+            return
+        }
 
         _fallbackSongs.value = validSongs
 
         Log.d(TAG, "setFallbackSongs: ${validSongs.size}")
     }
+    private fun playRandomFallback(excludeIds: Set<String> = emptySet()) {
+        if (isPreparingRandomSong) return
 
-    private fun playRandomFallback() {
-        val currentId = _currentSong.value?.id
+        val currentId = _currentSong.value?.id.orEmpty()
 
-        val candidates = _fallbackSongs.value
-            .orEmpty()
-            .filter { it.id != currentId }
-            .filter { it.songUrl.isNotBlank() || it.isSoundCloudSong() }
+        val baseCandidates = _fallbackSongs.value.orEmpty()
+            .filter { song ->
+                !song.isDeleted &&
+                        song.status == SongStatus.APPROVED &&
+                        (song.songUrl.isNotBlank() || song.isSoundCloudSong())
+            }
 
-        Log.d(TAG, "playRandomFallback: candidates=${candidates.size}")
+        val candidates = baseCandidates
+            .filter { song ->
+                song.id != currentId && song.id !in excludeIds
+            }
+            .ifEmpty {
+                baseCandidates.filter { song -> song.id != currentId }
+            }
 
-        if (candidates.isEmpty()) {
-            Log.d(TAG, "No fallback songs available")
+        val randomSong = candidates.randomOrNull()
+        if (randomSong == null) {
+            _errorMessageResId.postValue(R.string.could_not_play_this_song)
             return
         }
 
-        val randomSong = candidates[Random.nextInt(candidates.size)]
         playPreparedSong(randomSong)
     }
     fun playPreparedSong(song: Song) {

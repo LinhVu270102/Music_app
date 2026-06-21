@@ -19,9 +19,7 @@ const TOKEN_CACHE_FILE = path.join(__dirname, ".soundcloud-token-cache.json");
 const ORANGE_STORE_FILE = path.join(__dirname, "data", "orange-music-store.json");
 
 const SEARCH_CACHE_TTL_MS = 2 * 60 * 1000;
-
-// Để ngắn trong lúc test, tránh dính URL stream cũ.
-const STREAM_CACHE_TTL_MS = 1 * 60 * 1000;
+const STREAM_CACHE_TTL_MS = 10 * 60 * 1000;
 
 let cachedToken = null;
 let cachedTokenExpiresAt = 0;
@@ -45,10 +43,41 @@ function normalizeLimit(value) {
   return limit;
 }
 
+function normalizeSurfaceLimit(value) {
+  const limit = Number(value || 20);
+
+  if (Number.isNaN(limit)) return 20;
+  if (limit < 1) return 1;
+  if (limit > 50) return 50;
+
+  return limit;
+}
+
 function normalizeTrackId(rawValue) {
   return String(rawValue || "")
     .trim()
     .replace("soundcloud_", "");
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function isSameArtist(track, artistName) {
+  const trackArtist = normalizeText(track.artist);
+  const targetArtist = normalizeText(artistName);
+
+  if (!trackArtist || !targetArtist) {
+    return false;
+  }
+
+  return (
+    trackArtist === targetArtist ||
+    trackArtist.includes(targetArtist) ||
+    targetArtist.includes(trackArtist)
+  );
 }
 
 function isRateLimitError(error) {
@@ -131,97 +160,60 @@ function setToCache(cacheMap, key, data, ttlMs) {
     expiresAt: Date.now() + ttlMs
   });
 }
-function createEmptyOrangeStore() {
-  return {
-    users: {},
-    playlists: {},
-    commentsByTrack: {},
-    likesByTrack: {}
-  };
+
+function getBaseUrlFromRequest(req) {
+  return `${req.protocol}://${req.get("host")}`;
 }
 
-function readOrangeStore() {
+function buildProxyUrl(req, pathName, targetUrl) {
+  return `${getBaseUrlFromRequest(req)}${pathName}?url=${encodeURIComponent(targetUrl)}`;
+}
+
+function shouldSendSoundCloudAuth(targetUrl) {
   try {
-    if (!fs.existsSync(ORANGE_STORE_FILE)) {
-      return createEmptyOrangeStore();
-    }
-
-    const raw = fs.readFileSync(ORANGE_STORE_FILE, "utf8");
-    const data = JSON.parse(raw);
-
-    return {
-      users: data.users || {},
-      playlists: data.playlists || {},
-      commentsByTrack: data.commentsByTrack || {},
-      likesByTrack: data.likesByTrack || {}
-    };
+    const host = new URL(targetUrl).hostname;
+    return host.includes("soundcloud.com");
   } catch (error) {
-    console.log("Read orange store failed:", error.message);
-    return createEmptyOrangeStore();
+    return false;
   }
 }
 
-function saveOrangeStore(store) {
+function toAbsoluteUrl(baseUrl, maybeRelativeUrl) {
   try {
-    const dir = path.dirname(ORANGE_STORE_FILE);
-
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, {
-        recursive: true
-      });
-    }
-
-    fs.writeFileSync(
-      ORANGE_STORE_FILE,
-      JSON.stringify(store, null, 2)
-    );
+    return new URL(maybeRelativeUrl, baseUrl).toString();
   } catch (error) {
-    console.log("Save orange store failed:", error.message);
+    return maybeRelativeUrl;
   }
 }
 
-function createId(prefix) {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+function isHlsUrl(url) {
+  if (!url) return false;
+
+  return (
+    url.includes(".m3u8") ||
+    url.includes("/hls") ||
+    url.includes("/soundcloud/proxy/hls")
+  );
 }
 
-function getSafeUserId(value) {
-  return String(value || "").trim() || "guest";
+function getProtocolFromUrl(url) {
+  if (!url) return "";
+
+  if (isHlsUrl(url)) {
+    return "hls";
+  }
+
+  return "progressive";
 }
 
-function getTrackKey(trackId) {
-  return normalizeTrackId(trackId);
-}
+function getMimeTypeFromUrl(url) {
+  if (!url) return "";
 
-function getTrackDocumentId(trackKey) {
-  return trackKey.startsWith("soundcloud_")
-    ? trackKey
-    : `soundcloud_${trackKey}`;
-}
+  if (isHlsUrl(url)) {
+    return "application/x-mpegURL";
+  }
 
-function normalizeStoredTrack(track) {
-  if (!track) return null;
-
-  const trackId = track.id || track.soundCloudId || "";
-
-  return {
-    ...track,
-    id: String(trackId).startsWith("soundcloud_")
-      ? String(trackId)
-      : `soundcloud_${trackId}`,
-    source: track.source || "soundcloud",
-    sourceLabel: track.sourceLabel || "SoundCloud"
-  };
-}
-
-function getPublicUser(userId, fallback = {}) {
-  return {
-    userId: userId,
-    displayName: fallback.displayName || fallback.username || "Orange Music User",
-    username: fallback.username || "",
-    avatarUrl: fallback.avatarUrl || "",
-    bio: fallback.bio || "",
-    source: "orange_music"
-  };
+  return "audio/mpeg";
 }
 
 async function getSoundCloudAccessToken() {
@@ -279,29 +271,26 @@ function getSoundCloudHeaders(accessToken) {
   };
 }
 
-function getBaseUrlFromRequest(req) {
-  return `${req.protocol}://${req.get("host")}`;
-}
-
-function buildProxyUrl(req, pathName, targetUrl) {
-  return `${getBaseUrlFromRequest(req)}${pathName}?url=${encodeURIComponent(targetUrl)}`;
-}
-
-function shouldSendSoundCloudAuth(targetUrl) {
-  try {
-    const host = new URL(targetUrl).hostname;
-    return host.includes("soundcloud.com");
-  } catch (error) {
-    return false;
+function chooseBestTranscoding(transcodings) {
+  if (!Array.isArray(transcodings) || transcodings.length === 0) {
+    return null;
   }
+
+  const progressiveMp3 = transcodings.find((item) => {
+    return (
+      item.format &&
+      item.format.protocol === "progressive" &&
+      item.format.mime_type === "audio/mpeg"
+    );
+  });
+
+  return progressiveMp3 || null;
 }
 
-function toAbsoluteUrl(baseUrl, maybeRelativeUrl) {
-  try {
-    return new URL(maybeRelativeUrl, baseUrl).toString();
-  } catch (error) {
-    return maybeRelativeUrl;
-  }
+function chooseBestStreamFromStreamsEndpoint(streams) {
+  if (!streams) return "";
+
+  return streams.http_mp3_128_url || "";
 }
 
 async function resolveProgressiveStreamUrl(req, streamApiUrl, accessToken) {
@@ -319,7 +308,7 @@ async function resolveProgressiveStreamUrl(req, streamApiUrl, accessToken) {
       maxRedirects: 0,
       timeout: 15000,
       validateStatus: (status) => {
-        return (status >= 200 && status < 400);
+        return status >= 200 && status < 400;
       }
     });
 
@@ -372,34 +361,60 @@ async function resolveProgressiveStreamUrl(req, streamApiUrl, accessToken) {
   }
 }
 
-function isHlsUrl(url) {
-  if (!url) return false;
-
-  return (
-    url.includes(".m3u8") ||
-    url.includes("/hls") ||
-    url.includes("/soundcloud/proxy/hls")
+async function getTrackDetail(trackId, accessToken) {
+  const response = await axios.get(
+    `https://api.soundcloud.com/tracks/${trackId}`,
+    {
+      headers: getSoundCloudHeaders(accessToken)
+    }
   );
+
+  return response.data;
 }
 
-function getProtocolFromUrl(url) {
-  if (!url) return "";
-
-  if (isHlsUrl(url)) {
-    return "hls";
+async function getStreamFromTranscoding(req, selectedTranscoding, accessToken) {
+  if (!selectedTranscoding || !selectedTranscoding.url) {
+    return "";
   }
 
-  return "progressive";
+  const response = await axios.get(selectedTranscoding.url, {
+    headers: getSoundCloudHeaders(accessToken),
+    timeout: 15000
+  });
+
+  const streamApiUrl =
+    response.data && response.data.url
+      ? response.data.url
+      : "";
+
+  if (!streamApiUrl) {
+    return "";
+  }
+
+  console.log("Progressive API URL from transcoding:", streamApiUrl);
+
+  return await resolveProgressiveStreamUrl(req, streamApiUrl, accessToken);
 }
 
-function getMimeTypeFromUrl(url) {
-  if (!url) return "";
+async function getStreamFromStreamsEndpoint(req, trackId, accessToken) {
+  const streamsResponse = await axios.get(
+    `https://api.soundcloud.com/tracks/${trackId}/streams`,
+    {
+      headers: getSoundCloudHeaders(accessToken),
+      timeout: 15000
+    }
+  );
 
-  if (isHlsUrl(url)) {
-    return "application/x-mpegURL";
+  const streamApiUrl = chooseBestStreamFromStreamsEndpoint(streamsResponse.data);
+
+  if (!streamApiUrl) {
+    console.log("No progressive stream API URL found");
+    return "";
   }
 
-  return "audio/mpeg";
+  console.log("Progressive Stream API URL:", streamApiUrl);
+
+  return await resolveProgressiveStreamUrl(req, streamApiUrl, accessToken);
 }
 
 function mapTrackToAndroid(track) {
@@ -439,37 +454,6 @@ function mapTrackToAndroid(track) {
     uploaderAvatarUrl: soundCloudUser.avatar_url || "",
     uploaderPermalinkUrl: soundCloudUser.permalink_url || ""
   };
-}
-
-function normalizeSurfaceLimit(value) {
-  const limit = Number(value || 20);
-
-  if (Number.isNaN(limit)) return 20;
-  if (limit < 1) return 1;
-  if (limit > 50) return 50;
-
-  return limit;
-}
-
-function normalizeText(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase();
-}
-
-function isSameArtist(track, artistName) {
-  const trackArtist = normalizeText(track.artist);
-  const targetArtist = normalizeText(artistName);
-
-  if (!trackArtist || !targetArtist) {
-    return false;
-  }
-
-  return (
-    trackArtist === targetArtist ||
-    trackArtist.includes(targetArtist) ||
-    targetArtist.includes(trackArtist)
-  );
 }
 
 async function searchSoundCloudTracksInternal(query, limit = 20) {
@@ -563,84 +547,97 @@ function createApiPlaylist(query, tracks) {
   };
 }
 
-// Chỉ chọn progressive MP3 để tránh rè/lặp tiếng do HLS.
-function chooseBestTranscoding(transcodings) {
-  if (!Array.isArray(transcodings) || transcodings.length === 0) {
-    return null;
-  }
+function createEmptyOrangeStore() {
+  return {
+    users: {},
+    playlists: {},
+    commentsByTrack: {},
+    likesByTrack: {}
+  };
+}
 
-  const progressiveMp3 = transcodings.find((item) => {
-    return (
-      item.format &&
-      item.format.protocol === "progressive" &&
-      item.format.mime_type === "audio/mpeg"
+function readOrangeStore() {
+  try {
+    if (!fs.existsSync(ORANGE_STORE_FILE)) {
+      return createEmptyOrangeStore();
+    }
+
+    const raw = fs.readFileSync(ORANGE_STORE_FILE, "utf8");
+    const data = JSON.parse(raw);
+
+    return {
+      users: data.users || {},
+      playlists: data.playlists || {},
+      commentsByTrack: data.commentsByTrack || {},
+      likesByTrack: data.likesByTrack || {}
+    };
+  } catch (error) {
+    console.log("Read orange store failed:", error.message);
+    return createEmptyOrangeStore();
+  }
+}
+
+function saveOrangeStore(store) {
+  try {
+    const dir = path.dirname(ORANGE_STORE_FILE);
+
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, {
+        recursive: true
+      });
+    }
+
+    fs.writeFileSync(
+      ORANGE_STORE_FILE,
+      JSON.stringify(store, null, 2)
     );
-  });
-
-  return progressiveMp3 || null;
-}
-
-// Chỉ lấy progressive MP3 từ streams endpoint.
-function chooseBestStreamFromStreamsEndpoint(streams) {
-  if (!streams) return "";
-
-  return streams.http_mp3_128_url || "";
-}
-
-async function getTrackDetail(trackId, accessToken) {
-  const response = await axios.get(
-    `https://api.soundcloud.com/tracks/${trackId}`,
-    {
-      headers: getSoundCloudHeaders(accessToken)
-    }
-  );
-
-  return response.data;
-}
-
-async function getStreamFromTranscoding(req, selectedTranscoding, accessToken) {
-  if (!selectedTranscoding || !selectedTranscoding.url) {
-    return "";
+  } catch (error) {
+    console.log("Save orange store failed:", error.message);
   }
-
-  const response = await axios.get(selectedTranscoding.url, {
-    headers: getSoundCloudHeaders(accessToken),
-    timeout: 15000
-  });
-
-  const streamApiUrl =
-    response.data && response.data.url
-      ? response.data.url
-      : "";
-
-  if (!streamApiUrl) {
-    return "";
-  }
-
-  console.log("Progressive API URL from transcoding:", streamApiUrl);
-
-  return await resolveProgressiveStreamUrl(req, streamApiUrl, accessToken);
 }
 
-async function getStreamFromStreamsEndpoint(req, trackId, accessToken) {
-  const streamsResponse = await axios.get(
-    `https://api.soundcloud.com/tracks/${trackId}/streams`,
-    {
-      headers: getSoundCloudHeaders(accessToken),
-      timeout: 15000
-    }
-  );
+function createId(prefix) {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
 
-  const streamApiUrl = chooseBestStreamFromStreamsEndpoint(streamsResponse.data);
+function getSafeUserId(value) {
+  return String(value || "").trim() || "guest";
+}
 
-  if (!streamApiUrl) {
-    console.log("No progressive stream API URL found");
-    return "";
-  }
+function getTrackKey(trackId) {
+  return normalizeTrackId(trackId);
+}
 
-  console.log("Progressive Stream API URL:", streamApiUrl);
+function getTrackDocumentId(trackKey) {
+  return trackKey.startsWith("soundcloud_")
+    ? trackKey
+    : `soundcloud_${trackKey}`;
+}
 
-  return await resolveProgressiveStreamUrl(req, streamApiUrl, accessToken);
+function normalizeStoredTrack(track) {
+  if (!track) return null;
+
+  const trackId = track.id || track.soundCloudId || "";
+
+  return {
+    ...track,
+    id: String(trackId).startsWith("soundcloud_")
+      ? String(trackId)
+      : `soundcloud_${trackId}`,
+    source: track.source || "soundcloud",
+    sourceLabel: track.sourceLabel || "SoundCloud"
+  };
+}
+
+function getPublicUser(userId, fallback = {}) {
+  return {
+    userId: userId,
+    displayName: fallback.displayName || fallback.username || "Orange Music User",
+    username: fallback.username || "",
+    avatarUrl: fallback.avatarUrl || "",
+    bio: fallback.bio || "",
+    source: "orange_music"
+  };
 }
 
 app.get("/", (req, res) => {
@@ -651,6 +648,7 @@ app.get("/", (req, res) => {
       "/health",
       "/searchSoundCloudTracks?q=lofi&limit=10",
       "/getSoundCloudStreamUrl?trackId=123456789",
+      "/debug/buffering-test?trackId=123456789&bytes=1048576",
 
       "/getSoundCloudArtistProfile?artist=Alan%20Walker&limit=20",
       "/getSoundCloudArtistTracks?artist=Alan%20Walker&limit=20",
@@ -686,6 +684,152 @@ app.get("/health", (req, res) => {
     searchCacheSize: searchCache.size,
     streamCacheSize: streamCache.size
   });
+});
+
+app.get("/debug/buffering-test", async (req, res) => {
+  const startedAt = Date.now();
+
+  try {
+    const trackId = normalizeTrackId(req.query.trackId);
+    const bytes = Math.max(
+      64 * 1024,
+      Math.min(Number(req.query.bytes || 1024 * 1024), 5 * 1024 * 1024)
+    );
+
+    if (!trackId) {
+      return res.status(400).json({
+        message: "Missing trackId",
+        example: "/debug/buffering-test?trackId=2176251972&bytes=1048576"
+      });
+    }
+
+    const baseUrl = getBaseUrlFromRequest(req);
+
+    const resolveStart = Date.now();
+
+    const streamResponse = await axios.get(
+      `${baseUrl}/getSoundCloudStreamUrl`,
+      {
+        params: {
+          trackId: trackId
+        },
+        timeout: 20000
+      }
+    );
+
+    const resolveStreamMs = Date.now() - resolveStart;
+    const streamUrl = streamResponse.data?.streamUrl || "";
+
+    if (!streamUrl) {
+      return res.status(404).json({
+        message: "Stream URL not found",
+        resolveStreamMs: resolveStreamMs,
+        streamResponse: streamResponse.data
+      });
+    }
+
+    const headers = {
+      Range: `bytes=0-${bytes - 1}`
+    };
+
+    if (shouldSendSoundCloudAuth(streamUrl)) {
+      const accessToken = await getSoundCloudAccessToken();
+      headers.Authorization = `OAuth ${accessToken}`;
+    }
+
+    const audioStart = Date.now();
+
+    const audioResponse = await axios.get(streamUrl, {
+      headers: headers,
+      responseType: "stream",
+      timeout: 30000,
+      validateStatus: (status) => {
+        return (status >= 200 && status < 300) || status === 206;
+      }
+    });
+
+    const audioHeaderMs = Date.now() - audioStart;
+
+    let firstByteMs = 0;
+    let totalBytes = 0;
+    let hasFirstByte = false;
+
+    audioResponse.data.on("data", (chunk) => {
+      if (!hasFirstByte) {
+        hasFirstByte = true;
+        firstByteMs = Date.now() - startedAt;
+      }
+
+      totalBytes += chunk.length;
+    });
+
+    audioResponse.data.on("end", () => {
+      const totalMs = Date.now() - startedAt;
+      const audioDownloadMs = Date.now() - audioStart;
+      const seconds = audioDownloadMs / 1000;
+
+      const mbps = seconds > 0
+        ? Number(((totalBytes * 8) / seconds / 1000 / 1000).toFixed(2))
+        : 0;
+
+      const verdict =
+        firstByteMs <= 800 && mbps >= 1.5
+          ? "good"
+          : firstByteMs <= 1500 && mbps >= 0.8
+            ? "acceptable"
+            : "slow";
+
+      return res.json({
+        trackId: trackId,
+        requestedBytes: bytes,
+        receivedBytes: totalBytes,
+
+        stream: {
+          protocol: streamResponse.data?.protocol || "",
+          mimeType: streamResponse.data?.mimeType || "",
+          isProxyUrl: streamUrl.includes("/soundcloud/proxy/media")
+        },
+
+        timing: {
+          resolveStreamMs: resolveStreamMs,
+          audioHeaderMs: audioHeaderMs,
+          firstByteMs: firstByteMs,
+          audioDownloadMs: audioDownloadMs,
+          totalMs: totalMs
+        },
+
+        speed: {
+          mbps: mbps
+        },
+
+        responseHeaders: {
+          status: audioResponse.status,
+          contentType: audioResponse.headers["content-type"] || "",
+          contentLength: audioResponse.headers["content-length"] || "",
+          contentRange: audioResponse.headers["content-range"] || "",
+          acceptRanges: audioResponse.headers["accept-ranges"] || ""
+        },
+
+        verdict: verdict
+      });
+    });
+
+    audioResponse.data.on("error", (streamError) => {
+      return res.status(500).json({
+        message: "Buffering test stream failed",
+        detail: streamError.message
+      });
+    });
+  } catch (error) {
+    logSoundCloudError("debug/buffering-test", error);
+
+    return res.status(error.response?.status || 500).json({
+      message: "Buffering test failed",
+      detail: error.message,
+      status: error.response?.status || null,
+      data: error.response?.data || null
+    });
+  }
 });
 
 app.get("/searchSoundCloudTracks", async (req, res) => {
@@ -724,8 +868,7 @@ app.get("/searchSoundCloudTracks", async (req, res) => {
     );
   }
 });
-// Proxy audio progressive MP3.
-// Android ExoPlayer sẽ gọi URL này thay vì gọi trực tiếp api.soundcloud.com.
+
 app.get("/soundcloud/proxy/media", async (req, res) => {
   try {
     const targetUrl = String(req.query.url || "").trim();
@@ -953,10 +1096,6 @@ app.get("/getSoundCloudStreamUrl", async (req, res) => {
     );
   }
 });
-// =========================
-// MUSIC SURFACE API
-// Profile / Playlist / Comment / Like
-// =========================
 
 app.get("/getSoundCloudArtistProfile", async (req, res) => {
   try {
@@ -1461,223 +1600,8 @@ app.post("/toggleSoundCloudTrackLike", (req, res) => {
     });
   }
 });
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Orange Music SoundCloud server is running on http://localhost:${PORT}`);
   console.log("Mode: progressive-only");
 });
-
-// =========================
-// MUSIC SURFACE API
-// Profile / Playlist / Comment
-// =========================
-
-function normalizeText(value) {
-    return String(value || "")
-        .trim()
-        .toLowerCase()
-}
-
-function isSameArtist(track, artistName) {
-    const trackArtist = normalizeText(track.artist)
-    const targetArtist = normalizeText(artistName)
-
-    if (!trackArtist || !targetArtist) {
-        return false
-    }
-
-    return trackArtist === targetArtist ||
-        trackArtist.includes(targetArtist) ||
-        targetArtist.includes(trackArtist)
-}
-
-function buildBaseUrl(req) {
-    return `${req.protocol}://${req.get("host")}`
-}
-
-async function fetchSoundCloudSearchFromSelf(req, query, limit = 20) {
-    const baseUrl = buildBaseUrl(req)
-    const url = `${baseUrl}/searchSoundCloudTracks?q=${encodeURIComponent(query)}&limit=${limit}`
-
-    const response = await fetch(url)
-
-    if (!response.ok) {
-        throw new Error(`Search failed with status ${response.status}`)
-    }
-
-    const data = await response.json()
-
-    if (Array.isArray(data)) {
-        return data
-    }
-
-    if (Array.isArray(data.results)) {
-        return data.results
-    }
-
-    if (Array.isArray(data.tracks)) {
-        return data.tracks
-    }
-
-    return []
-}
-
-function createApiArtistProfile(artistName, tracks) {
-    const firstTrack = tracks[0] || {}
-
-    return {
-        id: `soundcloud_artist_${encodeURIComponent(artistName)}`,
-        artistName,
-        displayName: artistName,
-        username: artistName,
-        source: "soundcloud",
-        sourceLabel: "SoundCloud",
-        avatarUrl: firstTrack.coverUrl || "",
-        bannerUrl: firstTrack.coverUrl || "",
-        bio: "Artist profile generated from available SoundCloud track data.",
-        followersCount: 0,
-        followingCount: 0,
-        tracksCount: tracks.length,
-        playlistsCount: 0,
-        topTracks: tracks
-    }
-}
-
-function createApiPlaylist(query, tracks) {
-    const firstTrack = tracks[0] || {}
-
-    return {
-        id: `soundcloud_playlist_${encodeURIComponent(query)}`,
-        name: query || "SoundCloud Playlist",
-        description: "Playlist generated from available SoundCloud search results.",
-        source: "soundcloud",
-        sourceLabel: "SoundCloud",
-        coverUrl: firstTrack.coverUrl || "",
-        ownerId: "soundcloud",
-        ownerName: "SoundCloud",
-        isPublic: true,
-        songsCount: tracks.length,
-        tracks
-    }
-}
-
-// Artist profile from available SoundCloud tracks
-app.get("/getSoundCloudArtistProfile", async (req, res) => {
-    try {
-        const artist = String(req.query.artist || "").trim()
-        const limit = Number(req.query.limit || 20)
-
-        if (!artist) {
-            return res.status(400).json({
-                error: "Missing artist query parameter"
-            })
-        }
-
-        const tracks = await fetchSoundCloudSearchFromSelf(req, artist, limit)
-
-        const artistTracks = tracks.filter((track) => {
-            return isSameArtist(track, artist)
-        })
-
-        const finalTracks = artistTracks.length > 0 ? artistTracks : tracks
-
-        return res.json({
-            profile: createApiArtistProfile(artist, finalTracks),
-            results: finalTracks
-        })
-    } catch (error) {
-        console.error("getSoundCloudArtistProfile error:", error)
-
-        return res.status(500).json({
-            error: "Failed to load SoundCloud artist profile"
-        })
-    }
-})
-
-// Artist tracks from available SoundCloud search
-app.get("/getSoundCloudArtistTracks", async (req, res) => {
-    try {
-        const artist = String(req.query.artist || "").trim()
-        const limit = Number(req.query.limit || 20)
-
-        if (!artist) {
-            return res.status(400).json({
-                error: "Missing artist query parameter"
-            })
-        }
-
-        const tracks = await fetchSoundCloudSearchFromSelf(req, artist, limit)
-
-        const artistTracks = tracks.filter((track) => {
-            return isSameArtist(track, artist)
-        })
-
-        return res.json({
-            artistName: artist,
-            source: "soundcloud",
-            results: artistTracks.length > 0 ? artistTracks : tracks
-        })
-    } catch (error) {
-        console.error("getSoundCloudArtistTracks error:", error)
-
-        return res.status(500).json({
-            error: "Failed to load SoundCloud artist tracks"
-        })
-    }
-})
-
-// Playlist surface from available SoundCloud search
-app.get("/getSoundCloudApiPlaylist", async (req, res) => {
-    try {
-        const query = String(req.query.q || req.query.query || "").trim()
-        const limit = Number(req.query.limit || 30)
-
-        if (!query) {
-            return res.status(400).json({
-                error: "Missing q query parameter"
-            })
-        }
-
-        const tracks = await fetchSoundCloudSearchFromSelf(req, query, limit)
-
-        return res.json({
-            playlist: createApiPlaylist(query, tracks),
-            results: tracks
-        })
-    } catch (error) {
-        console.error("getSoundCloudApiPlaylist error:", error)
-
-        return res.status(500).json({
-            error: "Failed to load SoundCloud API playlist"
-        })
-    }
-})
-
-// Comment surface.
-// SoundCloud comments are not handled by the current proxy.
-// App comments should still be stored in Firebase by Android.
-app.get("/getSoundCloudTrackComments", async (req, res) => {
-    try {
-        const trackId = String(req.query.trackId || "").trim()
-
-        if (!trackId) {
-            return res.status(400).json({
-                error: "Missing trackId query parameter"
-            })
-        }
-
-        return res.json({
-            trackId,
-            source: "orange_music_firestore",
-            sourceLabel: "Orange Music",
-            commentsSupportedByProxy: false,
-            message: "Comments for SoundCloud tracks are stored in Firebase by the Android app.",
-            comments: []
-        })
-    } catch (error) {
-        console.error("getSoundCloudTrackComments error:", error)
-
-        return res.status(500).json({
-            error: "Failed to load SoundCloud track comments"
-        })
-    }
-})
