@@ -11,10 +11,12 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
+import com.example.music_app.data.local.SearchHistoryStore
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.SearchResultBundle
 import com.example.music_app.data.model.Song
@@ -22,15 +24,13 @@ import com.example.music_app.data.model.User
 import com.example.music_app.databinding.FragmentSearchBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
+import com.example.music_app.ui.library.PlaylistDetailFragment
 import com.example.music_app.ui.player.PlaybackLauncher
+import com.example.music_app.ui.profile.ApiArtistProfileFragment
+import com.example.music_app.ui.profile.ProfileFragment
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.fragment.app.commit
-import com.example.music_app.ui.library.PlaylistDetailFragment
-import com.example.music_app.ui.profile.ProfileFragment
-import com.example.music_app.ui.profile.ApiArtistProfileFragment
-
 
 class SearchFragment : Fragment(R.layout.fragment_search) {
 
@@ -39,6 +39,10 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
     private val viewModel: SearchViewModel by viewModels()
 
+    private val searchHistoryStore by lazy {
+        SearchHistoryStore(requireContext())
+    }
+
     private lateinit var searchAdapter: SearchAdapter
 
     private var searchResults = SearchResultBundle()
@@ -46,6 +50,8 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     private var currentTab = SearchTab.ALL
 
     private var searchJob: Job? = null
+    private var isRestoringLatestSearch = false
+    private var isApplyingRecentQuery = false
 
     enum class SearchTab {
         ALL,
@@ -66,6 +72,8 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
         selectTab(SearchTab.ALL)
         viewModel.loadSongs()
+
+        restoreLatestSearchInSession()
     }
 
     private fun setupRecyclerView() {
@@ -85,6 +93,9 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             },
             onPlaylistClick = { playlist ->
                 openPlaylistResult(playlist)
+            },
+            onRecentQueryClick = { query ->
+                applyRecentQuery(query)
             }
         )
 
@@ -98,6 +109,8 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         binding.btnCancel.isVisible = false
         binding.tabContainer.isVisible = false
         binding.tvSearchSectionTitle.text = getString(R.string.recently_searched)
+
+        showRecentSearches()
 
         binding.edtSearch.setOnFocusChangeListener { _, hasFocus ->
             val mainActivity = activity as? MainActivity
@@ -118,7 +131,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 searchJob?.cancel()
 
                 if (keyword.isNotBlank()) {
-                    viewModel.searchTracks(keyword)
+                    submitSearch(keyword)
                 }
 
                 binding.edtSearch.clearFocus()
@@ -135,8 +148,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 start: Int,
                 count: Int,
                 after: Int
-            ) {
-            }
+            ) = Unit
 
             override fun onTextChanged(
                 s: CharSequence?,
@@ -146,35 +158,40 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             ) {
                 val keyword = s.toString().trim()
 
-                binding.btnCancel.isVisible = keyword.isNotEmpty()
-                binding.tabContainer.isVisible = keyword.isNotEmpty()
-
-                binding.tvSearchSectionTitle.text =
-                    if (keyword.isNotEmpty()) {
-                        getTitleByTab(currentTab)
-                    } else {
-                        getString(R.string.recently_searched)
-                    }
+                if (isRestoringLatestSearch) return
+                if (isApplyingRecentQuery) return
 
                 searchJob?.cancel()
 
+                binding.btnCancel.isVisible = keyword.isNotEmpty()
+                binding.tabContainer.isVisible = keyword.isNotEmpty()
+
                 if (keyword.isBlank()) {
-                    clearSearchUi()
+                    sessionLatestQuery = ""
+
+                    binding.tvSearchSectionTitle.text =
+                        getString(R.string.recently_searched)
+
+                    clearSearchUi(clearViewModel = true)
+                    showRecentSearches()
                     return
                 }
 
+                binding.tvSearchSectionTitle.text = getTitleByTab(currentTab)
+
                 searchJob = viewLifecycleOwner.lifecycleScope.launch {
                     delay(500)
-                    viewModel.searchTracks(keyword)
+                    submitSearch(keyword)
                 }
             }
 
-            override fun afterTextChanged(s: Editable?) {
-            }
+            override fun afterTextChanged(s: Editable?) = Unit
         })
 
         binding.btnCancel.setOnClickListener {
             searchJob?.cancel()
+
+            sessionLatestQuery = ""
 
             binding.edtSearch.text.clear()
             binding.edtSearch.clearFocus()
@@ -184,7 +201,8 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             binding.tabContainer.isVisible = false
             binding.tvSearchSectionTitle.text = getString(R.string.recently_searched)
 
-            clearSearchUi()
+            clearSearchUi(clearViewModel = true)
+            showRecentSearches()
         }
     }
 
@@ -219,7 +237,9 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 PlaybackLauncher.openPlayer(
                     fragment = this,
                     song = it,
-                    playlist = currentSearchSongs.ifEmpty { searchResults.tracks }
+                    playlist = currentSearchSongs.ifEmpty {
+                        searchResults.tracks
+                    }
                 )
 
                 viewModel.donePlaySong()
@@ -237,6 +257,73 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             binding.edtSearch.isEnabled = !isLoading
             binding.btnCancel.isEnabled = !isLoading
         }
+    }
+
+    private fun restoreLatestSearchInSession() {
+        val latestQuery = sessionLatestQuery
+
+        if (latestQuery.isBlank()) {
+            binding.btnCancel.isVisible = false
+            binding.tabContainer.isVisible = false
+            binding.tvSearchSectionTitle.text = getString(R.string.recently_searched)
+            showRecentSearches()
+            return
+        }
+
+        isRestoringLatestSearch = true
+
+        binding.edtSearch.setText(latestQuery)
+        binding.edtSearch.setSelection(latestQuery.length)
+
+        binding.btnCancel.isVisible = true
+        binding.tabContainer.isVisible = true
+        binding.tvSearchSectionTitle.text = getTitleByTab(currentTab)
+
+        isRestoringLatestSearch = false
+
+        viewModel.searchTracks(latestQuery)
+    }
+
+    private fun submitSearch(keyword: String) {
+        val query = keyword.trim()
+
+        if (query.isBlank()) return
+
+        searchHistoryStore.saveQuery(query)
+        sessionLatestQuery = query
+
+        viewModel.searchTracks(query)
+    }
+
+    private fun applyRecentQuery(query: String) {
+        isApplyingRecentQuery = true
+
+        binding.edtSearch.setText(query)
+        binding.edtSearch.setSelection(query.length)
+
+        binding.btnCancel.isVisible = true
+        binding.tabContainer.isVisible = true
+        binding.tvSearchSectionTitle.text = getTitleByTab(currentTab)
+
+        isApplyingRecentQuery = false
+
+        submitSearch(query)
+
+        binding.edtSearch.clearFocus()
+        hideKeyboard()
+    }
+
+    private fun showRecentSearches() {
+        val recentQueries = searchHistoryStore.getRecentQueries()
+
+        currentSearchSongs = emptyList()
+        PlayerManager.setFallbackSongs(emptyList())
+
+        val items = recentQueries.map { query ->
+            SearchResultItem.RecentQuery(query)
+        }
+
+        searchAdapter.setData(items)
     }
 
     private fun selectTab(tab: SearchTab) {
@@ -302,17 +389,19 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
     private fun filterResultsByCurrentTab(keyword: String) {
         if (keyword.isBlank()) {
-            currentSearchSongs = emptyList()
-            searchAdapter.setData(emptyList())
-            PlayerManager.setFallbackSongs(emptyList())
+            showRecentSearches()
             return
         }
 
         val items = when (currentTab) {
-            SearchTab.ALL -> buildAllResultItems(searchResults)
+            SearchTab.ALL -> {
+                currentSearchSongs = searchResults.tracks
+                buildAllResultItems(searchResults)
+            }
 
             SearchTab.TRACKS -> {
                 currentSearchSongs = searchResults.tracks
+
                 searchResults.tracks.map { song ->
                     SearchResultItem.Track(song)
                 }
@@ -332,14 +421,11 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
             SearchTab.PLAYLISTS -> {
                 currentSearchSongs = emptyList()
+
                 searchResults.playlists.map { playlist ->
                     SearchResultItem.PlaylistItem(playlist)
                 }
             }
-        }
-
-        if (currentTab == SearchTab.ALL) {
-            currentSearchSongs = searchResults.tracks
         }
 
         searchAdapter.setData(items)
@@ -350,7 +436,9 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         result: SearchResultBundle
     ): List<SearchResultItem> {
         val items = mutableListOf<SearchResultItem>()
+
         val apiProfiles = buildApiArtistProfiles(result.tracks)
+
         val allProfiles = result.profiles.map { user ->
             SearchResultItem.Profile(user)
         } + apiProfiles
@@ -398,6 +486,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
         return items
     }
+
     private fun buildApiArtistProfiles(
         tracks: List<Song>
     ): List<SearchResultItem.ApiArtistProfile> {
@@ -413,7 +502,9 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
                 SearchResultItem.ApiArtistProfile(
                     artistName = firstSong.artist,
-                    source = firstSong.source.ifBlank { getSongSource(firstSong) },
+                    source = firstSong.source.ifBlank {
+                        getSongSource(firstSong)
+                    },
                     avatarUrl = firstSong.coverUrl,
                     trackCount = songsByArtist.size
                 )
@@ -422,40 +513,16 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 profile.artistName.lowercase()
             }
     }
+
     private fun getSongSource(song: Song): String {
         return if (
             song.id.startsWith("soundcloud_", ignoreCase = true) ||
             song.uploaderId.startsWith("soundcloud", ignoreCase = true)
         ) {
-            "soundcloud"
+            SOURCE_SOUNDCLOUD
         } else {
-            "orange_music"
+            SOURCE_ORANGE_MUSIC
         }
-    }
-    private fun openApiArtistProfileResult(
-        profile: SearchResultItem.ApiArtistProfile
-    ) {
-        hideKeyboard()
-        binding.edtSearch.clearFocus()
-
-        parentFragmentManager.commit {
-            replace(
-                R.id.fragmentContainer,
-                ApiArtistProfileFragment.newInstance(
-                    artistName = profile.artistName,
-                    source = profile.source,
-                    coverUrl = profile.avatarUrl
-                )
-            )
-            addToBackStack(null)
-        }
-    }
-    private fun clearSearchUi() {
-        searchResults = SearchResultBundle()
-        currentSearchSongs = emptyList()
-        searchAdapter.setData(emptyList())
-        PlayerManager.setFallbackSongs(emptyList())
-        viewModel.clearSearchResult()
     }
 
     private fun openProfileResult(user: User) {
@@ -471,6 +538,25 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             replace(
                 R.id.fragmentContainer,
                 ProfileFragment.newInstance(user.uid)
+            )
+            addToBackStack(null)
+        }
+    }
+
+    private fun openApiArtistProfileResult(
+        profile: SearchResultItem.ApiArtistProfile
+    ) {
+        hideKeyboard()
+        binding.edtSearch.clearFocus()
+
+        parentFragmentManager.commit {
+            replace(
+                R.id.fragmentContainer,
+                ApiArtistProfileFragment.newInstance(
+                    artistName = profile.artistName,
+                    source = profile.source,
+                    coverUrl = profile.avatarUrl
+                )
             )
             addToBackStack(null)
         }
@@ -499,6 +585,17 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         }
     }
 
+    private fun clearSearchUi(clearViewModel: Boolean) {
+        searchResults = SearchResultBundle()
+        currentSearchSongs = emptyList()
+        searchAdapter.setData(emptyList())
+        PlayerManager.setFallbackSongs(emptyList())
+
+        if (clearViewModel) {
+            viewModel.clearSearchResult()
+        }
+    }
+
     private fun hideKeyboard() {
         val imm =
             requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -514,5 +611,12 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         searchJob?.cancel()
         super.onDestroyView()
         _binding = null
+    }
+
+    companion object {
+        private const val SOURCE_SOUNDCLOUD = "soundcloud"
+        private const val SOURCE_ORANGE_MUSIC = "orange_music"
+
+        private var sessionLatestQuery: String = ""
     }
 }

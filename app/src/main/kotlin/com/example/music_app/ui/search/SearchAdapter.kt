@@ -15,7 +15,8 @@ class SearchAdapter(
     private val onTrackClick: (Song) -> Unit,
     private val onProfileClick: (User) -> Unit,
     private val onApiArtistProfileClick: (SearchResultItem.ApiArtistProfile) -> Unit,
-    private val onPlaylistClick: (Playlist) -> Unit
+    private val onPlaylistClick: (Playlist) -> Unit,
+    private val onRecentQueryClick: (String) -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val items = mutableListOf<SearchResultItem>()
@@ -33,6 +34,7 @@ class SearchAdapter(
             is SearchResultItem.Profile -> VIEW_TYPE_RESULT
             is SearchResultItem.ApiArtistProfile -> VIEW_TYPE_RESULT
             is SearchResultItem.PlaylistItem -> VIEW_TYPE_RESULT
+            is SearchResultItem.RecentQuery -> VIEW_TYPE_RESULT
         }
     }
 
@@ -80,6 +82,9 @@ class SearchAdapter(
 
             is SearchResultItem.PlaylistItem -> {
                 (holder as ResultViewHolder).bindPlaylist(item.playlist)
+            }
+            is SearchResultItem.RecentQuery -> {
+                (holder as ResultViewHolder).bindRecentQuery(item.query)
             }
         }
     }
@@ -188,7 +193,22 @@ class SearchAdapter(
                 onApiArtistProfileClick(profile)
             }
         }
+        fun bindRecentQuery(query: String) {
+            val context = binding.root.context
 
+            binding.txtTitle.text = query
+            binding.txtArtist.text = context.getString(R.string.tap_to_search_again)
+
+            val padding = (18 * context.resources.displayMetrics.density).toInt()
+
+            binding.imgCover.setImageResource(R.drawable.ic_search)
+            binding.imgCover.scaleType = android.widget.ImageView.ScaleType.CENTER
+            binding.imgCover.setPadding(padding, padding, padding, padding)
+
+            binding.root.setOnClickListener {
+                onRecentQueryClick(query)
+            }
+        }
         private fun getSourceLabel(source: String): String {
             val context = binding.root.context
 

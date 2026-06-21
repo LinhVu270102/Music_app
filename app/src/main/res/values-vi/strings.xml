@@ -512,4 +512,6 @@
     <string name="soundcloud_playlist_count_format">SoundCloud • %1$d bài hát</string>
     <string name="soundcloud_api_playlist_subtitle">Danh sách SoundCloud được lưu trong Orange Music</string>
     <string name="api_playlist_delete_not_supported">Chưa hỗ trợ xóa danh sách phát SoundCloud trên server.</string>
+    <string name="tap_to_search_again">Nhấn để tìm kiếm lại</string>
+    <string name="no_recent_searches">Chưa có tìm kiếm gần đây</string>
 </resources>

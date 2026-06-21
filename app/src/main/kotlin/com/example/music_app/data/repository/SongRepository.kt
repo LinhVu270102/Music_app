@@ -14,11 +14,13 @@ import com.example.music_app.data.remote.FirebaseService
 import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 
 
 class SongRepository {
 
     private val db = FirebaseFirestore.getInstance()
+    private val firestore = FirebaseFirestore.getInstance()
     private val firebaseService = FirebaseService(db)
     private val auth = FirebaseAuth.getInstance()
 
@@ -34,6 +36,20 @@ class SongRepository {
         return firebaseService.getAllSongsWithIds()
             .filter { song ->
                 song.status == SongStatus.APPROVED && !song.isDeleted
+            }
+    }
+
+    suspend fun getRootPlaylistSongs(playlistId: String): List<Song> {
+        if (playlistId.isBlank()) return emptyList()
+
+        return firestore.collection("playlists")
+            .document(playlistId)
+            .collection("songs")
+            .get()
+            .await()
+            .documents
+            .mapNotNull { doc ->
+                doc.toObject(Song::class.java)?.copy(id = doc.id)
             }
     }
 

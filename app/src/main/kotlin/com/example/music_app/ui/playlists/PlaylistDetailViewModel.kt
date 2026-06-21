@@ -35,7 +35,11 @@ class PlaylistDetailViewModel : ViewModel() {
                             ownerId = ownerId
                         )
                     ) {
-                        soundCloudSocialRepository.getUserApiPlaylistSongs(playlistId)
+                        val firestoreSongs = repository.getRootPlaylistSongs(playlistId)
+
+                        firestoreSongs.ifEmpty {
+                            soundCloudSocialRepository.getUserApiPlaylistSongs(playlistId)
+                        }
                     } else {
                         repository.getPlaylistSongs(
                             ownerId = ownerId,

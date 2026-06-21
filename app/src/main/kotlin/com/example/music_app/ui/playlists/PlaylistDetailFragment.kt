@@ -32,6 +32,8 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
     private var ownerId: String = ""
     private var coverUrl: String = ""
     private fun isOwnerPlaylist(): Boolean {
+        if (isSoundCloudApiPlaylist()) return false
+
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
         val finalOwnerId = ownerId.ifBlank { currentUserId }
 
@@ -72,12 +74,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         binding.tvPlaylistName.text =
             playlistName.ifBlank { getString(R.string.playlist) }
         binding.tvPlaylistSubtitle.text =
-            if (
-                SoundCloudSocialRepository.isSoundCloudApiPlaylist(
-                    playlistId = playlistId,
-                    ownerId = ownerId
-                )
-            ) {
+            if (isSoundCloudApiPlaylist()) {
                 getString(R.string.soundcloud_api_playlist_subtitle)
             } else {
                 getString(R.string.playlist_detail_subtitle)
@@ -187,7 +184,12 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             .setNegativeButton(getString(R.string.cancel), null)
             .show()
     }
-
+    private fun isSoundCloudApiPlaylist(): Boolean {
+        return SoundCloudSocialRepository.isSoundCloudApiPlaylist(
+            playlistId = playlistId,
+            ownerId = ownerId
+        )
+    }
     private fun showToast(message: String) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }

@@ -10,5 +10,8 @@ data/orange-music-store.json
 serviceAccountKey.json
 *serviceAccountKey*.json
 
-output/
+output/*
+!output/.gitkeep
+!output/soundcloud_api_playlists_100.json
+
 tools_backup/

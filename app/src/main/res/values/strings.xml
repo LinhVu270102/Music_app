@@ -512,4 +512,6 @@
     <string name="soundcloud_playlist_count_format">SoundCloud • %1$d songs</string>
     <string name="soundcloud_api_playlist_subtitle">SoundCloud playlist saved in Orange Music</string>
     <string name="api_playlist_delete_not_supported">SoundCloud server playlist deletion is not supported yet.</string>
+    <string name="tap_to_search_again">Tap to search again</string>
+    <string name="no_recent_searches">No recent searches</string>
 </resources>
