@@ -30,4 +30,8 @@ sealed class SearchResultItem {
         val avatarUrl: String,
         val trackCount: Int
     ) : SearchResultItem()
+
+    data class RecentQuery(
+        val query: String
+    ) : SearchResultItem()
 }

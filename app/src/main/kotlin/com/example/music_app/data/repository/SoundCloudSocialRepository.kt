@@ -328,6 +328,24 @@ class SoundCloudSocialRepository {
             bodyText = response.body()?.string()
         )
     }
+    suspend fun searchUserApiPlaylists(keyword: String): List<Playlist> {
+        val query = keyword.trim()
+
+        if (query.isBlank()) return emptyList()
+
+        return getUserApiPlaylists()
+            .map { apiPlaylist ->
+                apiPlaylist.toPlaylist()
+            }
+            .filter { playlist ->
+                playlist.name.contains(query, ignoreCase = true) ||
+                        playlist.description.contains(query, ignoreCase = true)
+            }
+            .distinctBy { playlist ->
+                playlist.id
+            }
+            .take(20)
+    }
 
     private fun Song.toSoundCloudTrackBody(): Map<String, Any> {
         return mapOf(

@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "import:playlists": "node scripts/import-api-playlists-to-firestore.js",
+    "populate:playlists": "node scripts/populate-api-playlists-with-random-songs.js"
   },
   "keywords": [],
   "author": "",
@@ -18,3 +20,4 @@
     "firebase-admin": "^14.0.0"
   }
 }
+

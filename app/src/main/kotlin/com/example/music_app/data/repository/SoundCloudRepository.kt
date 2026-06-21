@@ -5,6 +5,9 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.remote.soundcloud.SoundCloudRetrofitClient
 import com.example.music_app.data.remote.soundcloud.getSoundCloudTrackId
 import com.example.music_app.data.remote.soundcloud.toSong
+import com.example.music_app.data.model.Playlist
+import org.json.JSONArray
+import org.json.JSONObject
 
 class SoundCloudRepository {
 
@@ -22,6 +25,88 @@ class SoundCloudRepository {
             .filter { it.title.isNotBlank() }
             .filter { it.access.isBlank() || it.access == "playable" }
             .map { it.toSong() }
+    }
+    suspend fun searchPlaylists(
+        query: String,
+        limit: Int = 20
+    ): List<Playlist> {
+        if (query.isBlank()) return emptyList()
+
+        val response = api.getApiPlaylist(
+            query = query,
+            limit = limit
+        )
+
+        val rawBody = response.body()?.string().orEmpty()
+
+        if (!response.isSuccessful || rawBody.isBlank()) {
+            return emptyList()
+        }
+
+        val root = JSONObject(rawBody)
+
+        val playlistsArray = when {
+            root.has("playlists") -> root.optJSONArray("playlists")
+            root.has("results") -> root.optJSONArray("results")
+            root.has("data") -> root.optJSONArray("data")
+            else -> null
+        } ?: JSONArray()
+
+        return List(playlistsArray.length()) { index ->
+            playlistsArray.optJSONObject(index)
+        }.mapNotNull { json ->
+            json?.toPlaylist()
+        }
+            .filter { playlist ->
+                playlist.name.contains(query, ignoreCase = true) ||
+                        playlist.description.contains(query, ignoreCase = true)
+            }
+            .distinctBy { playlist -> playlist.id }
+            .take(limit)
+    }
+    private fun JSONObject.toPlaylist(): Playlist? {
+        val rawId = optString("id")
+            .ifBlank { optString("playlistId") }
+            .ifBlank { optString("soundCloudId") }
+            .ifBlank { optString("urn") }
+
+        val name = optString("title")
+            .ifBlank { optString("name") }
+
+        if (rawId.isBlank() || name.isBlank()) return null
+
+        val coverUrl = optString("coverUrl")
+            .ifBlank { optString("artwork_url") }
+            .ifBlank { optString("artworkUrl") }
+            .ifBlank { optString("image") }
+            .ifBlank { optString("thumbnail") }
+
+        val description = optString("description")
+            .ifBlank { optString("userName") }
+            .ifBlank { optString("username") }
+
+        val tracksCount = optLong("tracksCount", -1L)
+            .takeIf { it >= 0L }
+            ?: optLong("track_count", 0L)
+
+        val normalizedId =
+            if (rawId.startsWith("soundcloud_playlist_", ignoreCase = true)) {
+                rawId
+            } else {
+                "soundcloud_playlist_$rawId"
+            }
+
+        return Playlist(
+            id = normalizedId,
+            name = name,
+            description = description,
+            coverUrl = coverUrl,
+            ownerId = "soundcloud",
+            isPublic = true,
+            songsCount = tracksCount,
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis()
+        )
     }
 
     suspend fun getPlayableSong(song: Song): Song {

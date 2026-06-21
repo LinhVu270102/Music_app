@@ -14,6 +14,7 @@ class SearchRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
     private val soundCloudRepository = SoundCloudRepository()
+    private val soundCloudSocialRepository = SoundCloudSocialRepository()
 
     suspend fun search(keyword: String): SearchResultBundle {
         val query = keyword.trim()
@@ -92,8 +93,12 @@ class SearchRepository {
     }
 
     private suspend fun searchPlaylists(keyword: String): List<Playlist> {
-        return try {
-            firestore.collectionGroup("playlists")
+        val query = keyword.trim()
+
+        if (query.isBlank()) return emptyList()
+
+        val firestorePlaylists = try {
+            firestore.collection("playlists")
                 .whereEqualTo("isPublic", true)
                 .get()
                 .await()
@@ -102,12 +107,55 @@ class SearchRepository {
                     doc.toObject(Playlist::class.java)?.copy(id = doc.id)
                 }
                 .filter { playlist ->
-                    playlist.matchesKeyword(keyword)
+                    playlist.matchesKeyword(query)
                 }
-                .take(20)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e(
+                "SearchRepository",
+                "search firestore playlists failed: ${e.message}",
+                e
+            )
             emptyList()
         }
+
+        val apiPlaylists = try {
+            soundCloudSocialRepository.getUserApiPlaylists()
+                .map { apiPlaylist ->
+                    soundCloudSocialRepository.run {
+                        apiPlaylist.toPlaylist()
+                    }
+                }
+                .filter { playlist ->
+                    playlist.matchesKeyword(query)
+                }
+        } catch (e: Exception) {
+            android.util.Log.e(
+                "SearchRepository",
+                "search api playlists failed: ${e.message}",
+                e
+            )
+            emptyList()
+        }
+
+        val result = (firestorePlaylists + apiPlaylists)
+            .distinctBy { playlist ->
+                playlist.id
+            }
+            .sortedWith(
+                compareByDescending<Playlist> { playlist ->
+                    playlist.name.contains(query, ignoreCase = true)
+                }.thenByDescending { playlist ->
+                    playlist.songsCount
+                }
+            )
+            .take(20)
+
+        android.util.Log.d(
+            "SearchRepository",
+            "searchPlaylists query=$query firestore=${firestorePlaylists.size}, api=${apiPlaylists.size}, total=${result.size}"
+        )
+
+        return result
     }
 
     private fun Song.matchesKeyword(keyword: String): Boolean {
