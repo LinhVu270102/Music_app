@@ -2,6 +2,7 @@ package com.example.music_app.ui.player
 
 import android.app.AlertDialog
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
@@ -9,32 +10,40 @@ import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.core.graphics.drawable.toDrawable
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.palette.graphics.Palette
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.example.music_app.R
+import com.example.music_app.data.model.PlaylistPickerItem
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SongRepository
+import com.example.music_app.data.repository.SoundCloudSocialRepository
+import com.example.music_app.databinding.DialogConfirmActionBinding
+import com.example.music_app.databinding.DialogCurrentPlaylistBinding
+import com.example.music_app.databinding.DialogInputActionBinding
+import com.example.music_app.databinding.DialogReportSongBinding
+import com.example.music_app.databinding.DialogSelectPlaylistBinding
+import com.example.music_app.databinding.DialogSongOptionsBinding
 import com.example.music_app.databinding.FragmentPlayerBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.comment.CommentFragment
 import com.example.music_app.utils.AppException
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import java.util.concurrent.TimeUnit
-import com.google.firebase.auth.FirebaseAuth
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import com.example.music_app.databinding.DialogReportSongBinding
-import com.example.music_app.databinding.DialogSongOptionsBinding
-import android.widget.EditText
-import com.example.music_app.data.repository.SoundCloudSocialRepository
+import android.app.Dialog
+
 
 class PlayerFragment : Fragment() {
 
@@ -68,10 +77,6 @@ class PlayerFragment : Fragment() {
 
     companion object {
         private const val ARG_SONG_ID = "songId"
-
-        private const val MENU_DELETE_SONG = 1
-        private const val MENU_TOGGLE_COMMENTS = 2
-        private const val MENU_REPORT_SONG = 3
 
         fun newInstance(songId: String): PlayerFragment {
             return PlayerFragment().apply {
@@ -186,8 +191,11 @@ class PlayerFragment : Fragment() {
                 override fun onStopTrackingTouch(seekBar: SeekBar?) {}
             }
         )
-        binding.btnSongOptions.setOnClickListener { anchor ->
-            showSongOptions(anchor)
+        binding.btnSongOptions.setOnClickListener {
+            showSongOptions()
+        }
+        binding.btnCurrentPlaylist.setOnClickListener {
+            showCurrentPlaylistDialog()
         }
     }
 
@@ -438,7 +446,7 @@ class PlayerFragment : Fragment() {
                 withContext(Dispatchers.Main) {
                     showToast(getString(e.messageResId))
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 withContext(Dispatchers.Main) {
                     showToast(getString(R.string.follow_failed))
                 }
@@ -453,118 +461,207 @@ class PlayerFragment : Fragment() {
     private fun showCurrentPlaylistDialog() {
         val songs = PlayerManager.playlistSongs.value.orEmpty()
         val currentIndex = PlayerManager.currentIndex.value ?: -1
+        val currentSong = PlayerManager.currentSong.value
 
         if (songs.isEmpty()) {
-            showToast(getString(R.string.no_songs_in_playlist))
+            if (currentSong == null) {
+                showToast(getString(R.string.no_songs_in_playlist))
+                return
+            }
+
+            showAddToPlaylistDialog(currentSong)
             return
         }
 
-        val items = songs.mapIndexed { index, song ->
-            val prefix = if (index == currentIndex) "▶ " else "   "
-            "$prefix${index + 1}. ${song.title}\n${song.artist}"
-        }.toTypedArray()
+        val dialogBinding = DialogCurrentPlaylistBinding.inflate(layoutInflater)
 
         val dialog = AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.current_playlist))
-            .setIcon(R.drawable.music_orange)
-            .setItems(items) { _, which ->
-                PlayerManager.playSongAt(which)
-            }
-            .setPositiveButton(getString(R.string.add_current_song_to_playlist), null)
-            .setNegativeButton(getString(R.string.close), null)
+            .setView(dialogBinding.root)
             .create()
 
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val song = PlayerManager.currentSong.value
-                if (song == null) {
-                    showToast(getString(R.string.no_song_playing))
-                } else {
-                    showAddToPlaylistDialog(song)
-                    dialog.dismiss()
-                }
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+
+        dialogBinding.txtDialogTitle.text = getString(R.string.current_playlist)
+        dialogBinding.txtDialogSubtitle.text =
+            getString(R.string.playlist_song_count_format, songs.size)
+
+        val currentPlaylistAdapter = CurrentPlaylistAdapter(
+            onItemClick = { index, _ ->
+                PlayerManager.playSongAt(index)
+                dialog.dismiss()
             }
+        )
+
+        dialogBinding.rvCurrentPlaylist.layoutManager = LinearLayoutManager(requireContext())
+        dialogBinding.rvCurrentPlaylist.adapter = currentPlaylistAdapter
+
+        currentPlaylistAdapter.setData(
+            newSongs = songs,
+            newCurrentIndex = currentIndex
+        )
+
+        if (currentIndex >= 0) {
+            dialogBinding.rvCurrentPlaylist.scrollToPosition(currentIndex)
+        }
+
+        dialogBinding.btnAddToPlaylist.setOnClickListener {
+            val song = PlayerManager.currentSong.value
+
+            if (song == null) {
+                showToast(getString(R.string.no_song_playing))
+                return@setOnClickListener
+            }
+
+            dialog.dismiss()
+            showAddToPlaylistDialog(song)
+        }
+
+        dialogBinding.btnClose.setOnClickListener {
+            dialog.dismiss()
         }
 
         dialog.show()
     }
 
     private fun showCreatePlaylistThenAddSong(song: Song) {
-        val input = EditText(requireContext()).apply {
-            hint = getString(R.string.playlist_name_hint)
-            setSingleLine(true)
-            setPadding(36, 24, 36, 24)
-        }
+        val dialogBinding = DialogInputActionBinding.inflate(layoutInflater)
 
         val dialog = AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.create_playlist))
-            .setIcon(R.drawable.music_orange)
-            .setMessage(getString(R.string.create_playlist_message))
-            .setView(input)
-            .setPositiveButton(getString(R.string.create), null)
-            .setNegativeButton(getString(R.string.cancel), null)
+            .setView(dialogBinding.root)
             .create()
 
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val name = input.text.toString().trim()
-                if (name.isBlank()) {
-                    showToast(getString(R.string.playlist_name_empty))
-                    return@setOnClickListener
-                }
+        dialogBinding.txtDialogTitle.text = getString(R.string.create_playlist)
+        dialogBinding.txtDialogMessage.text = getString(R.string.create_playlist_message)
+        dialogBinding.edtDialogInput.hint = getString(R.string.playlist_name_hint)
+        dialogBinding.btnConfirm.text = getString(R.string.create)
 
-                lifecycleScope.launch {
-                    try {
-                        val playlist = songRepository.createPlaylist(name)
-                        songRepository.addSongToPlaylist(playlist.id, song)
-                        showToast(getString(R.string.added_to_playlist_success))
-                        dialog.dismiss()
-                    } catch (_: Exception) {
-                        showToast(getString(R.string.add_to_playlist_failed))
-                    }
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnConfirm.setOnClickListener {
+            val name = dialogBinding.edtDialogInput.text
+                ?.toString()
+                ?.trim()
+                .orEmpty()
+
+            if (name.isBlank()) {
+                showToast(getString(R.string.playlist_name_empty))
+                return@setOnClickListener
+            }
+
+            dialogBinding.btnConfirm.isEnabled = false
+            dialogBinding.btnCancel.isEnabled = false
+
+            viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    val playlist = songRepository.createPlaylist(name)
+
+                    songRepository.addSongToPlaylist(
+                        playlistId = playlist.id,
+                        song = song
+                    )
+
+                    showToast(getString(R.string.added_to_playlist_success))
+                    dialog.dismiss()
+                } catch (_: Exception) {
+                    dialogBinding.btnConfirm.isEnabled = true
+                    dialogBinding.btnCancel.isEnabled = true
+
+                    showToast(getString(R.string.add_to_playlist_failed))
                 }
             }
         }
 
         dialog.show()
-    }
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())    }
 
     private fun showAddToPlaylistDialog(song: Song) {
         if (soundCloudSocialRepository.isSoundCloudSong(song)) {
             showAddToApiPlaylistDialog(song)
             return
         }
+
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val playlists = songRepository.getMyPlaylists()
 
                 withContext(Dispatchers.Main) {
                     if (playlists.isEmpty()) {
-                        showToast(getString(R.string.no_playlists))
+                        showCreatePlaylistThenAddSong(song)
                         return@withContext
                     }
 
-                    val playlistNames = playlists.map { it.name }.toTypedArray()
+                    val pickerItems = playlists.map { playlist ->
+                        PlaylistPickerItem(
+                            id = playlist.id,
+                            name = playlist.name,
+                            subtitle = getString(R.string.playlist)
+                        )
+                    }
 
-                    AlertDialog.Builder(requireContext())
-                        .setTitle(getString(R.string.add_to_playlist))
-                        .setItems(playlistNames) { _, which ->
-                            val selectedPlaylist = playlists[which]
-                            addSongToSelectedPlaylist(selectedPlaylist.id, song)
+                    showPlaylistPickerDialog(
+                        title = getString(R.string.add_to_playlist),
+                        subtitle = getString(R.string.add_current_song_to_playlist),
+                        items = pickerItems,
+                        onCreateClick = {
+                            showCreatePlaylistThenAddSong(song)
+                        },
+                        onPlaylistClick = { item: PlaylistPickerItem ->
+                            addSongToSelectedPlaylist(
+                                playlistId = item.id,
+                                song = song
+                            )
                         }
-                        .setNegativeButton(getString(R.string.cancel), null)
-                        .show()
+                    )
                 }
             } catch (e: AppException) {
                 withContext(Dispatchers.Main) {
                     showToast(getString(e.messageResId))
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 withContext(Dispatchers.Main) {
                     showToast(getString(R.string.load_playlists_failed))
                 }
             }
         }
+    }
+    private fun showPlaylistPickerDialog(
+        title: String,
+        subtitle: String,
+        items: List<PlaylistPickerItem>,
+        onCreateClick: () -> Unit,
+        onPlaylistClick: (PlaylistPickerItem) -> Unit
+    ) {
+        val dialogBinding = DialogSelectPlaylistBinding.inflate(layoutInflater)
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogBinding.root)
+            .create()
+
+        dialogBinding.txtDialogTitle.text = title
+        dialogBinding.txtDialogSubtitle.text = subtitle
+
+        val pickerAdapter = PlaylistPickerAdapter { item: PlaylistPickerItem ->
+            dialog.dismiss()
+            onPlaylistClick(item)
+        }
+
+        dialogBinding.rvPlaylists.layoutManager = LinearLayoutManager(requireContext())
+        dialogBinding.rvPlaylists.adapter = pickerAdapter
+        pickerAdapter.setData(items)
+
+        dialogBinding.btnCreatePlaylist.setOnClickListener {
+            dialog.dismiss()
+            onCreateClick()
+        }
+
+        dialogBinding.btnClose.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     }
 
     private fun addSongToSelectedPlaylist(
@@ -585,7 +682,7 @@ class PlayerFragment : Fragment() {
                 withContext(Dispatchers.Main) {
                     showToast(getString(e.messageResId))
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 withContext(Dispatchers.Main) {
                     showToast(getString(R.string.add_song_to_playlist_failed))
                 }
@@ -604,23 +701,31 @@ class PlayerFragment : Fragment() {
                         return@withContext
                     }
 
-                    val playlistNames = playlists.map { playlist ->
-                        "${playlist.name} (${playlist.songsCount})"
-                    }.toTypedArray()
+                    val pickerItems = playlists.map { playlist ->
+                        PlaylistPickerItem(
+                            id = playlist.id,
+                            name = playlist.name,
+                            subtitle = getString(
+                                R.string.playlist_songs_count,
+                                playlist.songsCount
+                            )
+                        )
+                    }
 
-                    AlertDialog.Builder(requireContext())
-                        .setTitle(getString(R.string.add_to_playlist))
-                        .setItems(playlistNames) { _, which ->
+                    showPlaylistPickerDialog(
+                        title = getString(R.string.add_to_playlist),
+                        subtitle = getString(R.string.soundcloud_source),
+                        items = pickerItems,
+                        onCreateClick = {
+                            showCreateApiPlaylistDialog(song)
+                        },
+                        onPlaylistClick = { item: PlaylistPickerItem ->
                             addSoundCloudSongToApiPlaylist(
-                                playlistId = playlists[which].id,
+                                playlistId = item.id,
                                 song = song
                             )
                         }
-                        .setPositiveButton(getString(R.string.create_playlist)) { _, _ ->
-                            showCreateApiPlaylistDialog(song)
-                        }
-                        .setNegativeButton(getString(R.string.cancel), null)
-                        .show()
+                    )
                 }
             } catch (e: AppException) {
                 withContext(Dispatchers.Main) {
@@ -635,28 +740,44 @@ class PlayerFragment : Fragment() {
     }
 
     private fun showCreateApiPlaylistDialog(song: Song) {
-        val input = EditText(requireContext()).apply {
-            hint = getString(R.string.playlist_name_hint)
-            setSingleLine(true)
+        val dialogBinding = DialogInputActionBinding.inflate(layoutInflater)
+
+        val dialog = Dialog(requireContext())
+        dialog.setContentView(dialogBinding.root)
+
+        dialogBinding.txtDialogTitle.text = getString(R.string.create_playlist)
+        dialogBinding.txtDialogMessage.text = getString(R.string.create_playlist_message)
+        dialogBinding.edtDialogInput.hint = getString(R.string.playlist_name_hint)
+        dialogBinding.btnConfirm.text = getString(R.string.create)
+
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
         }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.create_playlist))
-            .setView(input)
-            .setPositiveButton(getString(R.string.create)) { _, _ ->
-                val name = input.text.toString().trim()
+        dialogBinding.btnConfirm.setOnClickListener {
+            val name = dialogBinding.edtDialogInput.text
+                ?.toString()
+                ?.trim()
+                .orEmpty()
 
-                if (name.isBlank()) {
-                    showToast(getString(R.string.playlist_name_empty))
-                } else {
-                    createApiPlaylistAndAddSong(
-                        name = name,
-                        song = song
-                    )
-                }
+            if (name.isBlank()) {
+                showToast(getString(R.string.playlist_name_empty))
+                return@setOnClickListener
             }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+
+            dialogBinding.btnConfirm.isEnabled = false
+            dialogBinding.btnCancel.isEnabled = false
+
+            createApiPlaylistAndAddSong(
+                name = name,
+                song = song
+            )
+
+            dialog.dismiss()
+        }
+
+        dialog.show()
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     }
 
     private fun createApiPlaylistAndAddSong(
@@ -713,7 +834,7 @@ class PlayerFragment : Fragment() {
         }
     }
 
-    private fun showSongOptions(anchor: View) {
+    private fun showSongOptions() {
         val song = PlayerManager.currentSong.value ?: return
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
         val isOwner = song.uploaderId.isNotBlank() && song.uploaderId == currentUserId
@@ -724,8 +845,7 @@ class PlayerFragment : Fragment() {
             .setView(dialogBinding.root)
             .create()
 
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
         dialogBinding.txtOptionsSongTitle.text = song.title
         dialogBinding.txtOptionsSongArtist.text = song.artist
 
@@ -767,8 +887,7 @@ class PlayerFragment : Fragment() {
             .setView(dialogBinding.root)
             .create()
 
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
         dialogBinding.txtReportSongName.text =
             getString(
                 R.string.report_song_name_format,
@@ -814,14 +933,28 @@ class PlayerFragment : Fragment() {
     }
 
     private fun confirmDeleteCurrentSong(song: Song) {
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.delete_song))
-            .setMessage(getString(R.string.delete_song_confirm))
-            .setPositiveButton(getString(R.string.delete)) { _, _ ->
-                deleteCurrentSong(song)
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+        val dialogBinding = DialogConfirmActionBinding.inflate(layoutInflater)
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogBinding.root)
+            .create()
+
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+        dialogBinding.txtDialogTitle.text = getString(R.string.delete_song)
+        dialogBinding.txtDialogMessage.text =
+            getString(R.string.delete_song_confirm_with_name, song.title)
+        dialogBinding.btnConfirm.text = getString(R.string.delete)
+
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnConfirm.setOnClickListener {
+            dialog.dismiss()
+            deleteCurrentSong(song)
+        }
+
+        dialog.show()
     }
 
     private fun deleteCurrentSong(song: Song) {
@@ -985,7 +1118,7 @@ class PlayerFragment : Fragment() {
     private fun formatTime(ms: Long): String {
         val minutes = TimeUnit.MILLISECONDS.toMinutes(ms)
         val seconds = TimeUnit.MILLISECONDS.toSeconds(ms) % 60
-        return String.format("%02d:%02d", minutes, seconds)
+        return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
 
     private fun formatCount(count: Long): String {

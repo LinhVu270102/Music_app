@@ -15,7 +15,7 @@ import com.example.music_app.databinding.FragmentCommentBinding
 import com.example.music_app.main.MainActivity
 import com.google.firebase.auth.FirebaseAuth
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
+import androidx.core.graphics.drawable.toDrawable
 import com.example.music_app.databinding.DialogCommentOptionsBinding
 import com.example.music_app.databinding.DialogReportCommentBinding
 import com.example.music_app.player.PlayerManager
@@ -23,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.music_app.ui.player.PlaybackLauncher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.music_app.databinding.DialogConfirmActionBinding
 class CommentFragment : Fragment(R.layout.fragment_comment) {
 
     private var _binding: FragmentCommentBinding? = null
@@ -74,8 +75,8 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
 
     private fun setupRecyclerView() {
         adapter = CommentAdapter(
-            onMoreClick = { comment, anchor ->
-                showCommentOptions(comment, anchor)
+            onMoreClick = { comment, _ ->
+                showCommentOptions(comment)
             },
             onTimelineClick = { comment ->
                 seekToCommentTimeline(comment)
@@ -202,21 +203,22 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         val minutes = totalSeconds / 60
         val seconds = totalSeconds % 60
 
-        return "%02d:%02d".format(minutes, seconds)
+        return String.format(
+            java.util.Locale.getDefault(),
+            "%02d:%02d",
+            minutes,
+            seconds
+        )
     }
 
-    private fun showCommentOptions(
-        comment: Comment,
-        anchor: View
-    ) {
+    private fun showCommentOptions(comment: Comment) {
         val dialogBinding = DialogCommentOptionsBinding.inflate(layoutInflater)
 
         val dialog = AlertDialog.Builder(requireContext())
             .setView(dialogBinding.root)
             .create()
 
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
         dialogBinding.txtCommentPreview.text = comment.content.ifBlank {
             getString(R.string.no_report_description)
         }
@@ -239,6 +241,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         }
 
         dialog.show()
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     }
 
     private fun canHideComment(comment: Comment): Boolean {
@@ -255,8 +258,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
             .setView(dialogBinding.root)
             .create()
 
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
         dialogBinding.txtReportedCommentPreview.text =
             getString(
                 R.string.report_comment_content_format,
@@ -303,14 +305,27 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
     }
 
     private fun confirmHideComment(comment: Comment) {
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.hide_comment))
-            .setMessage(getString(R.string.hide_comment_confirm))
-            .setPositiveButton(getString(R.string.hide)) { _, _ ->
-                viewModel.hideComment(songId, comment)
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+        val dialogBinding = DialogConfirmActionBinding.inflate(layoutInflater)
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogBinding.root)
+            .create()
+
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+        dialogBinding.txtDialogTitle.text = getString(R.string.hide_comment)
+        dialogBinding.txtDialogMessage.text = getString(R.string.hide_comment_confirm)
+        dialogBinding.btnConfirm.text = getString(R.string.hide)
+
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialogBinding.btnConfirm.setOnClickListener {
+            dialog.dismiss()
+            viewModel.hideComment(songId, comment)
+        }
+
+        dialog.show()
     }
 
     override fun onResume() {

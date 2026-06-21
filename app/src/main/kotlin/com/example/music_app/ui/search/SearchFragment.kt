@@ -24,7 +24,7 @@ import com.example.music_app.data.model.User
 import com.example.music_app.databinding.FragmentSearchBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
-import com.example.music_app.ui.library.PlaylistDetailFragment
+import com.example.music_app.ui.playlists.PlaylistDetailFragment
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.profile.ApiArtistProfileFragment
 import com.example.music_app.ui.profile.ProfileFragment

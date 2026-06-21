@@ -2,9 +2,7 @@ package com.example.music_app.ui.yourupload
 
 import android.app.AlertDialog
 import android.os.Bundle
-import android.text.InputType
 import android.view.View
-import android.widget.EditText
 import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -16,6 +14,9 @@ import com.example.music_app.data.model.SongStatus
 import com.example.music_app.databinding.FragmentYourUploadBinding
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import com.example.music_app.databinding.DialogConfirmActionBinding
 
 class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
 
@@ -150,37 +151,31 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
         popup.show()
     }
     private fun confirmDeleteSong(song: Song) {
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.delete_song))
-            .setMessage(getString(R.string.delete_song_confirm))
-            .setPositiveButton(getString(R.string.delete)) { _, _ ->
-                viewModel.deleteSong(song)
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
-    }
+        val dialogBinding = DialogConfirmActionBinding.inflate(layoutInflater)
 
-    private fun showReportDialog(song: Song) {
-        val input = EditText(requireContext()).apply {
-            hint = getString(R.string.enter_report_reason)
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            minLines = 3
-            maxLines = 5
-            setPadding(32, 24, 32, 24)
+        val dialog = AlertDialog.Builder(requireContext())
+            .setView(dialogBinding.root)
+            .create()
+
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        dialogBinding.txtDialogTitle.text = getString(R.string.delete_song)
+        dialogBinding.txtDialogMessage.text =
+            getString(R.string.delete_song_confirm_with_name, song.title)
+        dialogBinding.btnConfirm.text = getString(R.string.delete)
+
+        dialogBinding.btnCancel.setOnClickListener {
+            dialog.dismiss()
         }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.report_song))
-            .setView(input)
-            .setPositiveButton(getString(R.string.report)) { _, _ ->
-                viewModel.reportSong(
-                    song = song,
-                    reason = input.text.toString()
-                )
-            }
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show()
+        dialogBinding.btnConfirm.setOnClickListener {
+            dialog.dismiss()
+            viewModel.deleteSong(song)
+        }
+
+        dialog.show()
     }
+
 
     private fun openPlayer(song: Song) {
         PlaybackLauncher.openPlayer(
