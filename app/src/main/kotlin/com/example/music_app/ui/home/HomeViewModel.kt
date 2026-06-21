@@ -22,7 +22,6 @@ class HomeViewModel : ViewModel() {
     private val soundCloudRepository = SoundCloudRepository()
 
     private var isLoadingHome = false
-    private var hasLoadedOnce = false
 
     private val genreCache = mutableMapOf<String, List<Song>>()
 
@@ -44,6 +43,14 @@ class HomeViewModel : ViewModel() {
     private val _errorMessageResId = MutableLiveData<Int?>()
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
 
+    private fun List<Song>.randomizedDistinct(limit: Int? = null): List<Song> {
+        val mixed = distinctBy { song ->
+            song.id.ifBlank { "${song.title}-${song.artist}" }
+        }.shuffled()
+
+        return if (limit == null) mixed else mixed.take(limit)
+    }
+
     fun loadHomeDataFast() {
         val firstPaintStart = System.currentTimeMillis()
 
@@ -59,8 +66,8 @@ class HomeViewModel : ViewModel() {
                 TAG,
                 "Home first paint from cache in ${System.currentTimeMillis() - firstPaintStart} ms"
             )
-        } else {
-            Log.d(TAG, "Home cache is empty")
+
+            return
         }
 
         if (isLoadingHome) {
@@ -68,12 +75,17 @@ class HomeViewModel : ViewModel() {
             return
         }
 
-        if (HomeMemoryCache.isValid()) {
-            Log.d(TAG, "Home cache valid, skip network")
+        Log.d(TAG, "Home cache is empty, initial load")
+        refreshHomeDataInBackground()
+    }
+
+    fun refreshHomeDataByUser() {
+        if (isLoadingHome) {
+            Log.d(TAG, "Home is already loading, skip user refresh")
             return
         }
 
-        Log.d(TAG, "Home cache invalid, refresh network")
+        Log.d(TAG, "User refresh home data")
         refreshHomeDataInBackground()
     }
 
@@ -87,19 +99,19 @@ class HomeViewModel : ViewModel() {
 
                 val homeData = supervisorScope {
                     val relatedDeferred = async {
-                        safeSearchTracks("lofi chill", 6)
+                        safeSearchTracks("lofi chill", 12)
                     }
 
                     val moreDeferred = async {
-                        safeSearchTracks("pop music", 6)
+                        safeSearchTracks("pop music", 12)
                     }
 
                     val hotDeferred = async {
-                        safeSearchTracks("trending music", 6)
+                        safeSearchTracks("trending music", 12)
                     }
 
                     val trendingDeferred = async {
-                        safeSearchTracks("hip hop rap", 8)
+                        safeSearchTracks("hip hop rap", 16)
                     }
 
                     val related = relatedDeferred.await()
@@ -108,15 +120,14 @@ class HomeViewModel : ViewModel() {
                     val trending = trendingDeferred.await()
 
                     HomeData(
-                        relatedTracks = related.take(4),
-                        moreLike = more,
-                        hotForYou = hot.sortedByDescending { song -> song.plays },
-                        trendingByGenre = trending
+                        relatedTracks = related.randomizedDistinct(4),
+                        moreLike = more.randomizedDistinct(6),
+                        hotForYou = hot.randomizedDistinct(6),
+                        trendingByGenre = trending.randomizedDistinct(8)
                     )
                 }
 
                 HomeMemoryCache.save(homeData)
-                hasLoadedOnce = true
 
                 _relatedTracks.postValue(homeData.relatedTracks)
                 _moreLike.postValue(homeData.moreLike)
@@ -125,7 +136,7 @@ class HomeViewModel : ViewModel() {
 
                 Log.d(
                     TAG,
-                    "Home network refresh loaded in ${System.currentTimeMillis() - start} ms"
+                    "Home refresh loaded in ${System.currentTimeMillis() - start} ms"
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Home load failed", e)
@@ -168,7 +179,7 @@ class HomeViewModel : ViewModel() {
         if (query.isBlank()) return
 
         genreCache[query]?.let { cachedSongs ->
-            _trendingByGenre.value = cachedSongs
+            _trendingByGenre.value = cachedSongs.randomizedDistinct(8)
             return
         }
 
@@ -176,10 +187,11 @@ class HomeViewModel : ViewModel() {
             try {
                 _isLoading.postValue(true)
 
-                val songs = safeSearchTracks(query, 8)
+                val rawSongs = safeSearchTracks(query, 16)
+                val randomSongs = rawSongs.randomizedDistinct(8)
 
-                genreCache[query] = songs
-                _trendingByGenre.postValue(songs)
+                genreCache[query] = rawSongs
+                _trendingByGenre.postValue(randomSongs)
             } finally {
                 _isLoading.postValue(false)
             }

@@ -18,8 +18,10 @@ import com.example.music_app.databinding.FragmentLibraryBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.albums.AlbumsFragment
 import com.example.music_app.ui.player.PlaybackLauncher
+import com.example.music_app.ui.playlists.PlaylistsFragment
 import com.example.music_app.ui.setting.SettingFragment
 import com.example.music_app.ui.song.SongAdapter
+import com.example.music_app.ui.yourupload.YourUploadFragment
 
 class LibraryFragment : Fragment() {
 

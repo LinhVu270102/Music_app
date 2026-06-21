@@ -61,6 +61,10 @@ class HomeFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            viewModel.refreshHomeDataByUser()
+        }
+
         setupRecyclerViews()
         setupGenreChips()
         setupListeners()
@@ -205,24 +209,24 @@ class HomeFragment : Fragment() {
             trendingAdapter.setData(songs)
             updateFallbackSongs()
         }
-
-        viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
-            messageResId?.let {
-                showToast(getString(it))
-                viewModel.clearErrorMessage()
-            }
+        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            binding.swipeRefreshLayout.isRefreshing = isLoading
         }
     }
 
     private fun updateFallbackSongs() {
-        val fallbackSongs = (
-                relatedSongs +
-                        moreLikeSongs +
-                        hotForYouSongs +
-                        trendingSongs
-                ).distinctBy { it.id }
+        val songs = listOf(
+            relatedSongs,
+            moreLikeSongs,
+            hotForYouSongs,
+            trendingSongs
+        )
+            .flatten()
+            .distinctBy { song -> song.id }
 
-        PlayerManager.setFallbackSongs(fallbackSongs)
+        if (songs.isNotEmpty()) {
+            PlayerManager.setFallbackSongs(songs)
+        }
     }
 
     private fun openPlayer(

@@ -509,9 +509,22 @@
     <string name="no_artist_songs">No songs found for this artist.</string>
     <string name="open_artist_profile_failed">Could not open artist profile.</string>
     <string name="online_song_cannot_follow">Online songs do not have a followable uploader.</string>
-    <string name="soundcloud_playlist_count_format">SoundCloud • %1$d songs</string>
+    <string name="soundcloud_playlist_count_format">Orange Music • %1$d songs</string>
     <string name="soundcloud_api_playlist_subtitle">SoundCloud playlist saved in Orange Music</string>
     <string name="api_playlist_delete_not_supported">SoundCloud server playlist deletion is not supported yet.</string>
     <string name="tap_to_search_again">Tap to search again</string>
     <string name="no_recent_searches">No recent searches</string>
+    <string name="delete_playlist_confirm_with_name">Are you sure you want to delete playlist "%1$s"?</string>
+    <string name="create_playlist_message">Name your playlist to save your favorite songs.</string>
+    <!-- Playlist / Player -->
+    <string name="no_song_playing">No song is playing</string>
+    <string name="add_to_playlist_failed">Could not add to playlist</string>
+
+    <!-- Uploader moderation -->
+    <string name="only_rejected_song_can_resubmit">Only rejected songs can be resubmitted for review</string>
+    <string name="resubmit_song_success">Song submitted for review again</string>
+    <string name="resubmit_song_failed">Could not resubmit song for review</string>
+    <string name="resubmit_song">Resubmit for review</string>
+    <string name="delete_song_title">Delete song</string>
+    <string name="could_not_play_this_song">Could not play this song</string>
 </resources>

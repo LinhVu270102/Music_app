@@ -1,11 +1,10 @@
-package com.example.music_app.ui.library
+package com.example.music_app.ui.yourupload
 
 import android.app.AlertDialog
 import android.os.Bundle
 import android.text.InputType
 import android.view.View
 import android.widget.EditText
-import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -13,6 +12,7 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.model.SongStatus
 import com.example.music_app.databinding.FragmentYourUploadBinding
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
@@ -53,10 +53,7 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
                 openPlayer(song)
             },
             onMoreClick = { song, anchor ->
-                showSongOptions(
-                    song = song,
-                    anchor = anchor
-                )
+                showSongOptions(song, anchor)
             }
         )
 
@@ -91,13 +88,16 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
                 viewModel.clearSuccessMessage()
             }
         }
+        viewModel.actionMessageResId.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                showToast(getString(it))
+                viewModel.clearActionMessage()
+            }
+        }
     }
 
-    private fun showSongOptions(
-        song: Song,
-        anchor: View
-    ) {
-        val popup = PopupMenu(requireContext(), anchor)
+    private fun showSongOptions(song: Song, anchor: View) {
+        val popup = androidx.appcompat.widget.PopupMenu(requireContext(), anchor)
 
         popup.menu.add(
             0,
@@ -106,26 +106,25 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
             getString(R.string.delete_song)
         )
 
-        val commentTextResId =
-            if (song.allowComments) {
-                R.string.lock_comments
-            } else {
-                R.string.unlock_comments
-            }
-
         popup.menu.add(
             0,
             MENU_TOGGLE_COMMENTS,
             1,
-            getString(commentTextResId)
+            if (song.allowComments) {
+                getString(R.string.lock_comments)
+            } else {
+                getString(R.string.unlock_comments)
+            }
         )
 
-        popup.menu.add(
-            0,
-            MENU_REPORT,
-            2,
-            getString(R.string.report_song)
-        )
+        if (song.status == SongStatus.REJECTED) {
+            popup.menu.add(
+                0,
+                MENU_RESUBMIT,
+                2,
+                getString(R.string.resubmit_song)
+            )
+        }
 
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
@@ -139,8 +138,8 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
                     true
                 }
 
-                MENU_REPORT -> {
-                    showReportDialog(song)
+                MENU_RESUBMIT -> {
+                    viewModel.resubmitSong(song)
                     true
                 }
 
@@ -150,7 +149,6 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
 
         popup.show()
     }
-
     private fun confirmDeleteSong(song: Song) {
         AlertDialog.Builder(requireContext())
             .setTitle(getString(R.string.delete_song))
@@ -208,6 +206,6 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
     companion object {
         private const val MENU_DELETE = 1
         private const val MENU_TOGGLE_COMMENTS = 2
-        private const val MENU_REPORT = 3
+        private const val MENU_RESUBMIT = 3
     }
 }
