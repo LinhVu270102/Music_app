@@ -91,6 +91,18 @@
                 android:textColor="@color/white"
                 android:textStyle="bold" />
 
+            <Button
+                android:id="@+id/btnSavePlaylist"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:layout_marginTop="6dp"
+                android:backgroundTint="@color/gray"
+                android:text="@string/save_playlist_to_mine"
+                android:textAllCaps="false"
+                android:textColor="@color/white"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
         </LinearLayout>
 
     </LinearLayout>

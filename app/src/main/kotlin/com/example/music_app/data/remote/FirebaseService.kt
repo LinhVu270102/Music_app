@@ -2,6 +2,7 @@ package com.example.music_app.data.remote
 
 import com.example.music_app.R
 import com.example.music_app.data.model.Comment
+import com.example.music_app.data.model.AppNotification
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.User
@@ -19,6 +20,55 @@ import com.example.music_app.data.model.ReportStatus
 class FirebaseService(
     private val firestore: FirebaseFirestore
 ) {
+
+    // =========================
+    // IN-APP NOTIFICATIONS
+    // =========================
+
+    suspend fun createNotification(notification: AppNotification): AppNotification {
+        if (notification.receiverId.isBlank()) return notification
+
+        val reference = firestore.collection("users")
+            .document(notification.receiverId)
+            .collection("notifications")
+            .document()
+
+        val notificationWithId = notification.copy(
+            id = reference.id,
+            createdAt = notification.createdAt.takeIf { it > 0 }
+                ?: System.currentTimeMillis()
+        )
+
+        reference.set(notificationWithId).await()
+        return notificationWithId
+    }
+
+    suspend fun getNotifications(userId: String): List<AppNotification> {
+        if (userId.isBlank()) return emptyList()
+
+        return firestore.collection("users")
+            .document(userId)
+            .collection("notifications")
+            .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(100)
+            .get()
+            .await()
+            .documents
+            .mapNotNull { document ->
+                document.toObject(AppNotification::class.java)?.copy(id = document.id)
+            }
+    }
+
+    suspend fun markNotificationRead(userId: String, notificationId: String) {
+        if (userId.isBlank() || notificationId.isBlank()) return
+
+        firestore.collection("users")
+            .document(userId)
+            .collection("notifications")
+            .document(notificationId)
+            .update("isRead", true)
+            .await()
+    }
 
     // =========================
     // SONG
@@ -380,6 +430,9 @@ class FirebaseService(
             .collection("playlists")
             .document()
 
+        val publicPlaylistRef = firestore.collection("playlists")
+            .document(playlistRef.id)
+
         val now = System.currentTimeMillis()
 
         val playlist = Playlist(
@@ -394,7 +447,13 @@ class FirebaseService(
             updatedAt = now
         )
 
-        playlistRef.set(playlist).await()
+        firestore.batch()
+            .set(playlistRef, playlist)
+            // A public mirror makes playlists searchable without exposing the
+            // private user subcollection as the application's public index.
+            .set(publicPlaylistRef, playlist)
+            .commit()
+            .await()
 
         return playlist
     }
@@ -420,6 +479,11 @@ class FirebaseService(
         firestore.collection("users")
             .document(userId)
             .collection("playlists")
+            .document(playlistId)
+            .delete()
+            .await()
+
+        firestore.collection("playlists")
             .document(playlistId)
             .delete()
             .await()
@@ -455,7 +519,15 @@ class FirebaseService(
             "coverUrl" to song.coverUrl,
             "songUrl" to song.songUrl,
             "duration" to song.duration,
+            "uploaderId" to song.uploaderId,
+            "genre" to song.genre,
+            "tags" to song.tags,
             "status" to song.status,
+            "source" to song.source,
+            "soundCloudId" to song.soundCloudId,
+            "permalinkUrl" to song.permalinkUrl,
+            "streamable" to song.streamable,
+            "access" to song.access,
             "addedAt" to System.currentTimeMillis()
         )
 
@@ -467,6 +539,17 @@ class FirebaseService(
                 "updatedAt" to System.currentTimeMillis()
             )
         ).await()
+
+        firestore.collection("playlists")
+            .document(playlistId)
+            .set(
+                mapOf(
+                    "songsCount" to FieldValue.increment(1),
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                SetOptions.merge()
+            )
+            .await()
     }
 
     suspend fun removeSongFromPlaylist(
@@ -500,6 +583,17 @@ class FirebaseService(
                 "updatedAt" to System.currentTimeMillis()
             )
         ).await()
+
+        firestore.collection("playlists")
+            .document(playlistId)
+            .set(
+                mapOf(
+                    "songsCount" to FieldValue.increment(-1),
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                SetOptions.merge()
+            )
+            .await()
     }
 
     suspend fun getPlaylistSongs(

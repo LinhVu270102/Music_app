@@ -46,12 +46,18 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
     private fun setupRecyclerView() {
         adapter = PlaylistAdapter(
             onItemClick = { playlist ->
-                PlaylistDetailFragment.newInstance(
-                    playlistId = playlist.id,
-                    playlistName = playlist.name,
-                    ownerId = playlist.ownerId,
-                    coverUrl = playlist.coverUrl
-                )
+                parentFragmentManager.beginTransaction()
+                    .replace(
+                        R.id.fragmentContainer,
+                        PlaylistDetailFragment.newInstance(
+                            playlistId = playlist.id,
+                            playlistName = playlist.name,
+                            ownerId = playlist.ownerId,
+                            coverUrl = playlist.coverUrl
+                        )
+                    )
+                    .addToBackStack(null)
+                    .commit()
             },
             onDeleteClick = { playlist ->
                 if (SoundCloudSocialRepository.isSoundCloudApiPlaylist(playlist)) {

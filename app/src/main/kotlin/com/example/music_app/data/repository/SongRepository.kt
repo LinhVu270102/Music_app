@@ -2,6 +2,8 @@ package com.example.music_app.data.repository
 
 import com.example.music_app.R
 import com.example.music_app.data.model.Comment
+import com.example.music_app.data.model.AppNotification
+import com.example.music_app.data.model.AppNotificationType
 import com.example.music_app.data.model.FollowUser
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Report
@@ -218,8 +220,45 @@ class SongRepository {
             false
         } else {
             firebaseService.likeSong(userId, song.id)
+            runCatching {
+                createSongLikeNotification(
+                    actorId = userId,
+                    song = song
+                )
+            }
             true
         }
+    }
+
+    private suspend fun createSongLikeNotification(
+        actorId: String,
+        song: Song
+    ) {
+        val receiverId = song.uploaderId
+
+        if (receiverId.isBlank() || receiverId == actorId) return
+
+        val actor = firebaseService.getUserById(actorId)
+        val actorName = actor?.displayName
+            ?.takeIf { it.isNotBlank() }
+            ?: actor?.email
+            ?: auth.currentUser?.displayName
+            ?: auth.currentUser?.email
+            ?: "Orange Music user"
+
+        firebaseService.createNotification(
+            AppNotification(
+                receiverId = receiverId,
+                actorId = actorId,
+                actorName = actorName,
+                actorAvatarUrl = actor?.avatarUrl.orEmpty(),
+                type = AppNotificationType.NEW_LIKE,
+                title = "New like",
+                message = "$actorName liked ${song.title}",
+                targetId = song.id,
+                targetType = "song"
+            )
+        )
     }
 
     // =========================
@@ -399,7 +438,40 @@ class SongRepository {
         followingRef.set(followingData).await()
         followerRef.set(followerData).await()
 
+        val actorName = currentData["displayName"]
+            ?.toString()
+            ?.ifBlank { null }
+            ?: currentData["name"]?.toString()?.ifBlank { null }
+            ?: currentUser.email
+            ?: "Orange Music user"
+
+        runCatching {
+            firebaseService.createNotification(
+                AppNotification(
+                    receiverId = targetUserId,
+                    actorId = currentUserId,
+                    actorName = actorName,
+                    actorAvatarUrl = currentData["avatarUrl"]?.toString().orEmpty(),
+                    type = AppNotificationType.NEW_FOLLOWER,
+                    title = "New follower",
+                    message = "$actorName started following you",
+                    targetId = currentUserId,
+                    targetType = "user"
+                )
+            )
+        }
+
         return true
+    }
+
+    suspend fun getNotifications(): List<AppNotification> {
+        val userId = auth.currentUser?.uid ?: return emptyList()
+        return firebaseService.getNotifications(userId)
+    }
+
+    suspend fun markNotificationRead(notificationId: String) {
+        val userId = auth.currentUser?.uid ?: return
+        firebaseService.markNotificationRead(userId, notificationId)
     }
 
     suspend fun getFollowingUsers(): List<User> {

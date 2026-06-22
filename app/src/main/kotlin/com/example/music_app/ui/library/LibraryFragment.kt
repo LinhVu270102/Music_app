@@ -188,7 +188,9 @@ class LibraryFragment : Fragment() {
                 R.id.fragmentContainer,
                 PlaylistDetailFragment.newInstance(
                     playlistId = playlist.id,
-                    playlistName = playlist.name
+                    playlistName = playlist.name,
+                    ownerId = playlist.ownerId,
+                    coverUrl = playlist.coverUrl
                 )
             )
             addToBackStack(null)

@@ -19,6 +19,10 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.UserRole
 import com.example.music_app.data.remote.FirebaseService
 import com.example.music_app.data.repository.SongRepository
+import com.example.music_app.data.repository.ArtistFollowState
+import com.example.music_app.data.repository.PlayerInteractionState
+import com.example.music_app.data.repository.SongLikeState
+import com.example.music_app.data.repository.SoundCloudSocialRepository
 import com.example.music_app.databinding.ActivityMainBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.service.MusicService
@@ -44,6 +48,7 @@ import com.example.music_app.ui.admin.AdminCommentModerationFragment
 class MainActivity : BaseActivity<ActivityMainBinding>() {
 
     private val songRepository = SongRepository()
+    private val soundCloudSocialRepository = SoundCloudSocialRepository()
     private val firebaseService = FirebaseService(FirebaseFirestore.getInstance())
 
     private var currentMiniSong: Song? = null
@@ -300,7 +305,13 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
             currentMiniSong = song
 
-            loadMiniPlayerLikeState(song.id)
+            isCurrentSongLiked = PlayerInteractionState.songState(song.id)?.liked ?: false
+            isCurrentUploaderFollowed = PlayerInteractionState.artistState(song.uploaderId)
+                ?.followed
+                ?: false
+            updateMiniPlayerLikeIcon()
+
+            loadMiniPlayerLikeState(song)
             loadMiniPlayerFollowState(song)
             updateMiniPlayerVisibility()
 
@@ -339,6 +350,20 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
         binding.miniPlayer.btnFollow.setOnClickListener {
             toggleMiniPlayerFollow()
+        }
+
+        PlayerInteractionState.songLikeUpdates.observe(this) { state ->
+            if (currentMiniSong?.id != state.songId) return@observe
+
+            isCurrentSongLiked = state.liked
+            updateMiniPlayerLikeIcon()
+        }
+
+        PlayerInteractionState.artistFollowUpdates.observe(this) { state ->
+            if (currentMiniSong?.uploaderId != state.userId) return@observe
+
+            isCurrentUploaderFollowed = state.followed
+            updateMiniPlayerFollowIcon(showButton = true)
         }
     }
 
@@ -438,21 +463,34 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         }
     }
 
-    private fun loadMiniPlayerLikeState(songId: String) {
+    private fun loadMiniPlayerLikeState(song: Song) {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val liked = songRepository.isSongLiked(songId)
+                if (soundCloudSocialRepository.isSoundCloudSong(song)) {
+                    val social = soundCloudSocialRepository.getTrackSocial(song.id)
 
-                withContext(Dispatchers.Main) {
-                    isCurrentSongLiked = liked
-                    updateMiniPlayerLikeIcon()
+                    PlayerInteractionState.publishSongLike(
+                        SongLikeState(
+                            songId = song.id,
+                            liked = social.liked,
+                            likesCount = social.likesCount,
+                            commentsCount = social.commentsCount
+                        )
+                    )
+                } else {
+                    val liked = songRepository.isSongLiked(song.id)
+                    val cached = PlayerInteractionState.songState(song.id)
+
+                    PlayerInteractionState.publishSongLike(
+                        SongLikeState(
+                            songId = song.id,
+                            liked = liked,
+                            likesCount = cached?.likesCount ?: song.likes,
+                            commentsCount = cached?.commentsCount ?: song.commentsCount
+                        )
+                    )
                 }
-            } catch (_: Exception) {
-                withContext(Dispatchers.Main) {
-                    isCurrentSongLiked = false
-                    updateMiniPlayerLikeIcon()
-                }
-            }
+            } catch (_: Exception) { /* Preserve the last known state on a transient error. */ }
         }
     }
 
@@ -461,19 +499,53 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val liked = songRepository.toggleLikeSong(song)
+                if (soundCloudSocialRepository.isSoundCloudSong(song)) {
+                    val social = soundCloudSocialRepository.toggleTrackLike(song.id)
 
-                withContext(Dispatchers.Main) {
-                    isCurrentSongLiked = liked
-                    updateMiniPlayerLikeIcon()
+                    PlayerInteractionState.publishSongLike(
+                        SongLikeState(
+                            songId = song.id,
+                            liked = social.liked,
+                            likesCount = social.likesCount,
+                            commentsCount = social.commentsCount
+                        )
+                    )
 
-                    val message = if (liked) {
-                        getString(R.string.added_to_your_likes)
-                    } else {
-                        getString(R.string.removed_from_your_likes)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            if (social.liked) getString(R.string.added_to_your_likes)
+                            else getString(R.string.removed_from_your_likes),
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
+                } else {
+                    val liked = songRepository.toggleLikeSong(song)
+                    val currentCount = PlayerInteractionState.songState(song.id)
+                        ?.likesCount
+                        ?: song.likes
+                    val newCount = if (liked) currentCount + 1
+                    else (currentCount - 1).coerceAtLeast(0)
 
-                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+                    PlayerInteractionState.publishSongLike(
+                        SongLikeState(
+                            songId = song.id,
+                            liked = liked,
+                            likesCount = newCount,
+                            commentsCount = PlayerInteractionState.songState(song.id)
+                                ?.commentsCount
+                                ?: song.commentsCount
+                        )
+                    )
+
+                    withContext(Dispatchers.Main) {
+                        val message = if (liked) {
+                            getString(R.string.added_to_your_likes)
+                        } else {
+                            getString(R.string.removed_from_your_likes)
+                        }
+                        Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+                    }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -502,17 +574,16 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val followed = songRepository.isFollowing(uploaderId)
+                val followerCount = songRepository.getFollowerCount(uploaderId)
 
-                withContext(Dispatchers.Main) {
-                    isCurrentUploaderFollowed = followed
-                    updateMiniPlayerFollowIcon(showButton = true)
-                }
-            } catch (_: Exception) {
-                withContext(Dispatchers.Main) {
-                    isCurrentUploaderFollowed = false
-                    updateMiniPlayerFollowIcon(showButton = true)
-                }
-            }
+                PlayerInteractionState.publishArtistFollow(
+                    ArtistFollowState(
+                        userId = uploaderId,
+                        followed = followed,
+                        followerCount = followerCount
+                    )
+                )
+            } catch (_: Exception) { /* Preserve the last known state on a transient error. */ }
         }
     }
 
@@ -542,11 +613,17 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val followed = songRepository.toggleFollowUser(uploaderId)
+                val followerCount = songRepository.getFollowerCount(uploaderId)
+
+                PlayerInteractionState.publishArtistFollow(
+                    ArtistFollowState(
+                        userId = uploaderId,
+                        followed = followed,
+                        followerCount = followerCount
+                    )
+                )
 
                 withContext(Dispatchers.Main) {
-                    isCurrentUploaderFollowed = followed
-                    updateMiniPlayerFollowIcon(showButton = true)
-
                     val message = if (followed) {
                         getString(R.string.followed_successfully)
                     } else {
@@ -585,6 +662,13 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             } else {
                 0.4f
             }
+
+        binding.miniPlayer.btnFollow.setImageResource(
+            if (isCurrentUploaderFollowed) R.drawable.ic_followed else R.drawable.ic_follow
+        )
+        binding.miniPlayerGhost.btnFollow.setImageResource(
+            if (isCurrentUploaderFollowed) R.drawable.ic_followed else R.drawable.ic_follow
+        )
     }
 
     private fun updateMiniPlayerLikeIcon() {
@@ -594,6 +678,13 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             } else {
                 0.4f
             }
+
+        binding.miniPlayer.btnLike.setImageResource(
+            if (isCurrentSongLiked) R.drawable.ic_liked else R.drawable.ic_like
+        )
+        binding.miniPlayerGhost.btnLike.setImageResource(
+            if (isCurrentSongLiked) R.drawable.ic_liked else R.drawable.ic_like
+        )
     }
 
     private fun openMainFragment(fragment: Fragment) {
