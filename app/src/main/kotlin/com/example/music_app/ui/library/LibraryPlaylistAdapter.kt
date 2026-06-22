@@ -3,6 +3,7 @@ package com.example.music_app.ui.library
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.example.music_app.R
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.databinding.ItemLibraryPlaylistBinding
@@ -29,10 +30,17 @@ class LibraryPlaylistAdapter(
                     binding.root.context.getString(R.string.playlist_name_placeholder)
                 }
 
-            binding.txtPlaylistInfo.text =
-                binding.root.context.getString(R.string.playlist)
+            binding.txtPlaylistInfo.text = binding.root.context.getString(
+                R.string.playlist_songs_count,
+                playlist.songsCount
+            )
 
-            binding.imgPlaylistCover.setImageResource(R.drawable.music_orange)
+            Glide.with(binding.root)
+                .load(playlist.coverUrl.ifBlank { R.drawable.music_orange })
+                .placeholder(R.drawable.music_orange)
+                .error(R.drawable.music_orange)
+                .centerCrop()
+                .into(binding.imgPlaylistCover)
 
             binding.root.setOnClickListener {
                 onItemClick(playlist)

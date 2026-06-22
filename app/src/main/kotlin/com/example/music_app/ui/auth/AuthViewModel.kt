@@ -42,8 +42,9 @@ class AuthViewModel(
 
         repository.login(cleanEmail, password)
             .addOnSuccessListener {
+                val user = repository.getCurrentUser()
                 _authSuccess.value = true
-                _currentUser.value = repository.getCurrentUser()
+                _currentUser.value = user
                 _isLoading.value = false
             }
             .addOnFailureListener { e ->

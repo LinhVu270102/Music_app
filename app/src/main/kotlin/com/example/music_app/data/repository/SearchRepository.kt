@@ -98,13 +98,20 @@ class SearchRepository {
         if (query.isBlank()) return emptyList()
 
         val firestorePlaylists = try {
-            firestore.collection("playlists")
+            firestore.collectionGroup("playlists")
                 .whereEqualTo("isPublic", true)
                 .get()
                 .await()
                 .documents
                 .mapNotNull { doc ->
-                    doc.toObject(Playlist::class.java)?.copy(id = doc.id)
+                    doc.toObject(Playlist::class.java)?.copy(
+                        id = doc.id,
+                        ownerId = doc.getString("ownerId").orEmpty().ifBlank {
+                            // Existing playlists were stored below users/{uid};
+                            // use their parent document as a migration-safe owner.
+                            doc.reference.parent.parent?.id.orEmpty()
+                        }
+                    )
                 }
                 .filter { playlist ->
                     playlist.matchesKeyword(query)

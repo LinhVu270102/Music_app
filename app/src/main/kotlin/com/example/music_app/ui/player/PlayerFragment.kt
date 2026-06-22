@@ -24,6 +24,9 @@ import com.example.music_app.data.model.PlaylistPickerItem
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.data.repository.SoundCloudSocialRepository
+import com.example.music_app.data.repository.ArtistFollowState
+import com.example.music_app.data.repository.PlayerInteractionState
+import com.example.music_app.data.repository.SongLikeState
 import com.example.music_app.databinding.DialogConfirmActionBinding
 import com.example.music_app.databinding.DialogCurrentPlaylistBinding
 import com.example.music_app.databinding.DialogInputActionBinding
@@ -114,9 +117,6 @@ class PlayerFragment : Fragment() {
         val songId = arguments?.getString(ARG_SONG_ID)
         songId?.let {
             viewModel.loadSong(it)
-        }
-        binding.btnFollow.setOnClickListener {
-            toggleFollowCurrentArtist()
         }
     }
 
@@ -241,14 +241,38 @@ class PlayerFragment : Fragment() {
                 viewModel.clearErrorMessage()
             }
         }
+
+        PlayerInteractionState.songLikeUpdates.observe(viewLifecycleOwner) { state ->
+            val displayedSong = PlayerManager.currentSong.value ?: viewModel.song.value
+
+            if (displayedSong?.id != state.songId) return@observe
+
+            isCurrentSongLiked = state.liked
+            state.likesCount?.let { binding.tvLikeCount.text = formatCount(it) }
+            state.commentsCount?.let { binding.tvCommentCount.text = formatCount(it) }
+            updateLikeIcon()
+        }
+
+        PlayerInteractionState.artistFollowUpdates.observe(viewLifecycleOwner) { state ->
+            val displayedSong = PlayerManager.currentSong.value ?: viewModel.song.value
+
+            if (displayedSong?.uploaderId != state.userId) return@observe
+
+            isCurrentArtistFollowed = state.followed
+            state.followerCount?.let { binding.tvFollowCount.text = formatCount(it) }
+            updateFollowIcon()
+        }
     }
 
     private fun updateUI(song: Song) {
         binding.playerSongTitle.text = song.title
         binding.playerArtist.text = song.artist
 
-        binding.tvLikeCount.text = formatCount(song.likes)
-        binding.tvCommentCount.text = formatCount(song.commentsCount)
+        val cachedLikeState = PlayerInteractionState.songState(song.id)
+        isCurrentSongLiked = cachedLikeState?.liked ?: false
+        binding.tvLikeCount.text = formatCount(cachedLikeState?.likesCount ?: song.likes)
+        binding.tvCommentCount.text = formatCount(cachedLikeState?.commentsCount ?: song.commentsCount)
+        updateLikeIcon()
 
         loadLikeState(song)
         loadFollowState(song)
@@ -290,25 +314,31 @@ class PlayerFragment : Fragment() {
                     val social = soundCloudSocialRepository.getTrackSocial(song.id)
 
                     withContext(Dispatchers.Main) {
-                        isCurrentSongLiked = social.liked
-                        binding.tvLikeCount.text = formatCount(social.likesCount)
-                        binding.tvCommentCount.text = formatCount(social.commentsCount)
-                        updateLikeIcon()
+                        PlayerInteractionState.publishSongLike(
+                            SongLikeState(
+                                songId = song.id,
+                                liked = social.liked,
+                                likesCount = social.likesCount,
+                                commentsCount = social.commentsCount
+                            )
+                        )
                     }
                 } else {
                     val liked = songRepository.isSongLiked(song.id)
 
                     withContext(Dispatchers.Main) {
-                        isCurrentSongLiked = liked
-                        updateLikeIcon()
+                        val cached = PlayerInteractionState.songState(song.id)
+                        PlayerInteractionState.publishSongLike(
+                            SongLikeState(
+                                songId = song.id,
+                                liked = liked,
+                                likesCount = cached?.likesCount ?: song.likes,
+                                commentsCount = cached?.commentsCount ?: song.commentsCount
+                            )
+                        )
                     }
                 }
-            } catch (_: Exception) {
-                withContext(Dispatchers.Main) {
-                    isCurrentSongLiked = false
-                    updateLikeIcon()
-                }
-            }
+            } catch (_: Exception) { /* Keep the most recently known UI state. */ }
         }
     }
     private fun toggleLikeCurrentSong() {
@@ -320,9 +350,14 @@ class PlayerFragment : Fragment() {
                     val social = soundCloudSocialRepository.toggleTrackLike(song.id)
 
                     withContext(Dispatchers.Main) {
-                        isCurrentSongLiked = social.liked
-                        binding.tvLikeCount.text = formatCount(social.likesCount)
-                        updateLikeIcon()
+                        PlayerInteractionState.publishSongLike(
+                            SongLikeState(
+                                songId = song.id,
+                                liked = social.liked,
+                                likesCount = social.likesCount,
+                                commentsCount = social.commentsCount
+                            )
+                        )
 
                         showToast(
                             if (social.liked) {
@@ -336,14 +371,9 @@ class PlayerFragment : Fragment() {
                     val liked = songRepository.toggleLikeSong(song)
 
                     withContext(Dispatchers.Main) {
-                        isCurrentSongLiked = liked
-                        updateLikeIcon()
-
-                        val currentCount =
-                            binding.tvLikeCount.text.toString()
-                                .replace("K", "000")
-                                .replace("M", "000000")
-                                .toLongOrNull() ?: song.likes
+                        val currentCount = PlayerInteractionState.songState(song.id)
+                            ?.likesCount
+                            ?: song.likes
 
                         val newCount = if (liked) {
                             currentCount + 1
@@ -351,7 +381,16 @@ class PlayerFragment : Fragment() {
                             (currentCount - 1).coerceAtLeast(0)
                         }
 
-                        binding.tvLikeCount.text = formatCount(newCount)
+                        PlayerInteractionState.publishSongLike(
+                            SongLikeState(
+                                songId = song.id,
+                                liked = liked,
+                                likesCount = newCount,
+                                commentsCount = PlayerInteractionState.songState(song.id)
+                                    ?.commentsCount
+                                    ?: song.commentsCount
+                            )
+                        )
 
                         showToast(
                             if (liked) {
@@ -375,6 +414,9 @@ class PlayerFragment : Fragment() {
     }
 
     private fun updateLikeIcon() {
+        binding.btnLike.setImageResource(
+            if (isCurrentSongLiked) R.drawable.ic_liked else R.drawable.ic_like
+        )
         binding.btnLike.alpha = if (isCurrentSongLiked) 1f else 0.4f
     }
 
@@ -404,6 +446,12 @@ class PlayerFragment : Fragment() {
         binding.btnFollow.isEnabled = true
         binding.btnFollow.alpha = 1f
 
+        PlayerInteractionState.artistState(targetUserId)?.let { cachedState ->
+            isCurrentArtistFollowed = cachedState.followed
+            binding.tvFollowCount.text = formatCount(cachedState.followerCount ?: 0L)
+            updateFollowIcon()
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val followed = withContext(Dispatchers.IO) {
@@ -414,19 +462,19 @@ class PlayerFragment : Fragment() {
                     songRepository.getFollowerCount(targetUserId)
                 }
 
-                isCurrentArtistFollowed = followed
-                binding.tvFollowCount.text = formatCount(followerCount)
-                updateFollowIcon()
-            } catch (_: Exception) {
-                isCurrentArtistFollowed = false
-                binding.tvFollowCount.text = "0"
-                updateFollowIcon()
-            }
+                PlayerInteractionState.publishArtistFollow(
+                    ArtistFollowState(
+                        userId = targetUserId,
+                        followed = followed,
+                        followerCount = followerCount
+                    )
+                )
+            } catch (_: Exception) { /* Do not replace a valid cached state with an error. */ }
         }
     }
 
     private fun toggleFollowCurrentArtist() {
-        val song = PlayerManager.currentSong.value ?: return
+        val song = PlayerManager.currentSong.value ?: viewModel.song.value ?: return
         val targetUserId = song.uploaderId
 
         if (targetUserId.isBlank()) {
@@ -448,9 +496,13 @@ class PlayerFragment : Fragment() {
                     songRepository.getFollowerCount(targetUserId)
                 }
 
-                isCurrentArtistFollowed = followed
-                binding.tvFollowCount.text = formatCount(followerCount)
-                updateFollowIcon()
+                PlayerInteractionState.publishArtistFollow(
+                    ArtistFollowState(
+                        userId = targetUserId,
+                        followed = followed,
+                        followerCount = followerCount
+                    )
+                )
 
                 showToast(
                     if (followed) {
@@ -470,6 +522,9 @@ class PlayerFragment : Fragment() {
     }
 
     private fun updateFollowIcon() {
+        binding.btnFollow.setImageResource(
+            if (isCurrentArtistFollowed) R.drawable.ic_followed else R.drawable.ic_follow
+        )
         binding.btnFollow.alpha = if (isCurrentArtistFollowed) 1f else 0.4f
     }
 
