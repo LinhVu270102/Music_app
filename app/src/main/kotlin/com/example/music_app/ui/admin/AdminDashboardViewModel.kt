@@ -7,11 +7,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.AdminDashboardStats
 import com.example.music_app.data.repository.AdminRepository
+import com.example.music_app.data.repository.AuthRepository
 import kotlinx.coroutines.launch
 
 class AdminDashboardViewModel : ViewModel() {
 
     private val adminRepository = AdminRepository()
+    private val authRepository = AuthRepository()
 
     private val _stats = MutableLiveData<AdminDashboardStats>()
     val stats: LiveData<AdminDashboardStats> = _stats
@@ -42,5 +44,9 @@ class AdminDashboardViewModel : ViewModel() {
 
     fun clearErrorMessage() {
         _errorMessageResId.value = null
+    }
+
+    fun logout() {
+        authRepository.logout()
     }
 }

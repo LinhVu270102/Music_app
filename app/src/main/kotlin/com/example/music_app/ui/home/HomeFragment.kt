@@ -15,11 +15,11 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentHomeBinding
 import com.example.music_app.player.PlayerManager
-import com.example.music_app.ui.library.YourLikesFragment
 import com.example.music_app.ui.notification.NotificationFragment
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
 import com.example.music_app.ui.yourupload.UploadMusicFragment
+import com.example.music_app.ui.yourlikes.YourLikesFragment
 
 class HomeFragment : Fragment() {
 

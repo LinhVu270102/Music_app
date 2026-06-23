@@ -13,7 +13,6 @@ import com.example.music_app.R
 import com.example.music_app.databinding.FragmentPlaylistsBinding
 import com.example.music_app.data.repository.SoundCloudSocialRepository
 import com.example.music_app.data.model.Playlist
-import com.example.music_app.ui.library.PlaylistsViewModel
 import android.app.Dialog
 import android.graphics.Color
 import androidx.core.graphics.drawable.toDrawable

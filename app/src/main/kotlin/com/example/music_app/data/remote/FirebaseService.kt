@@ -261,22 +261,6 @@ class FirebaseService(
     // RECENTLY PLAYED
     // =========================
 
-    suspend fun saveRecentlyPlayed(userId: String, songId: String) {
-        if (userId.isBlank() || songId.isBlank()) return
-
-        val data = mapOf(
-            "songId" to songId,
-            "playedAt" to System.currentTimeMillis()
-        )
-
-        firestore.collection("users")
-            .document(userId)
-            .collection("recentlyPlayed")
-            .document(songId)
-            .set(data)
-            .await()
-    }
-
     suspend fun saveRecentlyPlayed(userId: String, song: Song) {
         if (userId.isBlank() || song.id.isBlank()) return
 

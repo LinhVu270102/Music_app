@@ -25,6 +25,8 @@ class UserRepository(
         return auth.currentUser
     }
 
+    fun getCurrentUserId(): String = auth.currentUser?.uid.orEmpty()
+
     suspend fun register(
         email: String,
         password: String,

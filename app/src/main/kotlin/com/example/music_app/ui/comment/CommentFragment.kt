@@ -13,7 +13,6 @@ import com.example.music_app.data.model.Comment
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentCommentBinding
 import com.example.music_app.main.MainActivity
-import com.google.firebase.auth.FirebaseAuth
 import android.graphics.Color
 import androidx.core.graphics.drawable.toDrawable
 import com.example.music_app.databinding.DialogCommentOptionsBinding
@@ -37,9 +36,6 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
 
     private var activeUserId: String = ""
 
-    private val currentUserId: String
-        get() = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
-
     companion object {
         private const val ARG_SONG_ID = "songId"
 
@@ -58,7 +54,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         (requireActivity() as? MainActivity)?.updateMainChromeVisibility()
 
         songId = arguments?.getString(ARG_SONG_ID).orEmpty()
-        activeUserId = currentUserId
+        activeUserId = viewModel.getCurrentUserId()
 
         setupRecyclerView()
         setupListeners()
@@ -139,7 +135,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         }
 
         viewModel.comments.observe(viewLifecycleOwner) { comments ->
-            adapter.updateCurrentUserId(currentUserId)
+            adapter.updateCurrentUserId(viewModel.getCurrentUserId())
             adapter.setData(comments)
         }
 
@@ -259,8 +255,8 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
     private fun canHideComment(comment: Comment): Boolean {
         val songOwnerId = currentSong?.uploaderId.orEmpty()
 
-        return comment.userId == currentUserId ||
-                songOwnerId == currentUserId
+        val currentUserId = viewModel.getCurrentUserId()
+        return comment.userId == currentUserId || songOwnerId == currentUserId
     }
 
     private fun showReportCommentDialog(comment: Comment) {
@@ -345,7 +341,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
 
         (requireActivity() as? MainActivity)?.updateMainChromeVisibility()
 
-        val newUserId = currentUserId
+        val newUserId = viewModel.getCurrentUserId()
 
         if (newUserId != activeUserId) {
             activeUserId = newUserId

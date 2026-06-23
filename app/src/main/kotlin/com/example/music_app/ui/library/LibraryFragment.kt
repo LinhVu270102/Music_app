@@ -16,12 +16,14 @@ import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentLibraryBinding
 import com.example.music_app.player.PlayerManager
+import com.example.music_app.ui.following.FollowingFragment
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.playlists.PlaylistDetailFragment
 import com.example.music_app.ui.playlists.PlaylistsFragment
 import com.example.music_app.ui.setting.SettingFragment
 import com.example.music_app.ui.song.SongAdapter
 import com.example.music_app.ui.yourupload.YourUploadFragment
+import com.example.music_app.ui.yourlikes.YourLikesFragment
 
 class LibraryFragment : Fragment() {
 

@@ -11,14 +11,12 @@ import com.example.music_app.data.model.User
 import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.data.repository.UserRepository
 import com.example.music_app.utils.AppException
-import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.launch
 
 class ProfileViewModel : ViewModel() {
 
     private val songRepository = SongRepository()
     private val userRepository = UserRepository()
-    private val auth = FirebaseAuth.getInstance()
 
     private var targetUserId: String = ""
 
@@ -48,7 +46,7 @@ class ProfileViewModel : ViewModel() {
             try {
                 _isLoading.value = true
 
-                val currentUserId = auth.currentUser?.uid.orEmpty()
+                val currentUserId = userRepository.getCurrentUserId()
                 targetUserId = userId.ifBlank { currentUserId }
 
                 if (targetUserId.isBlank()) {

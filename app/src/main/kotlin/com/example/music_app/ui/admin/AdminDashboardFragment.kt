@@ -13,7 +13,6 @@ import com.example.music_app.databinding.FragmentAdminDashboardBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.ui.auth.LoginActivity
 import com.example.music_app.ui.home.HomeFragment
-import com.google.firebase.auth.FirebaseAuth
 
 class AdminDashboardFragment : Fragment(R.layout.fragment_admin_dashboard) {
 
@@ -116,7 +115,7 @@ class AdminDashboardFragment : Fragment(R.layout.fragment_admin_dashboard) {
     }
 
     private fun logout() {
-        FirebaseAuth.getInstance().signOut()
+        viewModel.logout()
 
         val intent = Intent(requireContext(), LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
