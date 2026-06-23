@@ -32,13 +32,6 @@ class MusicInteractionRepository {
         return playableSong
     }
 
-    suspend fun preparePlayableSongAndSaveRecently(song: Song): Song {
-        val playableSong = preparePlayableSong(song)
-        saveRecentlyPlayed(playableSong)
-
-        return playableSong
-    }
-
     suspend fun saveRecentlyPlayed(song: Song) {
         val userId = auth.currentUser?.uid ?: return
 

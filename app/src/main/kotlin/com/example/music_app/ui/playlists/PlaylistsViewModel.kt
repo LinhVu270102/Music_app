@@ -1,4 +1,4 @@
-package com.example.music_app.ui.library
+package com.example.music_app.ui.playlists
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData

@@ -24,9 +24,7 @@ import com.example.music_app.data.model.PlaylistPickerItem
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.data.repository.SoundCloudSocialRepository
-import com.example.music_app.data.repository.ArtistFollowState
-import com.example.music_app.data.repository.PlayerInteractionState
-import com.example.music_app.data.repository.SongLikeState
+import com.example.music_app.player.state.PlayerInteractionState
 import com.example.music_app.databinding.DialogConfirmActionBinding
 import com.example.music_app.databinding.DialogCurrentPlaylistBinding
 import com.example.music_app.databinding.DialogInputActionBinding
@@ -38,7 +36,6 @@ import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.comment.CommentFragment
 import com.example.music_app.utils.AppException
-import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -242,6 +239,13 @@ class PlayerFragment : Fragment() {
             }
         }
 
+        viewModel.successMessageResId.observe(viewLifecycleOwner) { messageResId ->
+            messageResId?.let {
+                showToast(getString(it))
+                viewModel.clearSuccessMessage()
+            }
+        }
+
         PlayerInteractionState.songLikeUpdates.observe(viewLifecycleOwner) { state ->
             val displayedSong = PlayerManager.currentSong.value ?: viewModel.song.value
 
@@ -308,109 +312,12 @@ class PlayerFragment : Fragment() {
     }
 
     private fun loadLikeState(song: Song) {
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                if (soundCloudSocialRepository.isSoundCloudSong(song)) {
-                    val social = soundCloudSocialRepository.getTrackSocial(song.id)
-
-                    withContext(Dispatchers.Main) {
-                        PlayerInteractionState.publishSongLike(
-                            SongLikeState(
-                                songId = song.id,
-                                liked = social.liked,
-                                likesCount = social.likesCount,
-                                commentsCount = social.commentsCount
-                            )
-                        )
-                    }
-                } else {
-                    val liked = songRepository.isSongLiked(song.id)
-
-                    withContext(Dispatchers.Main) {
-                        val cached = PlayerInteractionState.songState(song.id)
-                        PlayerInteractionState.publishSongLike(
-                            SongLikeState(
-                                songId = song.id,
-                                liked = liked,
-                                likesCount = cached?.likesCount ?: song.likes,
-                                commentsCount = cached?.commentsCount ?: song.commentsCount
-                            )
-                        )
-                    }
-                }
-            } catch (_: Exception) { /* Keep the most recently known UI state. */ }
-        }
+        viewModel.loadLikeState(song)
     }
+
     private fun toggleLikeCurrentSong() {
         val song = PlayerManager.currentSong.value ?: return
-
-        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                if (soundCloudSocialRepository.isSoundCloudSong(song)) {
-                    val social = soundCloudSocialRepository.toggleTrackLike(song.id)
-
-                    withContext(Dispatchers.Main) {
-                        PlayerInteractionState.publishSongLike(
-                            SongLikeState(
-                                songId = song.id,
-                                liked = social.liked,
-                                likesCount = social.likesCount,
-                                commentsCount = social.commentsCount
-                            )
-                        )
-
-                        showToast(
-                            if (social.liked) {
-                                getString(R.string.added_to_your_likes)
-                            } else {
-                                getString(R.string.removed_from_your_likes)
-                            }
-                        )
-                    }
-                } else {
-                    val liked = songRepository.toggleLikeSong(song)
-
-                    withContext(Dispatchers.Main) {
-                        val currentCount = PlayerInteractionState.songState(song.id)
-                            ?.likesCount
-                            ?: song.likes
-
-                        val newCount = if (liked) {
-                            currentCount + 1
-                        } else {
-                            (currentCount - 1).coerceAtLeast(0)
-                        }
-
-                        PlayerInteractionState.publishSongLike(
-                            SongLikeState(
-                                songId = song.id,
-                                liked = liked,
-                                likesCount = newCount,
-                                commentsCount = PlayerInteractionState.songState(song.id)
-                                    ?.commentsCount
-                                    ?: song.commentsCount
-                            )
-                        )
-
-                        showToast(
-                            if (liked) {
-                                getString(R.string.added_to_your_likes)
-                            } else {
-                                getString(R.string.removed_from_your_likes)
-                            }
-                        )
-                    }
-                }
-            } catch (e: AppException) {
-                withContext(Dispatchers.Main) {
-                    showToast(getString(e.messageResId))
-                }
-            } catch (_: Exception) {
-                withContext(Dispatchers.Main) {
-                    showToast(getString(R.string.update_like_failed))
-                }
-            }
-        }
+        viewModel.toggleLike(song)
     }
 
     private fun updateLikeIcon() {
@@ -432,9 +339,7 @@ class PlayerFragment : Fragment() {
             return
         }
 
-        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
-
-        if (targetUserId == currentUserId) {
+        if (viewModel.isCurrentUser(targetUserId)) {
             isCurrentArtistFollowed = false
             binding.btnFollow.isEnabled = false
             binding.btnFollow.alpha = 0.4f
@@ -452,25 +357,7 @@ class PlayerFragment : Fragment() {
             updateFollowIcon()
         }
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val followed = withContext(Dispatchers.IO) {
-                    songRepository.isFollowing(targetUserId)
-                }
-
-                val followerCount = withContext(Dispatchers.IO) {
-                    songRepository.getFollowerCount(targetUserId)
-                }
-
-                PlayerInteractionState.publishArtistFollow(
-                    ArtistFollowState(
-                        userId = targetUserId,
-                        followed = followed,
-                        followerCount = followerCount
-                    )
-                )
-            } catch (_: Exception) { /* Do not replace a valid cached state with an error. */ }
-        }
+        viewModel.loadFollowState(targetUserId)
     }
 
     private fun toggleFollowCurrentArtist() {
@@ -484,41 +371,7 @@ class PlayerFragment : Fragment() {
 
         if (!binding.btnFollow.isEnabled) return
 
-        binding.btnFollow.isEnabled = false
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val followed = withContext(Dispatchers.IO) {
-                    songRepository.toggleFollowUser(targetUserId)
-                }
-
-                val followerCount = withContext(Dispatchers.IO) {
-                    songRepository.getFollowerCount(targetUserId)
-                }
-
-                PlayerInteractionState.publishArtistFollow(
-                    ArtistFollowState(
-                        userId = targetUserId,
-                        followed = followed,
-                        followerCount = followerCount
-                    )
-                )
-
-                showToast(
-                    if (followed) {
-                        getString(R.string.follow_artist_success)
-                    } else {
-                        getString(R.string.unfollow_artist_success)
-                    }
-                )
-            } catch (e: AppException) {
-                showToast(getString(e.messageResId))
-            } catch (_: Exception) {
-                showToast(getString(R.string.follow_failed))
-            } finally {
-                binding.btnFollow.isEnabled = true
-            }
-        }
+        viewModel.toggleFollow(targetUserId)
     }
 
     private fun updateFollowIcon() {
@@ -906,8 +759,7 @@ class PlayerFragment : Fragment() {
 
     private fun showSongOptions() {
         val song = PlayerManager.currentSong.value ?: return
-        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
-        val isOwner = song.uploaderId.isNotBlank() && song.uploaderId == currentUserId
+        val isOwner = viewModel.isCurrentUserSongOwner(song)
 
         val dialogBinding = DialogSongOptionsBinding.inflate(layoutInflater)
 

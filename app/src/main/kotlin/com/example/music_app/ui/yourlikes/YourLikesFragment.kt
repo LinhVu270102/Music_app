@@ -1,4 +1,4 @@
-package com.example.music_app.ui.library
+package com.example.music_app.ui.yourlikes
 
 import android.os.Bundle
 import android.view.View

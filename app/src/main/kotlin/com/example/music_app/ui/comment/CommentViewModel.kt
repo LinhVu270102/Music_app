@@ -29,6 +29,8 @@ class CommentViewModel : ViewModel() {
     private val _successMessageResId = MutableLiveData<Int?>()
     val successMessageResId: LiveData<Int?> = _successMessageResId
 
+    fun getCurrentUserId(): String = songRepository.getCurrentUserId()
+
     fun loadSong(
         songId: String,
         fallbackSong: Song? = null

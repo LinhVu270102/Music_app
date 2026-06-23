@@ -18,9 +18,7 @@ import com.example.music_app.databinding.FragmentSettingBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.service.MusicService
 import com.example.music_app.ui.auth.LoginActivity
-import com.example.music_app.ui.settings.SettingViewModel
 import com.example.music_app.utils.LanguageManager
-import com.google.firebase.auth.FirebaseAuth
 
 class SettingFragment : Fragment() {
 
@@ -131,7 +129,7 @@ class SettingFragment : Fragment() {
 
     @OptIn(UnstableApi::class)
     private fun logout() {
-        FirebaseAuth.getInstance().signOut()
+        viewModel.logout()
         PlayerManager.release()
 
         val serviceIntent = Intent(requireContext(), MusicService::class.java)

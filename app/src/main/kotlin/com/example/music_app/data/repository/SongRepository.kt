@@ -4,7 +4,6 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Comment
 import com.example.music_app.data.model.AppNotification
 import com.example.music_app.data.model.AppNotificationType
-import com.example.music_app.data.model.FollowUser
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Report
 import com.example.music_app.data.model.ReportStatus
@@ -27,6 +26,8 @@ class SongRepository {
     private val firestore = FirebaseFirestore.getInstance()
     private val firebaseService = FirebaseService(db)
     private val auth = FirebaseAuth.getInstance()
+
+    fun getCurrentUserId(): String = auth.currentUser?.uid.orEmpty()
 
     // =========================
     // SONG BASIC
@@ -60,15 +61,6 @@ class SongRepository {
 
     suspend fun upsertSong(song: Song) {
         firebaseService.upsertSong(song)
-    }
-
-    suspend fun saveRecentlyPlayed(song: Song) {
-        val userId = auth.currentUser?.uid ?: return
-
-        if (song.id.isBlank()) return
-        if (song.isDeleted) return
-
-        firebaseService.saveRecentlyPlayed(userId, song)
     }
 
     suspend fun getRecentlyPlayedSongs(): List<Song> {
