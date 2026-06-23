@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.example.music_app.R
+import com.example.music_app.data.model.SongStatus
 import com.example.music_app.databinding.FragmentUploadMusicBinding
 import com.example.music_app.ui.profile.ProfileFragment
 import com.google.firebase.auth.FirebaseAuth
@@ -229,7 +230,7 @@ class UploadMusicFragment : Fragment(R.layout.fragment_upload_music) {
             "uploaderId" to uploaderId,
             "genre" to genre,
             "tags" to tags,
-            "status" to "PENDING",
+            "status" to SongStatus.PENDING,
             "rejectReason" to "",
             "reviewedBy" to "",
             "reviewedAt" to null,

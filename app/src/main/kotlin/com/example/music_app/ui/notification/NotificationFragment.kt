@@ -30,10 +30,16 @@ class NotificationFragment : Fragment(R.layout.fragment_notification) {
         binding.swipeRefreshNotifications.setOnRefreshListener {
             viewModel.loadNotifications()
         }
+        binding.btnMarkAllRead.setOnClickListener {
+            viewModel.markAllRead()
+        }
 
         viewModel.notifications.observe(viewLifecycleOwner) { notifications ->
             adapter.setData(notifications)
             binding.tvEmptyNotifications.isVisible = notifications.isEmpty()
+            binding.btnMarkAllRead.isVisible = notifications.any { notification ->
+                !notification.isRead
+            }
         }
 
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->

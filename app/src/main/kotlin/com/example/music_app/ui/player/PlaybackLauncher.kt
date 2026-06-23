@@ -33,7 +33,7 @@ object PlaybackLauncher {
                 val repository = MusicInteractionRepository()
 
                 val playableSong = withContext(Dispatchers.IO) {
-                    repository.preparePlayableSongAndSaveRecently(song)
+                    repository.preparePlayableSong(song)
                 }
 
                 if (playableSong.songUrl.isBlank()) {
