@@ -35,8 +35,13 @@ class SearchViewModel : ViewModel() {
     private val _errorMessageResId = MutableLiveData<Int?>()
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
 
+    private val _apiArtistTrackCounts = MutableLiveData<ApiArtistTrackCounts?>()
+    val apiArtistTrackCounts: LiveData<ApiArtistTrackCounts?> = _apiArtistTrackCounts
+
     private var isPreparingSong = false
     private var searchJob: Job? = null
+    private var artistTrackCountJob: Job? = null
+    private val artistTrackCountCache = mutableMapOf<String, Int>()
 
     fun loadSongs() {
         _searchResults.value = SearchResultBundle()
@@ -102,7 +107,39 @@ class SearchViewModel : ViewModel() {
         }
     }
 
+    fun loadApiArtistTrackCounts(
+        profiles: List<SearchResultItem.ApiArtistProfile>,
+        keyword: String,
+        tab: SearchTab
+    ) {
+        artistTrackCountJob?.cancel()
+        if (profiles.isEmpty()) return
+
+        artistTrackCountJob = viewModelScope.launch {
+            val counts = buildMap {
+                profiles.forEach { profile ->
+                    val key = profile.artistName.trim().lowercase()
+                    val remoteCount = artistTrackCountCache[key]
+                        ?: soundCloudRepository.getArtistTrackCount(profile.artistName).also { count ->
+                            if (count > 0) artistTrackCountCache[key] = count
+                        }
+
+                    put(key, maxOf(profile.trackCount, remoteCount))
+                }
+            }
+
+            _apiArtistTrackCounts.value = ApiArtistTrackCounts(
+                keyword = keyword,
+                tab = tab,
+                counts = counts
+            )
+        }
+    }
+
     fun clearSearchResult() {
+        artistTrackCountJob?.cancel()
+        artistTrackCountCache.clear()
+        _apiArtistTrackCounts.value = null
         _searchResults.value = SearchResultBundle()
         _songs.value = emptyList()
     }
@@ -115,3 +152,10 @@ class SearchViewModel : ViewModel() {
         _errorMessageResId.value = null
     }
 }
+
+/** Artist counts enriched from SoundCloud for the active search request. */
+data class ApiArtistTrackCounts(
+    val keyword: String,
+    val tab: SearchTab,
+    val counts: Map<String, Int>
+)

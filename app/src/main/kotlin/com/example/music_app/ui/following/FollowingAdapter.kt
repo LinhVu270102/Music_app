@@ -1,8 +1,9 @@
 package com.example.music_app.ui.following
 
-import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.music_app.R
@@ -11,15 +12,10 @@ import com.example.music_app.databinding.ItemFollowingUserBinding
 
 class FollowingAdapter(
     private val onItemClick: (User) -> Unit
-) : RecyclerView.Adapter<FollowingAdapter.FollowingViewHolder>() {
+) : ListAdapter<User, FollowingAdapter.FollowingViewHolder>(FollowingUserDiffCallback) {
 
-    private val users = mutableListOf<User>()
-
-    @SuppressLint("NotifyDataSetChanged")
     fun setData(newUsers: List<User>) {
-        users.clear()
-        users.addAll(newUsers)
-        notifyDataSetChanged()
+        submitList(newUsers)
     }
 
     inner class FollowingViewHolder(
@@ -65,8 +61,16 @@ class FollowingAdapter(
     }
 
     override fun onBindViewHolder(holder: FollowingViewHolder, position: Int) {
-        holder.bind(users[position])
+        holder.bind(getItem(position))
     }
 
-    override fun getItemCount(): Int = users.size
+    private object FollowingUserDiffCallback : DiffUtil.ItemCallback<User>() {
+        override fun areItemsTheSame(oldItem: User, newItem: User): Boolean {
+            return oldItem.uid == newItem.uid
+        }
+
+        override fun areContentsTheSame(oldItem: User, newItem: User): Boolean {
+            return oldItem == newItem
+        }
+    }
 }

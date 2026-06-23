@@ -2,20 +2,19 @@ package com.example.music_app.ui.player
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.music_app.data.model.PlaylistPickerItem
 import com.example.music_app.databinding.ItemSelectPlaylistBinding
 
 class PlaylistPickerAdapter(
     private val onItemClick: (PlaylistPickerItem) -> Unit
-) : RecyclerView.Adapter<PlaylistPickerAdapter.PlaylistPickerViewHolder>() {
-
-    private val items = mutableListOf<PlaylistPickerItem>()
+) : ListAdapter<PlaylistPickerItem, PlaylistPickerAdapter.PlaylistPickerViewHolder>(
+    PlaylistPickerDiffCallback
+) {
 
     fun setData(newItems: List<PlaylistPickerItem>) {
-        items.clear()
-        items.addAll(newItems)
-        notifyDataSetChanged()
+        submitList(newItems)
     }
 
     override fun onCreateViewHolder(
@@ -35,10 +34,8 @@ class PlaylistPickerAdapter(
         holder: PlaylistPickerViewHolder,
         position: Int
     ) {
-        holder.bind(items[position])
+        holder.bind(getItem(position))
     }
-
-    override fun getItemCount(): Int = items.size
 
     inner class PlaylistPickerViewHolder(
         private val binding: ItemSelectPlaylistBinding
@@ -52,5 +49,17 @@ class PlaylistPickerAdapter(
                 onItemClick(item)
             }
         }
+    }
+
+    private object PlaylistPickerDiffCallback : DiffUtil.ItemCallback<PlaylistPickerItem>() {
+        override fun areItemsTheSame(
+            oldItem: PlaylistPickerItem,
+            newItem: PlaylistPickerItem
+        ): Boolean = oldItem.id == newItem.id
+
+        override fun areContentsTheSame(
+            oldItem: PlaylistPickerItem,
+            newItem: PlaylistPickerItem
+        ): Boolean = oldItem == newItem
     }
 }

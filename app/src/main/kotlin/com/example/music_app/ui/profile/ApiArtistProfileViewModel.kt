@@ -6,12 +6,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.remote.soundcloud.SoundCloudRetrofitClient
 import com.example.music_app.data.remote.soundcloud.model.SoundCloudArtistProfileDto
 import com.example.music_app.data.remote.soundcloud.toSong
+import com.example.music_app.data.repository.SoundCloudRepository
 import kotlinx.coroutines.launch
 
 class ApiArtistProfileViewModel : ViewModel() {
+
+    private val soundCloudRepository = SoundCloudRepository()
 
     private val _profile = MutableLiveData<SoundCloudArtistProfileDto>()
     val profile: LiveData<SoundCloudArtistProfileDto> = _profile
@@ -38,10 +40,7 @@ class ApiArtistProfileViewModel : ViewModel() {
             try {
                 _isLoading.value = true
 
-                val response = SoundCloudRetrofitClient.api.getArtistProfile(
-                    artist = artistName,
-                    limit = limit
-                )
+                val response = soundCloudRepository.getArtistProfile(artistName, limit)
 
                 _profile.value = response.profile
                 _songs.value = response.results.map { track ->

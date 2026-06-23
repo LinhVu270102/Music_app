@@ -1,10 +1,6 @@
 package com.example.music_app.data.repository
 
 import com.example.music_app.R
-import com.example.music_app.data.model.Comment
-import com.example.music_app.data.model.AppNotification
-import com.example.music_app.data.model.AppNotificationType
-import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Report
 import com.example.music_app.data.model.ReportStatus
 import com.example.music_app.data.model.ReportTargetType
@@ -12,19 +8,20 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.SongStatus
 import com.example.music_app.data.model.User
 import com.example.music_app.data.model.UserRole
-import com.example.music_app.data.remote.FirebaseService
+import com.example.music_app.data.remote.ReportRemoteDataSource
+import com.example.music_app.data.remote.SongRemoteDataSource
+import com.example.music_app.data.remote.UserRemoteDataSource
 import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
-import kotlinx.coroutines.tasks.await
 
-
+/** Owns songs and song reports. Playlist, comment, and social data live in dedicated repositories. */
 class SongRepository {
 
     private val db = FirebaseFirestore.getInstance()
-    private val firestore = FirebaseFirestore.getInstance()
-    private val firebaseService = FirebaseService(db)
+    private val songRemoteDataSource = SongRemoteDataSource(db)
+    private val userRemoteDataSource = UserRemoteDataSource(db)
+    private val reportRemoteDataSource = ReportRemoteDataSource(db)
     private val auth = FirebaseAuth.getInstance()
 
     fun getCurrentUserId(): String = auth.currentUser?.uid.orEmpty()
@@ -34,39 +31,24 @@ class SongRepository {
     // =========================
 
     suspend fun getSong(songId: String): Song? {
-        return firebaseService.getSongById(songId)
+        return songRemoteDataSource.getSongById(songId)
     }
 
     suspend fun getAllSongs(): List<Song> {
-        return firebaseService.getAllSongsWithIds()
+        return songRemoteDataSource.getAllSongsWithIds()
             .filter { song ->
                 song.status == SongStatus.APPROVED && !song.isDeleted
             }
     }
 
-    suspend fun getRootPlaylistSongs(playlistId: String): List<Song> {
-        if (playlistId.isBlank()) return emptyList()
-
-        return firestore.collection("playlists")
-            .document(playlistId)
-            .collection("songs")
-            .get()
-            .await()
-            .documents
-            .mapNotNull { doc ->
-                doc.toObject(Song::class.java)?.copy(id = doc.id)
-            }
-    }
-
-
     suspend fun upsertSong(song: Song) {
-        firebaseService.upsertSong(song)
+        songRemoteDataSource.upsertSong(song)
     }
 
     suspend fun getRecentlyPlayedSongs(): List<Song> {
         val userId = auth.currentUser?.uid ?: return emptyList()
 
-        return firebaseService.getRecentlyPlayedSongs(userId)
+        return songRemoteDataSource.getRecentlyPlayedSongs(userId)
             .filter { song ->
                 song.status == SongStatus.APPROVED && !song.isDeleted
             }
@@ -78,13 +60,13 @@ class SongRepository {
 
     suspend fun getCurrentUserProfile(): User? {
         val userId = auth.currentUser?.uid ?: return null
-        return firebaseService.getUserById(userId)
+        return userRemoteDataSource.getById(userId)
     }
 
 
     suspend fun getMyUploadedSongs(): List<Song> {
         val userId = auth.currentUser?.uid ?: return emptyList()
-        return firebaseService.getSongsByUploaderId(userId)
+        return songRemoteDataSource.getSongsByUploaderId(userId)
     }
 
 
@@ -92,10 +74,10 @@ class SongRepository {
         val userId = auth.currentUser?.uid
             ?: throw AppException(R.string.not_logged_in)
 
-        val song = firebaseService.getSongById(songId)
+        val song = songRemoteDataSource.getSongById(songId)
             ?: throw AppException(R.string.invalid_song)
 
-        val currentUser = firebaseService.getUserById(userId)
+        val currentUser = userRemoteDataSource.getById(userId)
             ?: throw AppException(R.string.user_not_found)
 
         val isOwner = song.uploaderId == userId
@@ -105,7 +87,7 @@ class SongRepository {
             throw AppException(R.string.no_permission)
         }
 
-        firebaseService.softDeleteSong(
+        songRemoteDataSource.softDeleteSong(
             songId = songId,
             deletedBy = userId
         )
@@ -118,10 +100,10 @@ class SongRepository {
         val userId = auth.currentUser?.uid
             ?: throw AppException(R.string.not_logged_in)
 
-        val song = firebaseService.getSongById(songId)
+        val song = songRemoteDataSource.getSongById(songId)
             ?: throw AppException(R.string.invalid_song)
 
-        val currentUser = firebaseService.getUserById(userId)
+        val currentUser = userRemoteDataSource.getById(userId)
             ?: throw AppException(R.string.user_not_found)
 
         val isOwner = song.uploaderId == userId
@@ -131,7 +113,7 @@ class SongRepository {
             throw AppException(R.string.no_permission)
         }
 
-        firebaseService.updateSongCommentPermission(
+        songRemoteDataSource.updateSongCommentPermission(
             songId = songId,
             allowComments = allowComments
         )
@@ -139,16 +121,16 @@ class SongRepository {
 
 
     suspend fun getSongsByUserId(userId: String): List<Song> {
-        return firebaseService.getApprovedSongsByUploaderId(userId)
+        return songRemoteDataSource.getApprovedSongsByUploaderId(userId)
     }
 
     suspend fun getUserById(userId: String): User? {
-        return firebaseService.getUserById(userId)
+        return userRemoteDataSource.getById(userId)
     }
 
     suspend fun resubmitMyRejectedSong(songId: String) {
         val userId = auth.currentUser?.uid ?: throw AppException(R.string.not_logged_in)
-        val song = firebaseService.getSongById(songId) ?: throw AppException(R.string.invalid_song)
+        val song = songRemoteDataSource.getSongById(songId) ?: throw AppException(R.string.invalid_song)
 
         if (song.uploaderId != userId) {
             throw AppException(R.string.no_permission)
@@ -158,394 +140,8 @@ class SongRepository {
             throw AppException(R.string.only_rejected_song_can_resubmit)
         }
 
-        firebaseService.resubmitSongForReview(songId)
+        songRemoteDataSource.resubmitSongForReview(songId)
     }
-
-    // =========================
-    // LIKE SONG
-    // =========================
-
-    suspend fun likeSong(song: Song) {
-        val userId = auth.currentUser?.uid ?: return
-
-        if (song.id.isBlank()) return
-        if (song.isDeleted) return
-
-        firebaseService.likeSong(userId, song.id)
-    }
-
-    suspend fun unlikeSong(song: Song) {
-        val userId = auth.currentUser?.uid ?: return
-
-        if (song.id.isBlank()) return
-
-        firebaseService.unlikeSong(userId, song.id)
-    }
-
-    suspend fun isSongLiked(songId: String): Boolean {
-        val userId = auth.currentUser?.uid ?: return false
-        return firebaseService.isSongLiked(userId, songId)
-    }
-
-    suspend fun getLikedSongs(): List<Song> {
-        val userId = auth.currentUser?.uid ?: return emptyList()
-
-        return firebaseService.getLikedSongs(userId)
-            .filter { song ->
-                song.status == SongStatus.APPROVED && !song.isDeleted
-            }
-    }
-
-    suspend fun toggleLikeSong(song: Song): Boolean {
-        val userId = auth.currentUser?.uid ?: return false
-
-        if (song.id.isBlank()) return false
-        if (song.isDeleted) return false
-
-        val isLiked = firebaseService.isSongLiked(userId, song.id)
-
-        return if (isLiked) {
-            firebaseService.unlikeSong(userId, song.id)
-            false
-        } else {
-            firebaseService.likeSong(userId, song.id)
-            runCatching {
-                createSongLikeNotification(
-                    actorId = userId,
-                    song = song
-                )
-            }
-            true
-        }
-    }
-
-    private suspend fun createSongLikeNotification(
-        actorId: String,
-        song: Song
-    ) {
-        val receiverId = song.uploaderId
-
-        if (receiverId.isBlank() || receiverId == actorId) return
-
-        val actor = firebaseService.getUserById(actorId)
-        val actorName = actor?.displayName
-            ?.takeIf { it.isNotBlank() }
-            ?: actor?.email
-            ?: auth.currentUser?.displayName
-            ?: auth.currentUser?.email
-            ?: "Orange Music user"
-
-        firebaseService.createNotification(
-            AppNotification(
-                receiverId = receiverId,
-                actorId = actorId,
-                actorName = actorName,
-                actorAvatarUrl = actor?.avatarUrl.orEmpty(),
-                type = AppNotificationType.NEW_LIKE,
-                title = "New like",
-                message = "$actorName liked ${song.title}",
-                targetId = song.id,
-                targetType = "song"
-            )
-        )
-    }
-
-    // =========================
-    // PLAYLIST
-    // =========================
-
-    suspend fun createPlaylist(
-        name: String,
-        description: String = ""
-    ): Playlist {
-        val userId = auth.currentUser?.uid
-            ?: throw AppException(R.string.not_logged_in)
-
-        return firebaseService.createPlaylist(userId, name, description)
-    }
-
-    suspend fun getMyPlaylists(): List<Playlist> {
-        val userId = auth.currentUser?.uid ?: return emptyList()
-        return firebaseService.getUserPlaylists(userId)
-    }
-
-    suspend fun deletePlaylist(playlistId: String) {
-        val userId = auth.currentUser?.uid ?: return
-        firebaseService.deletePlaylist(userId, playlistId)
-    }
-
-    suspend fun addSongToPlaylist(
-        playlistId: String,
-        song: Song
-    ) {
-        val userId = auth.currentUser?.uid
-            ?: throw AppException(R.string.not_logged_in)
-
-        if (song.isDeleted) {
-            throw AppException(R.string.song_deleted)
-        }
-
-        firebaseService.addSongToPlaylist(userId, playlistId, song)
-    }
-
-    suspend fun removeSongFromPlaylist(
-        playlistId: String,
-        songId: String
-    ) {
-        val userId = auth.currentUser?.uid
-            ?: throw AppException(R.string.not_logged_in)
-
-        firebaseService.removeSongFromPlaylist(userId, playlistId, songId)
-    }
-
-    suspend fun getPlaylistSongs(playlistId: String): List<Song> {
-        val userId = auth.currentUser?.uid ?: return emptyList()
-
-        return firebaseService.getPlaylistSongs(userId, playlistId)
-            .filter { song ->
-                song.status == SongStatus.APPROVED && !song.isDeleted
-            }
-    }
-    suspend fun getPublicPlaylistsByUserId(userId: String): List<Playlist> {
-        if (userId.isBlank()) return emptyList()
-
-        return firebaseService.getPublicUserPlaylists(userId)
-    }
-
-    suspend fun isPlaylistLiked(playlistId: String): Boolean {
-        val userId = auth.currentUser?.uid ?: return false
-        return firebaseService.isPlaylistLiked(userId, playlistId)
-    }
-
-    suspend fun togglePlaylistLike(playlist: Playlist): Boolean {
-        val userId = auth.currentUser?.uid
-            ?: throw AppException(R.string.not_logged_in)
-
-        if (playlist.ownerId == userId) {
-            throw AppException(R.string.cannot_like_own_playlist)
-        }
-
-        return firebaseService.togglePlaylistLike(userId, playlist)
-    }
-
-    suspend fun getLikedPlaylists(): List<Playlist> {
-        val userId = auth.currentUser?.uid ?: return emptyList()
-        return firebaseService.getLikedPlaylists(userId)
-    }
-
-    suspend fun getPlaylistSongs(
-        ownerId: String,
-        playlistId: String
-    ): List<Song> {
-        val finalOwnerId = ownerId.ifBlank {
-            auth.currentUser?.uid.orEmpty()
-        }
-
-        if (finalOwnerId.isBlank() || playlistId.isBlank()) {
-            return emptyList()
-        }
-
-        return firebaseService.getPlaylistSongs(finalOwnerId, playlistId)
-            .filter { song ->
-                song.status == SongStatus.APPROVED && !song.isDeleted
-            }
-    }
-
-    // =========================
-    // FOLLOW USER
-    // =========================
-
-    suspend fun isFollowing(targetUserId: String): Boolean {
-        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
-
-        if (currentUserId.isBlank() || targetUserId.isBlank()) {
-            return false
-        }
-
-        val doc = FirebaseFirestore.getInstance()
-            .collection("users")
-            .document(currentUserId)
-            .collection("following")
-            .document(targetUserId)
-            .get()
-            .await()
-
-        return doc.exists()
-    }
-
-    suspend fun toggleFollowUser(targetUserId: String): Boolean {
-        val auth = FirebaseAuth.getInstance()
-        val db = FirebaseFirestore.getInstance()
-
-        val currentUser = auth.currentUser ?: throw AppException(R.string.login_required)
-        val currentUserId = currentUser.uid
-
-        if (targetUserId.isBlank()) {
-            throw AppException(R.string.invalid_user)
-        }
-
-        if (targetUserId == currentUserId) {
-            throw AppException(R.string.cannot_follow_yourself)
-        }
-
-        val currentUserRef = db.collection("users").document(currentUserId)
-        val targetUserRef = db.collection("users").document(targetUserId)
-
-        val followingRef = currentUserRef
-            .collection("following")
-            .document(targetUserId)
-
-        val followerRef = targetUserRef
-            .collection("followers")
-            .document(currentUserId)
-
-        val followingDoc = followingRef.get().await()
-        val isCurrentlyFollowing = followingDoc.exists()
-
-        if (isCurrentlyFollowing) {
-            followingRef.delete().await()
-            followerRef.delete().await()
-            return false
-        }
-
-        val targetUserDoc = targetUserRef.get().await()
-        val targetData = targetUserDoc.data.orEmpty()
-
-        val currentUserDoc = currentUserRef.get().await()
-        val currentData = currentUserDoc.data.orEmpty()
-
-        val now = System.currentTimeMillis()
-
-        val followingData = hashMapOf(
-            "userId" to targetUserId,
-            "displayName" to (
-                    targetData["displayName"]
-                        ?: targetData["name"]
-                        ?: targetData["email"]
-                        ?: "Unknown user"
-                    ),
-            "email" to (targetData["email"] ?: ""),
-            "avatarUrl" to (targetData["avatarUrl"] ?: ""),
-            "followedAt" to now
-        )
-
-        val followerData = hashMapOf(
-            "userId" to currentUserId,
-            "displayName" to (
-                    currentData["displayName"]
-                        ?: currentData["name"]
-                        ?: currentUser.email
-                        ?: "Unknown user"
-                    ),
-            "email" to (currentData["email"] ?: currentUser.email.orEmpty()),
-            "avatarUrl" to (currentData["avatarUrl"] ?: ""),
-            "followedAt" to now
-        )
-
-        followingRef.set(followingData).await()
-        followerRef.set(followerData).await()
-
-        val actorName = currentData["displayName"]
-            ?.toString()
-            ?.ifBlank { null }
-            ?: currentData["name"]?.toString()?.ifBlank { null }
-            ?: currentUser.email
-            ?: "Orange Music user"
-
-        runCatching {
-            firebaseService.createNotification(
-                AppNotification(
-                    receiverId = targetUserId,
-                    actorId = currentUserId,
-                    actorName = actorName,
-                    actorAvatarUrl = currentData["avatarUrl"]?.toString().orEmpty(),
-                    type = AppNotificationType.NEW_FOLLOWER,
-                    title = "New follower",
-                    message = "$actorName started following you",
-                    targetId = currentUserId,
-                    targetType = "user"
-                )
-            )
-        }
-
-        return true
-    }
-
-    suspend fun getNotifications(): List<AppNotification> {
-        val userId = auth.currentUser?.uid ?: return emptyList()
-        return firebaseService.getNotifications(userId)
-    }
-
-    suspend fun markNotificationRead(notificationId: String) {
-        val userId = auth.currentUser?.uid ?: return
-        firebaseService.markNotificationRead(userId, notificationId)
-    }
-
-    suspend fun markAllNotificationsRead() {
-        val userId = auth.currentUser?.uid ?: return
-        firebaseService.markAllNotificationsRead(userId)
-    }
-
-    suspend fun getFollowingUsers(): List<User> {
-        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
-
-        if (currentUserId.isBlank()) {
-            return emptyList()
-        }
-
-        val db = FirebaseFirestore.getInstance()
-
-        val followingSnapshot = db.collection("users")
-            .document(currentUserId)
-            .collection("following")
-            .orderBy("followedAt", Query.Direction.DESCENDING)
-            .get()
-            .await()
-
-        if (followingSnapshot.isEmpty) {
-            return emptyList()
-        }
-
-        val result = mutableListOf<User>()
-
-        for (followingDoc in followingSnapshot.documents) {
-            val targetUserId = followingDoc.id
-
-            if (targetUserId.isBlank()) continue
-
-            val userDoc = db.collection("users")
-                .document(targetUserId)
-                .get()
-                .await()
-
-            val user = userDoc.toObject(User::class.java)
-
-            if (user != null) {
-                result.add(
-                    user.copy(
-                        uid = user.uid.ifBlank { userDoc.id }
-                    )
-                )
-            }
-        }
-
-        return result
-    }
-    suspend fun getFollowerCount(targetUserId: String): Long {
-        if (targetUserId.isBlank()) {
-            return 0L
-        }
-
-        val snapshot = FirebaseFirestore.getInstance()
-            .collection("users")
-            .document(targetUserId)
-            .collection("followers")
-            .get()
-            .await()
-
-        return snapshot.size().toLong()
-    }
-
 
     // =========================
     // REPORT
@@ -560,10 +156,10 @@ class SongRepository {
         val userId = auth.currentUser?.uid
             ?: throw AppException(R.string.not_logged_in)
 
-        val user = firebaseService.getUserById(userId)
+        val user = userRemoteDataSource.getById(userId)
             ?: throw AppException(R.string.user_not_found)
 
-        val song = firebaseService.getSongById(songId)
+        val song = songRemoteDataSource.getSongById(songId)
             ?: throw AppException(R.string.invalid_song)
 
         if (song.isDeleted) {
@@ -580,92 +176,7 @@ class SongRepository {
             status = ReportStatus.PENDING
         )
 
-        return firebaseService.createReport(report)
+        return reportRemoteDataSource.create(report)
     }
 
-
-    suspend fun reportComment(
-        songId: String,
-        commentId: String,
-        reason: String,
-        description: String = ""
-    ): Report {
-        val userId = auth.currentUser?.uid
-            ?: throw AppException(R.string.not_logged_in)
-
-        val user = firebaseService.getUserById(userId)
-            ?: throw AppException(R.string.user_not_found)
-
-        val report = Report(
-            targetId = commentId,
-            targetType = ReportTargetType.COMMENT,
-            reporterId = userId,
-            reporterName = user.displayName.ifBlank { user.email },
-            reason = reason,
-            description = "$songId|$description",
-            status = ReportStatus.PENDING
-        )
-
-        return firebaseService.createReport(report)
-    }
-
-    // =========================
-    // COMMENT
-    // =========================
-
-    suspend fun addComment(
-        songId: String,
-        content: String,
-        timelinePositionMs: Long = 0L
-    ): Comment {
-        val userId = auth.currentUser?.uid
-            ?: throw AppException(R.string.not_logged_in)
-
-        val user = firebaseService.getUserById(userId)
-            ?: throw AppException(R.string.user_not_found)
-
-        return firebaseService.addComment(
-            songId = songId,
-            user = user,
-            content = content,
-            timelinePositionMs = timelinePositionMs
-        )
-    }
-
-    suspend fun getComments(songId: String): List<Comment> {
-        return firebaseService.getComments(songId)
-    }
-
-    suspend fun softDeleteComment(
-        songId: String,
-        commentId: String
-    ) {
-        val userId = auth.currentUser?.uid
-            ?: throw AppException(R.string.not_logged_in)
-
-        val currentUser = firebaseService.getUserById(userId)
-            ?: throw AppException(R.string.user_not_found)
-
-        val comments = firebaseService.getComments(songId)
-
-        val comment = comments.firstOrNull { it.id == commentId }
-            ?: throw AppException(R.string.comment_not_found)
-
-        val song = firebaseService.getSongById(songId)
-            ?: throw AppException(R.string.invalid_song)
-
-        val isCommentOwner = comment.userId == userId
-        val isSongOwner = song.uploaderId == userId
-        val isAdmin = currentUser.role == UserRole.ADMIN
-
-        if (!isCommentOwner && !isSongOwner && !isAdmin) {
-            throw AppException(R.string.no_permission)
-        }
-
-        firebaseService.softDeleteComment(
-            songId = songId,
-            commentId = commentId,
-            deletedBy = userId
-        )
-    }
 }

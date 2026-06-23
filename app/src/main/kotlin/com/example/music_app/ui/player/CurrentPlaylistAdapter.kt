@@ -2,6 +2,8 @@ package com.example.music_app.ui.player
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
@@ -9,19 +11,22 @@ import com.example.music_app.databinding.ItemCurrentPlaylistSongBinding
 
 class CurrentPlaylistAdapter(
     private val onItemClick: (index: Int, song: Song) -> Unit
-) : RecyclerView.Adapter<CurrentPlaylistAdapter.CurrentPlaylistViewHolder>() {
+) : ListAdapter<Song, CurrentPlaylistAdapter.CurrentPlaylistViewHolder>(SongDiffCallback) {
 
-    private val songs = mutableListOf<Song>()
     private var currentIndex: Int = -1
 
     fun setData(
         newSongs: List<Song>,
         newCurrentIndex: Int
     ) {
-        songs.clear()
-        songs.addAll(newSongs)
+        val previousCurrentIndex = currentIndex
         currentIndex = newCurrentIndex
-        notifyDataSetChanged()
+        submitList(newSongs.toList()) {
+            listOf(previousCurrentIndex, currentIndex)
+                .distinct()
+                .filter { index -> index in 0 until itemCount }
+                .forEach(::notifyItemChanged)
+        }
     }
 
     override fun onCreateViewHolder(
@@ -42,13 +47,11 @@ class CurrentPlaylistAdapter(
         position: Int
     ) {
         holder.bind(
-            song = songs[position],
+            song = getItem(position),
             index = position,
             isCurrent = position == currentIndex
         )
     }
-
-    override fun getItemCount(): Int = songs.size
 
     inner class CurrentPlaylistViewHolder(
         private val binding: ItemCurrentPlaylistSongBinding
@@ -82,6 +85,16 @@ class CurrentPlaylistAdapter(
             binding.root.setOnClickListener {
                 onItemClick(index, song)
             }
+        }
+    }
+
+    private object SongDiffCallback : DiffUtil.ItemCallback<Song>() {
+        override fun areItemsTheSame(oldItem: Song, newItem: Song): Boolean {
+            return oldItem.id == newItem.id
+        }
+
+        override fun areContentsTheSame(oldItem: Song, newItem: Song): Boolean {
+            return oldItem == newItem
         }
     }
 }

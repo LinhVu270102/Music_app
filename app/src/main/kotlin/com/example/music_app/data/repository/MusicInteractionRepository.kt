@@ -1,7 +1,7 @@
 package com.example.music_app.data.repository
 
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.remote.FirebaseService
+import com.example.music_app.data.remote.SongRemoteDataSource
 import com.example.music_app.data.remote.soundcloud.isSoundCloudSong
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -9,7 +9,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 class MusicInteractionRepository {
 
     private val soundCloudRepository = SoundCloudRepository()
-    private val firebaseService = FirebaseService(FirebaseFirestore.getInstance())
+    private val songRemoteDataSource = SongRemoteDataSource(FirebaseFirestore.getInstance())
     private val auth = FirebaseAuth.getInstance()
 
     suspend fun preparePlayableSong(song: Song): Song {
@@ -25,7 +25,7 @@ class MusicInteractionRepository {
             // A cache write must not prevent playback or listening history if
             // Firestore is temporarily unavailable.
             runCatching {
-                firebaseService.upsertSong(playableSong)
+                songRemoteDataSource.upsertSong(playableSong)
             }
         }
 
@@ -37,12 +37,12 @@ class MusicInteractionRepository {
 
         if (song.id.isBlank() || song.isDeleted) return
 
-        firebaseService.saveRecentlyPlayed(userId, song)
+        songRemoteDataSource.saveRecentlyPlayed(userId, song)
     }
 
     suspend fun ensureSongSaved(song: Song) {
         if (song.isSoundCloudSong() && song.id.isNotBlank()) {
-            firebaseService.upsertSong(song)
+            songRemoteDataSource.upsertSong(song)
         }
     }
 }

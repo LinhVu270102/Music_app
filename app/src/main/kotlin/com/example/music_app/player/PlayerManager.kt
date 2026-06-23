@@ -7,14 +7,12 @@ import androidx.lifecycle.MutableLiveData
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
-import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.model.SongStatus
 import com.example.music_app.data.remote.soundcloud.isSoundCloudSong
 import com.example.music_app.data.repository.MusicInteractionRepository
 import kotlinx.coroutines.CoroutineScope
@@ -22,8 +20,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.random.Random
-import androidx.media3.common.MediaMetadata
 
 object PlayerManager {
 
@@ -37,14 +33,16 @@ object PlayerManager {
 
     private var exoPlayer: ExoPlayer? = null
 
-    private val playlist = mutableListOf<Song>()
-    private var currentPlaylistIndex = -1
+    private val playbackQueue = PlaybackQueue()
 
     private val playerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val musicInteractionRepository = MusicInteractionRepository()
+    private val historyRecorder = PlaybackHistoryRecorder(
+        repository = musicInteractionRepository,
+        scope = playerScope
+    )
     private var isPreparingRandomSong = false
     private var isExtendingRandomTail = false
-    private var lastRecordedRecentlyPlayedSongId = ""
 
     private const val RANDOM_TAIL_SIZE = 5
     private const val MIN_REMAINING_BEFORE_EXTEND = 3
@@ -117,14 +115,13 @@ object PlayerManager {
                         reason: Int
                     ) {
                         val songId = mediaItem?.mediaId ?: return
-                        val index = playlist.indexOfFirst { it.id == songId }
-                        val song = playlist.getOrNull(index)
+                        val index = playbackQueue.indexOf(songId)
+                        val song = playbackQueue.select(index)
 
                         if (song != null) {
-                            currentPlaylistIndex = index
                             _currentIndex.value = index
                             _currentSong.value = song
-                            recordRecentlyPlayed(song)
+                            historyRecorder.record(song)
 
                             extendRandomTailIfNeeded()
                         }
@@ -166,42 +163,12 @@ object PlayerManager {
         return null
     }
 
-    private fun createMediaItem(song: Song): MediaItem {
-        val metadata = MediaMetadata.Builder()
-            .setTitle(song.title)
-            .setArtist(song.artist)
-            .build()
-
-        val builder = MediaItem.Builder()
-            .setUri(song.songUrl)
-            .setMediaId(song.id)
-            .setMediaMetadata(metadata)
-
-        if (
-            song.tags.any { it.equals("hls", ignoreCase = true) } ||
-            song.songUrl.contains(".m3u8", ignoreCase = true) ||
-            song.songUrl.contains("/hls", ignoreCase = true)
-        ) {
-            builder.setMimeType(MimeTypes.APPLICATION_M3U8)
-        }
-
-        return builder.build()
-    }
-
     fun setPlaylist(songs: List<Song>) {
-        val validSongs = songs
-            .filter { it.id.isNotBlank() }
-            .filter { it.songUrl.isNotBlank() }
-            .distinctBy { it.id }
-
-        playlist.clear()
-        playlist.addAll(validSongs)
+        val validSongs = playbackQueue.replace(songs)
 
         _playlistSongs.value = validSongs
 
-        val mediaItems = validSongs.map { song ->
-            createMediaItem(song)
-        }
+        val mediaItems = validSongs.map(PlaybackMediaItemFactory::create)
 
         exoPlayer?.apply {
             stop()
@@ -210,7 +177,6 @@ object PlayerManager {
             prepare()
         }
 
-        currentPlaylistIndex = -1
         _currentIndex.value = -1
 
         applyShuffleMode()
@@ -224,9 +190,8 @@ object PlayerManager {
         startSong: Song
     ) {
         val validSongs = songs
-            .filter { it.id.isNotBlank() }
-            .filter { it.songUrl.isNotBlank() }
-            .distinctBy { it.id }
+            .filter { song -> song.id.isNotBlank() && song.songUrl.isNotBlank() }
+            .distinctBy(Song::id)
 
         if (validSongs.isEmpty()) {
             Log.e(TAG, "playPlaylist failed: no valid songs")
@@ -234,14 +199,11 @@ object PlayerManager {
             return
         }
 
-        playlist.clear()
-        playlist.addAll(validSongs)
+        playbackQueue.replace(validSongs)
 
         _playlistSongs.value = validSongs
 
-        val mediaItems = validSongs.map { song ->
-            createMediaItem(song)
-        }
+        val mediaItems = validSongs.map(PlaybackMediaItemFactory::create)
 
         exoPlayer?.apply {
             stop()
@@ -288,9 +250,9 @@ object PlayerManager {
             return
         }
 
-        val index = playlist.indexOfFirst { it.id == song.id }
+        val index = playbackQueue.indexOf(song.id)
 
-        if (index != -1 && playlist.size > 1) {
+        if (index != -1 && playbackQueue.size > 1) {
             playFromPlaylist(index)
         } else {
             playSingle(song)
@@ -298,7 +260,7 @@ object PlayerManager {
     }
 
     private fun playFromPlaylist(index: Int) {
-        val song = playlist.getOrNull(index)
+        val song = playbackQueue.select(index)
 
         if (song == null) {
             Log.e(TAG, "playFromPlaylist failed: song null at index=$index")
@@ -306,10 +268,9 @@ object PlayerManager {
             return
         }
 
-        currentPlaylistIndex = index
         _currentIndex.value = index
         _currentSong.value = song
-        recordRecentlyPlayed(song)
+        historyRecorder.record(song)
 
         exoPlayer?.apply {
             seekTo(index, 0L)
@@ -325,16 +286,13 @@ object PlayerManager {
     }
 
     private fun playSingle(song: Song) {
-        playlist.clear()
-        playlist.add(song)
-
-        currentPlaylistIndex = 0
+        val singleSongPlaylist = playbackQueue.replaceWithSingle(song)
         _currentIndex.value = 0
-        _playlistSongs.value = listOf(song)
+        _playlistSongs.value = singleSongPlaylist
         _currentSong.value = song
-        recordRecentlyPlayed(song)
+        historyRecorder.record(song)
 
-        val mediaItem = createMediaItem(song)
+        val mediaItem = PlaybackMediaItemFactory.create(song)
 
         exoPlayer?.apply {
             stop()
@@ -351,24 +309,9 @@ object PlayerManager {
         Log.d(TAG, "playSingle: ${song.title}")
     }
 
-    /** Records every song started by the shared player, including mini-player swipes. */
-    private fun recordRecentlyPlayed(song: Song) {
-        if (song.id.isBlank() || song.id == lastRecordedRecentlyPlayedSongId) return
-
-        lastRecordedRecentlyPlayedSongId = song.id
-
-        playerScope.launch {
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    musicInteractionRepository.saveRecentlyPlayed(song)
-                }
-            }
-        }
-    }
-
     fun playSongAt(index: Int) {
-        if (index !in playlist.indices) {
-            Log.d(TAG, "playSongAt failed: invalid index=$index, size=${playlist.size}")
+        if (index !in playbackQueue.indices) {
+            Log.d(TAG, "playSongAt failed: invalid index=$index, size=${playbackQueue.size}")
             return
         }
 
@@ -446,15 +389,11 @@ object PlayerManager {
 
         val currentIds = currentSongs.map { it.id }.toSet()
 
-        val candidates = _fallbackSongs.value
-            .orEmpty()
-            .filter { it.id.isNotBlank() }
-            .filter { it.id !in currentIds }
-            .filter { it.status == SongStatus.APPROVED }
-            .filter { !it.isDeleted }
-            .filter { it.songUrl.isNotBlank() || it.isSoundCloudSong() }
-            .shuffled()
-            .take(RANDOM_TAIL_SIZE)
+        val candidates = PlaybackSongSelector.selectRandomTail(
+            songs = _fallbackSongs.value.orEmpty(),
+            queuedSongIds = currentIds,
+            limit = RANDOM_TAIL_SIZE
+        )
 
         if (candidates.isEmpty()) {
             Log.d(TAG, "extendRandomTailIfNeeded: no random candidates")
@@ -485,19 +424,21 @@ object PlayerManager {
                     return@launch
                 }
 
-                playlist.addAll(preparedSongs)
-
-                val mediaItems = preparedSongs.map { song ->
-                    createMediaItem(song)
+                val additions = playbackQueue.append(preparedSongs)
+                if (additions.isEmpty()) {
+                    Log.d(TAG, "extendRandomTailIfNeeded: no unique prepared songs")
+                    return@launch
                 }
+
+                val mediaItems = additions.map(PlaybackMediaItemFactory::create)
 
                 player.addMediaItems(mediaItems)
 
-                _playlistSongs.value = playlist.toList()
+                _playlistSongs.value = playbackQueue.snapshot()
 
                 Log.d(
                     TAG,
-                    "extendRandomTailIfNeeded: added=${preparedSongs.size}, total=${playlist.size}"
+                    "extendRandomTailIfNeeded: added=${additions.size}, total=${playbackQueue.size}"
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "extendRandomTailIfNeeded failed: ${e.message}", e)
@@ -507,13 +448,7 @@ object PlayerManager {
         }
     }
     fun setFallbackSongs(songs: List<Song>) {
-        val validSongs = songs
-            .filter { song ->
-                !song.isDeleted &&
-                        song.status == SongStatus.APPROVED &&
-                        (song.songUrl.isNotBlank() || song.isSoundCloudSong())
-            }
-            .distinctBy { song -> song.id }
+        val validSongs = PlaybackSongSelector.sanitizeFallbackSongs(songs)
 
         if (validSongs.isEmpty()) {
             Log.d(TAG, "setFallbackSongs ignored empty list")
@@ -537,22 +472,11 @@ object PlayerManager {
 
         val currentId = _currentSong.value?.id.orEmpty()
 
-        val baseCandidates = _fallbackSongs.value.orEmpty()
-            .filter { song ->
-                !song.isDeleted &&
-                        song.status == SongStatus.APPROVED &&
-                        (song.songUrl.isNotBlank() || song.isSoundCloudSong())
-            }
-
-        val candidates = baseCandidates
-            .filter { song ->
-                song.id != currentId && song.id !in excludeIds
-            }
-            .ifEmpty {
-                baseCandidates.filter { song -> song.id != currentId }
-            }
-
-        val randomSong = candidates.randomOrNull()
+        val randomSong = PlaybackSongSelector.selectRandomFallback(
+            songs = _fallbackSongs.value.orEmpty(),
+            currentSongId = currentId,
+            excludedSongIds = excludeIds
+        )
         if (randomSong == null) {
             _errorMessageResId.postValue(R.string.could_not_play_this_song)
             return
@@ -670,22 +594,20 @@ object PlayerManager {
             clearMediaItems()
         }
 
-        playlist.clear()
-        currentPlaylistIndex = -1
+        playbackQueue.clear()
 
         _playlistSongs.value = emptyList()
         _currentIndex.value = -1
         _currentSong.value = null
         _isPlaying.value = false
-        lastRecordedRecentlyPlayedSongId = ""
+        historyRecorder.clear()
     }
 
     fun release() {
         exoPlayer?.release()
         exoPlayer = null
 
-        playlist.clear()
-        currentPlaylistIndex = -1
+        playbackQueue.clear()
 
         _playlistSongs.value = emptyList()
         _currentIndex.value = -1
@@ -694,11 +616,11 @@ object PlayerManager {
         _isShuffleEnabled.value = false
         _loopMode.value = LoopMode.OFF
         _fallbackSongs.value = emptyList()
-        lastRecordedRecentlyPlayedSongId = ""
+        historyRecorder.clear()
     }
 
     fun getCurrentPlaylist(): List<Song> {
-        return playlist.toList()
+        return playbackQueue.snapshot()
     }
 
     fun clearErrorMessage() {

@@ -7,8 +7,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.model.toPlaylist
+import com.example.music_app.data.repository.PlaylistRepository
 import com.example.music_app.data.repository.SongRepository
-import com.example.music_app.data.repository.SoundCloudSocialRepository
+import com.example.music_app.data.repository.SoundCloudPlaylistRepository
 import kotlinx.coroutines.launch
 
 class LibraryViewModel : ViewModel() {
@@ -18,7 +20,8 @@ class LibraryViewModel : ViewModel() {
     }
 
     private val repository = SongRepository()
-    private val soundCloudSocialRepository = SoundCloudSocialRepository()
+    private val playlistRepository = PlaylistRepository()
+    private val soundCloudPlaylistRepository = SoundCloudPlaylistRepository()
 
     private val _recentlyPlayed = MutableLiveData<List<Song>>()
     val recentlyPlayed: LiveData<List<Song>> = _recentlyPlayed
@@ -59,15 +62,10 @@ class LibraryViewModel : ViewModel() {
             val start = System.currentTimeMillis()
 
             try {
-                val firebasePlaylists = repository.getMyPlaylists()
-                val likedPlaylists = repository.getLikedPlaylists()
+                val firebasePlaylists = playlistRepository.getMyPlaylists()
+                val likedPlaylists = playlistRepository.getLikedPlaylists()
                 val apiPlaylists = runCatching {
-                    soundCloudSocialRepository.getUserApiPlaylists()
-                        .map { apiPlaylist ->
-                            with(soundCloudSocialRepository) {
-                                apiPlaylist.toPlaylist()
-                            }
-                        }
+                    soundCloudPlaylistRepository.getUserApiPlaylists().map { it.toPlaylist() }
                 }.getOrDefault(emptyList())
 
                 val result = (firebasePlaylists + likedPlaylists + apiPlaylists)
