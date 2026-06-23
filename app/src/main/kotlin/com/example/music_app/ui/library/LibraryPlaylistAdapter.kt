@@ -2,6 +2,8 @@ package com.example.music_app.ui.library
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.music_app.R
@@ -10,14 +12,10 @@ import com.example.music_app.databinding.ItemLibraryPlaylistBinding
 
 class LibraryPlaylistAdapter(
     private val onItemClick: (Playlist) -> Unit
-) : RecyclerView.Adapter<LibraryPlaylistAdapter.ViewHolder>() {
-
-    private val items = mutableListOf<Playlist>()
+) : ListAdapter<Playlist, LibraryPlaylistAdapter.ViewHolder>(DiffCallback) {
 
     fun setData(newItems: List<Playlist>) {
-        items.clear()
-        items.addAll(newItems)
-        notifyDataSetChanged()
+        submitList(newItems.toList())
     }
 
     inner class ViewHolder(
@@ -59,8 +57,18 @@ class LibraryPlaylistAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[position])
+        holder.bind(getItem(position))
     }
 
-    override fun getItemCount(): Int = items.size
+    companion object {
+        private val DiffCallback = object : DiffUtil.ItemCallback<Playlist>() {
+            override fun areItemsTheSame(oldItem: Playlist, newItem: Playlist): Boolean {
+                return oldItem.id == newItem.id
+            }
+
+            override fun areContentsTheSame(oldItem: Playlist, newItem: Playlist): Boolean {
+                return oldItem == newItem
+            }
+        }
+    }
 }
