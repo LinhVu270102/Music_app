@@ -6,13 +6,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.repository.SongRepository
+import com.example.music_app.data.repository.SocialRepository
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
 class YourLikesViewModel : ViewModel() {
 
-    private val repository = SongRepository()
+    private val repository = SocialRepository()
 
     private val _likedSongs = MutableLiveData<List<Song>>()
     val likedSongs: LiveData<List<Song>> = _likedSongs

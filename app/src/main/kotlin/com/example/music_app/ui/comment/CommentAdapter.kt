@@ -1,9 +1,10 @@
 package com.example.music_app.ui.comment
 
-import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.music_app.R
@@ -15,23 +16,17 @@ class CommentAdapter(
     private var currentUserId: String = "",
     private val onMoreClick: (Comment, View) -> Unit,
     private val onTimelineClick: (Comment) -> Unit
-) : RecyclerView.Adapter<CommentAdapter.CommentViewHolder>() {
+) : ListAdapter<Comment, CommentAdapter.CommentViewHolder>(CommentDiffCallback) {
 
-    private val comments = mutableListOf<Comment>()
-
-    @SuppressLint("NotifyDataSetChanged")
     fun setData(newComments: List<Comment>) {
-        comments.clear()
-        comments.addAll(newComments)
-        notifyDataSetChanged()
+        submitList(newComments)
     }
 
-    @SuppressLint("NotifyDataSetChanged")
     fun updateCurrentUserId(newUserId: String) {
         if (currentUserId == newUserId) return
 
         currentUserId = newUserId
-        notifyDataSetChanged()
+        notifyItemRangeChanged(0, itemCount)
     }
 
     inner class CommentViewHolder(
@@ -114,10 +109,8 @@ class CommentAdapter(
     }
 
     override fun onBindViewHolder(holder: CommentViewHolder, position: Int) {
-        holder.bind(comments[position])
+        holder.bind(getItem(position))
     }
-
-    override fun getItemCount(): Int = comments.size
 
     private fun formatTimelinePosition(positionMs: Long): String {
         val safePosition = positionMs.coerceAtLeast(0L)
@@ -161,6 +154,16 @@ class CommentAdapter(
             hours > 0 -> context.getString(R.string.time_hours_ago, hours)
             minutes > 0 -> context.getString(R.string.time_minutes_ago, minutes)
             else -> context.getString(R.string.time_now)
+        }
+    }
+
+    private object CommentDiffCallback : DiffUtil.ItemCallback<Comment>() {
+        override fun areItemsTheSame(oldItem: Comment, newItem: Comment): Boolean {
+            return oldItem.id == newItem.id
+        }
+
+        override fun areContentsTheSame(oldItem: Comment, newItem: Comment): Boolean {
+            return oldItem == newItem
         }
     }
 }

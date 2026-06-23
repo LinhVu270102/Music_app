@@ -5,6 +5,7 @@ import com.example.music_app.data.model.SearchResultBundle
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.SongStatus
 import com.example.music_app.data.model.User
+import com.example.music_app.data.model.toPlaylist
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -14,7 +15,7 @@ class SearchRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
     private val soundCloudRepository = SoundCloudRepository()
-    private val soundCloudSocialRepository = SoundCloudSocialRepository()
+    private val soundCloudPlaylistRepository = SoundCloudPlaylistRepository()
 
     suspend fun search(keyword: String): SearchResultBundle {
         val query = keyword.trim()
@@ -126,12 +127,7 @@ class SearchRepository {
         }
 
         val apiPlaylists = try {
-            soundCloudSocialRepository.getUserApiPlaylists()
-                .map { apiPlaylist ->
-                    soundCloudSocialRepository.run {
-                        apiPlaylist.toPlaylist()
-                    }
-                }
+            soundCloudPlaylistRepository.getUserApiPlaylists().map { it.toPlaylist() }
                 .filter { playlist ->
                     playlist.matchesKeyword(query)
                 }

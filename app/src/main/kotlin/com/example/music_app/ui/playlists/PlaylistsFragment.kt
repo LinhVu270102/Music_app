@@ -11,7 +11,6 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
 import com.example.music_app.databinding.FragmentPlaylistsBinding
-import com.example.music_app.data.repository.SoundCloudSocialRepository
 import com.example.music_app.data.model.Playlist
 import android.app.Dialog
 import android.graphics.Color
@@ -59,7 +58,7 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
                     .commit()
             },
             onDeleteClick = { playlist ->
-                if (SoundCloudSocialRepository.isSoundCloudApiPlaylist(playlist)) {
+                if (viewModel.isSoundCloudPlaylist(playlist)) {
                     Toast.makeText(
                         requireContext(),
                         getString(R.string.api_playlist_delete_not_supported),

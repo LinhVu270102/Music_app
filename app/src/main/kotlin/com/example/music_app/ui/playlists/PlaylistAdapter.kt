@@ -6,11 +6,11 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.music_app.data.model.Playlist
+import com.example.music_app.data.model.isSoundCloudApiPlaylist
 import com.example.music_app.databinding.ItemPlaylistBinding
 import androidx.core.view.isVisible
 import com.bumptech.glide.Glide
 import com.example.music_app.R
-import com.example.music_app.data.repository.SoundCloudSocialRepository
 
 class PlaylistAdapter(
     private val onItemClick: (Playlist) -> Unit,
@@ -27,7 +27,7 @@ class PlaylistAdapter(
 
         fun bind(playlist: Playlist) {
             val context = binding.root.context
-            val isApiPlaylist = SoundCloudSocialRepository.isSoundCloudApiPlaylist(playlist)
+            val isApiPlaylist = playlist.isSoundCloudApiPlaylist()
 
             binding.txtPlaylistName.text = playlist.name
 

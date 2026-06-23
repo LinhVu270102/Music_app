@@ -6,15 +6,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.Playlist
-import com.example.music_app.data.repository.SongRepository
+import com.example.music_app.data.model.isSoundCloudApiPlaylist
+import com.example.music_app.data.model.toPlaylist
+import com.example.music_app.data.repository.PlaylistRepository
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
-import com.example.music_app.data.repository.SoundCloudSocialRepository
+import com.example.music_app.data.repository.SoundCloudPlaylistRepository
 
 class PlaylistsViewModel : ViewModel() {
 
-    private val repository = SongRepository()
-    private val soundCloudSocialRepository = SoundCloudSocialRepository()
+    private val repository = PlaylistRepository()
+    private val soundCloudPlaylistRepository = SoundCloudPlaylistRepository()
 
     private val _playlists = MutableLiveData<List<Playlist>>()
     val playlists: LiveData<List<Playlist>> = _playlists
@@ -29,12 +31,7 @@ class PlaylistsViewModel : ViewModel() {
 
                 val apiPlaylists =
                     try {
-                        soundCloudSocialRepository.getUserApiPlaylists()
-                            .map { playlist ->
-                                with(soundCloudSocialRepository) {
-                                    playlist.toPlaylist()
-                                }
-                            }
+                        soundCloudPlaylistRepository.getUserApiPlaylists().map { it.toPlaylist() }
                     } catch (_: Exception) {
                         emptyList()
                     }
@@ -76,6 +73,10 @@ class PlaylistsViewModel : ViewModel() {
                 _errorMessageResId.value = R.string.delete_playlist_failed
             }
         }
+    }
+
+    fun isSoundCloudPlaylist(playlist: Playlist): Boolean {
+        return playlist.isSoundCloudApiPlaylist()
     }
 
     fun clearErrorMessage() {

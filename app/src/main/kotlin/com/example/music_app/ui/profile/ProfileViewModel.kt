@@ -8,7 +8,9 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.User
+import com.example.music_app.data.repository.PlaylistRepository
 import com.example.music_app.data.repository.SongRepository
+import com.example.music_app.data.repository.SocialRepository
 import com.example.music_app.data.repository.UserRepository
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
@@ -16,6 +18,8 @@ import kotlinx.coroutines.launch
 class ProfileViewModel : ViewModel() {
 
     private val songRepository = SongRepository()
+    private val playlistRepository = PlaylistRepository()
+    private val socialRepository = SocialRepository()
     private val userRepository = UserRepository()
 
     private var targetUserId: String = ""
@@ -77,14 +81,14 @@ class ProfileViewModel : ViewModel() {
 
                 val playlists =
                     if (isOwn) {
-                        songRepository.getMyPlaylists()
+                        playlistRepository.getMyPlaylists()
                     } else {
-                        songRepository.getPublicPlaylistsByUserId(targetUserId)
+                        playlistRepository.getPublicPlaylistsByUserId(targetUserId)
                     }
 
                 val following =
                     if (!isOwn && currentUserId.isNotBlank()) {
-                        songRepository.isFollowing(targetUserId)
+                        socialRepository.isFollowing(targetUserId)
                     } else {
                         false
                     }
@@ -107,7 +111,7 @@ class ProfileViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                val following = songRepository.toggleFollowUser(userId)
+                val following = socialRepository.toggleFollow(userId)
                 _isFollowing.value = following
                 loadProfile(userId)
             } catch (e: AppException) {

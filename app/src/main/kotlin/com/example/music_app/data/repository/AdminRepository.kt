@@ -9,7 +9,10 @@ import com.example.music_app.data.model.ReportTargetType
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.SongStatus
 import com.example.music_app.data.model.UserRole
-import com.example.music_app.data.remote.FirebaseService
+import com.example.music_app.data.remote.CommentRemoteDataSource
+import com.example.music_app.data.remote.ReportRemoteDataSource
+import com.example.music_app.data.remote.SongRemoteDataSource
+import com.example.music_app.data.remote.UserRemoteDataSource
 import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -17,7 +20,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 class AdminRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
-    private val firebaseService = FirebaseService(firestore)
+    private val songRemoteDataSource = SongRemoteDataSource(firestore)
+    private val commentRemoteDataSource = CommentRemoteDataSource(firestore)
+    private val userRemoteDataSource = UserRemoteDataSource(firestore)
+    private val reportRemoteDataSource = ReportRemoteDataSource(firestore)
     private val auth = FirebaseAuth.getInstance()
 
     // =========================
@@ -26,7 +32,7 @@ class AdminRepository {
     suspend fun isCurrentUserAdmin(): Boolean {
         val userId = auth.currentUser?.uid ?: return false
 
-        val user = firebaseService.getUserById(userId) ?: return false
+        val user = userRemoteDataSource.getById(userId) ?: return false
 
         return user.role == UserRole.ADMIN
     }
@@ -35,7 +41,7 @@ class AdminRepository {
         val userId = auth.currentUser?.uid
             ?: throw AppException(R.string.not_logged_in)
 
-        val user = firebaseService.getUserById(userId)
+        val user = userRemoteDataSource.getById(userId)
             ?: throw AppException(R.string.account_not_found)
 
         if (user.role != UserRole.ADMIN) {
@@ -52,9 +58,9 @@ class AdminRepository {
     suspend fun getDashboardStats(): AdminDashboardStats {
         requireAdmin()
 
-        val songs = firebaseService.getAllSongsWithIds()
-        val reports = firebaseService.getPendingReports()
-        val reportedComments = firebaseService.getReportedComments()
+        val songs = songRemoteDataSource.getAllSongsWithIds()
+        val reports = reportRemoteDataSource.getPending()
+        val reportedComments = commentRemoteDataSource.getReported()
 
         return AdminDashboardStats(
             pendingSongs = songs.count { song ->
@@ -84,7 +90,7 @@ class AdminRepository {
     suspend fun getPendingSongs(): List<Song> {
         requireAdmin()
 
-        return firebaseService.getSongsByStatus(SongStatus.PENDING)
+        return songRemoteDataSource.getSongsByStatus(SongStatus.PENDING)
             .filter { song ->
                 !song.isDeleted
             }
@@ -93,7 +99,7 @@ class AdminRepository {
     suspend fun approveSong(songId: String) {
         val adminId = requireAdmin()
 
-        firebaseService.updateSongStatus(
+        songRemoteDataSource.updateSongStatus(
             songId = songId,
             status = SongStatus.APPROVED,
             reviewedBy = adminId,
@@ -107,7 +113,7 @@ class AdminRepository {
     ) {
         val adminId = requireAdmin()
 
-        firebaseService.updateSongStatus(
+        songRemoteDataSource.updateSongStatus(
             songId = songId,
             status = SongStatus.REJECTED,
             reviewedBy = adminId,
@@ -118,7 +124,7 @@ class AdminRepository {
     suspend fun hideSong(songId: String) {
         val adminId = requireAdmin()
 
-        firebaseService.softDeleteSong(
+        songRemoteDataSource.softDeleteSong(
             songId = songId,
             deletedBy = adminId
         )
@@ -130,7 +136,7 @@ class AdminRepository {
     ) {
         requireAdmin()
 
-        firebaseService.updateSongCommentPermission(
+        songRemoteDataSource.updateSongCommentPermission(
             songId = songId,
             allowComments = allowComments
         )
@@ -142,13 +148,13 @@ class AdminRepository {
 
     suspend fun getPendingReports(): List<Report> {
         requireAdmin()
-        return firebaseService.getPendingReports()
+        return reportRemoteDataSource.getPending()
     }
 
     suspend fun resolveReport(reportId: String) {
         val adminId = requireAdmin()
 
-        firebaseService.updateReportStatus(
+        reportRemoteDataSource.updateStatus(
             reportId = reportId,
             status = ReportStatus.RESOLVED,
             reviewedBy = adminId
@@ -158,7 +164,7 @@ class AdminRepository {
     suspend fun rejectReport(reportId: String) {
         val adminId = requireAdmin()
 
-        firebaseService.updateReportStatus(
+        reportRemoteDataSource.updateStatus(
             reportId = reportId,
             status = ReportStatus.REJECTED,
             reviewedBy = adminId
@@ -170,7 +176,7 @@ class AdminRepository {
 
         when (report.targetType) {
             ReportTargetType.SONG -> {
-                firebaseService.softDeleteSong(
+                songRemoteDataSource.softDeleteSong(
                     songId = report.targetId,
                     deletedBy = adminId
                 )
@@ -183,7 +189,7 @@ class AdminRepository {
                     .orEmpty()
 
                 if (songId.isNotBlank()) {
-                    firebaseService.softDeleteComment(
+                    commentRemoteDataSource.softDelete(
                         songId = songId,
                         commentId = report.targetId,
                         deletedBy = adminId
@@ -192,7 +198,7 @@ class AdminRepository {
             }
         }
 
-        firebaseService.updateReportStatus(
+        reportRemoteDataSource.updateStatus(
             reportId = report.id,
             status = ReportStatus.RESOLVED,
             reviewedBy = adminId
@@ -205,13 +211,13 @@ class AdminRepository {
 
     suspend fun getReportedComments(): List<Comment> {
         requireAdmin()
-        return firebaseService.getReportedComments()
+        return commentRemoteDataSource.getReported()
     }
 
     suspend fun hideComment(comment: Comment) {
         val adminId = requireAdmin()
 
-        firebaseService.softDeleteComment(
+        commentRemoteDataSource.softDelete(
             songId = comment.songId,
             commentId = comment.id,
             deletedBy = adminId

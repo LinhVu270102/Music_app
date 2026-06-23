@@ -1,6 +1,5 @@
 package com.example.music_app.ui.comment
 
-import android.app.AlertDialog
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -13,16 +12,12 @@ import com.example.music_app.data.model.Comment
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentCommentBinding
 import com.example.music_app.main.MainActivity
-import android.graphics.Color
-import androidx.core.graphics.drawable.toDrawable
-import com.example.music_app.databinding.DialogCommentOptionsBinding
-import com.example.music_app.databinding.DialogReportCommentBinding
 import com.example.music_app.player.PlayerManager
 import androidx.lifecycle.lifecycleScope
 import com.example.music_app.ui.player.PlaybackLauncher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.example.music_app.databinding.DialogConfirmActionBinding
+
 class CommentFragment : Fragment(R.layout.fragment_comment) {
 
     private var _binding: FragmentCommentBinding? = null
@@ -30,6 +25,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
 
     private val viewModel: CommentViewModel by viewModels()
     private lateinit var adapter: CommentAdapter
+    private lateinit var dialogController: CommentDialogController
 
     private var songId: String = ""
     private var currentSong: Song? = null
@@ -56,6 +52,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         songId = arguments?.getString(ARG_SONG_ID).orEmpty()
         activeUserId = viewModel.getCurrentUserId()
 
+        setupDialogController()
         setupRecyclerView()
         setupListeners()
         observeViewModel()
@@ -76,11 +73,31 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         viewModel.loadComments(songId)
     }
 
+    private fun setupDialogController() {
+        dialogController = CommentDialogController(
+            fragment = this,
+            currentUserId = viewModel::getCurrentUserId,
+            songOwnerId = { currentSong?.uploaderId.orEmpty() },
+            onReportComment = { comment, reason, description ->
+                viewModel.reportComment(
+                    songId = songId,
+                    comment = comment,
+                    reason = reason,
+                    description = description
+                )
+            },
+            onHideComment = { comment ->
+                viewModel.hideComment(songId, comment)
+            },
+            showMessage = ::showToast
+        )
+    }
+
     private fun setupRecyclerView() {
         adapter = CommentAdapter(
             currentUserId = activeUserId,
             onMoreClick = { comment, _ ->
-                showCommentOptions(comment)
+                dialogController.showOptions(comment)
             },
             onTimelineClick = { comment ->
                 seekToCommentTimeline(comment)
@@ -217,123 +234,6 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
             minutes,
             seconds
         )
-    }
-
-    private fun showCommentOptions(comment: Comment) {
-        val dialogBinding = DialogCommentOptionsBinding.inflate(layoutInflater)
-
-        val dialog = AlertDialog.Builder(requireContext())
-            .setView(dialogBinding.root)
-            .create()
-
-        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
-        dialogBinding.txtCommentPreview.text = comment.content.ifBlank {
-            getString(R.string.no_report_description)
-        }
-
-        dialogBinding.actionHideComment.visibility =
-            if (canHideComment(comment)) {
-                View.VISIBLE
-            } else {
-                View.GONE
-            }
-
-        dialogBinding.actionReportComment.setOnClickListener {
-            dialog.dismiss()
-            showReportCommentDialog(comment)
-        }
-
-        dialogBinding.actionHideComment.setOnClickListener {
-            dialog.dismiss()
-            confirmHideComment(comment)
-        }
-
-        dialog.show()
-        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
-    }
-
-    private fun canHideComment(comment: Comment): Boolean {
-        val songOwnerId = currentSong?.uploaderId.orEmpty()
-
-        val currentUserId = viewModel.getCurrentUserId()
-        return comment.userId == currentUserId || songOwnerId == currentUserId
-    }
-
-    private fun showReportCommentDialog(comment: Comment) {
-        val dialogBinding = DialogReportCommentBinding.inflate(layoutInflater)
-
-        val dialog = AlertDialog.Builder(requireContext())
-            .setView(dialogBinding.root)
-            .create()
-
-        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
-        dialogBinding.txtReportedCommentPreview.text =
-            getString(
-                R.string.report_comment_content_format,
-                comment.displayName.ifBlank { getString(R.string.unknown_user) },
-                comment.content
-            )
-
-        dialogBinding.radioCommentSpam.isChecked = true
-
-        dialogBinding.btnCancelCommentReport.setOnClickListener {
-            dialog.dismiss()
-        }
-
-        dialogBinding.btnSubmitCommentReport.setOnClickListener {
-            val reason = when (dialogBinding.radioCommentReportReasons.checkedRadioButtonId) {
-                R.id.radioCommentSpam -> getString(R.string.report_reason_spam)
-                R.id.radioCommentOffensive -> getString(R.string.report_reason_offensive)
-                R.id.radioCommentHarassment -> getString(R.string.report_reason_harassment)
-                R.id.radioCommentOther -> getString(R.string.report_reason_other)
-                else -> ""
-            }
-
-            if (reason.isBlank()) {
-                showToast(getString(R.string.report_reason_empty))
-                return@setOnClickListener
-            }
-
-            val description = dialogBinding.edtCommentReportDescription.text
-                ?.toString()
-                ?.trim()
-                .orEmpty()
-
-            dialog.dismiss()
-
-            viewModel.reportComment(
-                songId = songId,
-                comment = comment,
-                reason = reason,
-                description = description
-            )
-        }
-
-        dialog.show()
-    }
-
-    private fun confirmHideComment(comment: Comment) {
-        val dialogBinding = DialogConfirmActionBinding.inflate(layoutInflater)
-
-        val dialog = AlertDialog.Builder(requireContext())
-            .setView(dialogBinding.root)
-            .create()
-
-        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
-        dialogBinding.txtDialogTitle.text = getString(R.string.hide_comment)
-        dialogBinding.txtDialogMessage.text = getString(R.string.hide_comment_confirm)
-        dialogBinding.btnConfirm.text = getString(R.string.hide)
-
-        dialogBinding.btnCancel.setOnClickListener {
-            dialog.dismiss()
-        }
-
-        dialogBinding.btnConfirm.setOnClickListener {
-            dialog.dismiss()
-            viewModel.hideComment(songId, comment)
-        }
-
-        dialog.show()
     }
 
     override fun onResume() {

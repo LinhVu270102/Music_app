@@ -2,6 +2,8 @@ package com.example.music_app.ui.search
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.music_app.R
@@ -17,18 +19,14 @@ class SearchAdapter(
     private val onApiArtistProfileClick: (SearchResultItem.ApiArtistProfile) -> Unit,
     private val onPlaylistClick: (Playlist) -> Unit,
     private val onRecentQueryClick: (String) -> Unit
-) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-
-    private val items = mutableListOf<SearchResultItem>()
+) : ListAdapter<SearchResultItem, RecyclerView.ViewHolder>(SearchResultDiffCallback) {
 
     fun setData(newItems: List<SearchResultItem>) {
-        items.clear()
-        items.addAll(newItems)
-        notifyDataSetChanged()
+        submitList(newItems)
     }
 
     override fun getItemViewType(position: Int): Int {
-        return when (items[position]) {
+        return when (getItem(position)) {
             is SearchResultItem.Header -> VIEW_TYPE_HEADER
             is SearchResultItem.Track -> VIEW_TYPE_RESULT
             is SearchResultItem.Profile -> VIEW_TYPE_RESULT
@@ -63,7 +61,7 @@ class SearchAdapter(
         holder: RecyclerView.ViewHolder,
         position: Int
     ) {
-        when (val item = items[position]) {
+        when (val item = getItem(position)) {
             is SearchResultItem.Header -> {
                 (holder as HeaderViewHolder).bind(item)
             }
@@ -89,10 +87,6 @@ class SearchAdapter(
         }
     }
 
-    override fun getItemCount(): Int {
-        return items.size
-    }
-
     inner class HeaderViewHolder(
         private val binding: ItemSearchSectionHeaderBinding
     ) : RecyclerView.ViewHolder(binding.root) {
@@ -111,6 +105,7 @@ class SearchAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bindTrack(song: Song) {
+            resetCoverImage()
             binding.txtTitle.text = song.title
             binding.txtArtist.text = song.artist
 
@@ -127,6 +122,7 @@ class SearchAdapter(
         }
 
         fun bindProfile(user: User) {
+            resetCoverImage()
             val displayName = user.displayName.ifBlank {
                 user.email
             }
@@ -150,6 +146,7 @@ class SearchAdapter(
         }
 
         fun bindPlaylist(playlist: Playlist) {
+            resetCoverImage()
             val context = binding.root.context
 
             binding.txtTitle.text = playlist.name
@@ -168,6 +165,7 @@ class SearchAdapter(
             }
         }
         fun bindApiArtistProfile(profile: SearchResultItem.ApiArtistProfile) {
+            resetCoverImage()
             val context = binding.root.context
 
             binding.txtTitle.text =
@@ -209,6 +207,12 @@ class SearchAdapter(
                 onRecentQueryClick(query)
             }
         }
+
+        private fun resetCoverImage() {
+            binding.imgCover.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            binding.imgCover.setPadding(0, 0, 0, 0)
+        }
+
         private fun getSourceLabel(source: String): String {
             val context = binding.root.context
 
@@ -223,5 +227,33 @@ class SearchAdapter(
     companion object {
         private const val VIEW_TYPE_HEADER = 1
         private const val VIEW_TYPE_RESULT = 2
+
+        private val SearchResultDiffCallback = object : DiffUtil.ItemCallback<SearchResultItem>() {
+            override fun areItemsTheSame(
+                oldItem: SearchResultItem,
+                newItem: SearchResultItem
+            ): Boolean {
+                return when {
+                    oldItem is SearchResultItem.Header && newItem is SearchResultItem.Header ->
+                        oldItem.titleResId == newItem.titleResId
+                    oldItem is SearchResultItem.Track && newItem is SearchResultItem.Track ->
+                        oldItem.song.id == newItem.song.id
+                    oldItem is SearchResultItem.Profile && newItem is SearchResultItem.Profile ->
+                        oldItem.user.uid == newItem.user.uid
+                    oldItem is SearchResultItem.ApiArtistProfile && newItem is SearchResultItem.ApiArtistProfile ->
+                        oldItem.artistName == newItem.artistName && oldItem.source == newItem.source
+                    oldItem is SearchResultItem.PlaylistItem && newItem is SearchResultItem.PlaylistItem ->
+                        oldItem.playlist.id == newItem.playlist.id
+                    oldItem is SearchResultItem.RecentQuery && newItem is SearchResultItem.RecentQuery ->
+                        oldItem.query == newItem.query
+                    else -> false
+                }
+            }
+
+            override fun areContentsTheSame(
+                oldItem: SearchResultItem,
+                newItem: SearchResultItem
+            ): Boolean = oldItem == newItem
+        }
     }
 }

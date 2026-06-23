@@ -14,7 +14,6 @@ import com.bumptech.glide.Glide
 import com.example.music_app.R
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.repository.SoundCloudSocialRepository
 import com.example.music_app.databinding.DialogConfirmActionBinding
 import com.example.music_app.databinding.FragmentPlaylistDetailBinding
 import com.example.music_app.player.PlayerManager
@@ -276,7 +275,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
     }
 
     private fun isSoundCloudApiPlaylist(): Boolean {
-        return SoundCloudSocialRepository.isSoundCloudApiPlaylist(
+        return viewModel.isSoundCloudPlaylist(
             playlistId = playlistId,
             ownerId = ownerId
         )

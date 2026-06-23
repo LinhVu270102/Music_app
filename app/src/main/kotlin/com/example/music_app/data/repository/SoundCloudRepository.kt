@@ -5,6 +5,7 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.remote.soundcloud.SoundCloudRetrofitClient
 import com.example.music_app.data.remote.soundcloud.getSoundCloudTrackId
 import com.example.music_app.data.remote.soundcloud.toSong
+import com.example.music_app.data.remote.soundcloud.model.SoundCloudArtistProfileResponse
 import com.example.music_app.data.model.Playlist
 import org.json.JSONArray
 import org.json.JSONObject
@@ -26,6 +27,38 @@ class SoundCloudRepository {
             .filter { it.access.isBlank() || it.access == "playable" }
             .map { it.toSong() }
     }
+
+    /** Returns the public track count used to enrich a SoundCloud artist search result. */
+    suspend fun getArtistTrackCount(artistName: String, limit: Int = 20): Int {
+        if (artistName.isBlank()) return 0
+
+        return try {
+            val response = api.getArtistTracks(
+                artist = artistName,
+                limit = limit
+            )
+
+            if (!response.isSuccessful) return 0
+
+            val body = response.body()?.string().orEmpty()
+            if (body.isBlank()) return 0
+
+            JSONObject(body).optJSONArray("results")?.length() ?: 0
+        } catch (_: Exception) {
+            0
+        }
+    }
+
+    suspend fun getArtistProfile(
+        artistName: String,
+        limit: Int = 20
+    ): SoundCloudArtistProfileResponse {
+        return api.getArtistProfile(
+            artist = artistName,
+            limit = limit
+        )
+    }
+
     suspend fun searchPlaylists(
         query: String,
         limit: Int = 20
