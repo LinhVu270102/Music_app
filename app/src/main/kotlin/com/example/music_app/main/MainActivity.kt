@@ -19,9 +19,9 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.UserRole
 import com.example.music_app.data.remote.FirebaseService
 import com.example.music_app.data.repository.SongRepository
-import com.example.music_app.data.repository.ArtistFollowState
-import com.example.music_app.data.repository.PlayerInteractionState
-import com.example.music_app.data.repository.SongLikeState
+import com.example.music_app.player.state.ArtistFollowState
+import com.example.music_app.player.state.PlayerInteractionState
+import com.example.music_app.player.state.SongLikeState
 import com.example.music_app.data.repository.SoundCloudSocialRepository
 import com.example.music_app.databinding.ActivityMainBinding
 import com.example.music_app.player.PlayerManager

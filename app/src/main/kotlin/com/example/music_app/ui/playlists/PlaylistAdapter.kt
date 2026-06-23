@@ -2,6 +2,8 @@ package com.example.music_app.ui.playlists
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.databinding.ItemPlaylistBinding
@@ -13,14 +15,10 @@ import com.example.music_app.data.repository.SoundCloudSocialRepository
 class PlaylistAdapter(
     private val onItemClick: (Playlist) -> Unit,
     private val onDeleteClick: (Playlist) -> Unit
-) : RecyclerView.Adapter<PlaylistAdapter.PlaylistViewHolder>() {
-
-    private val playlists = mutableListOf<Playlist>()
+) : ListAdapter<Playlist, PlaylistAdapter.PlaylistViewHolder>(DiffCallback) {
 
     fun setData(newPlaylists: List<Playlist>) {
-        playlists.clear()
-        playlists.addAll(newPlaylists)
-        notifyDataSetChanged()
+        submitList(newPlaylists.toList())
     }
 
     inner class PlaylistViewHolder(
@@ -72,8 +70,18 @@ class PlaylistAdapter(
     }
 
     override fun onBindViewHolder(holder: PlaylistViewHolder, position: Int) {
-        holder.bind(playlists[position])
+        holder.bind(getItem(position))
     }
 
-    override fun getItemCount(): Int = playlists.size
+    companion object {
+        private val DiffCallback = object : DiffUtil.ItemCallback<Playlist>() {
+            override fun areItemsTheSame(oldItem: Playlist, newItem: Playlist): Boolean {
+                return oldItem.id == newItem.id
+            }
+
+            override fun areContentsTheSame(oldItem: Playlist, newItem: Playlist): Boolean {
+                return oldItem == newItem
+            }
+        }
+    }
 }
