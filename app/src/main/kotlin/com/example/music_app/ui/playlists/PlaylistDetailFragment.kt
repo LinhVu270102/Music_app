@@ -1,32 +1,29 @@
 package com.example.music_app.ui.playlists
 
 import android.app.AlertDialog
-import android.app.Dialog
+import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
 import com.example.music_app.R
-import com.example.music_app.data.model.PlaylistPickerItem
+import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SongRepository
+import com.example.music_app.data.repository.SoundCloudSocialRepository
+import com.example.music_app.databinding.DialogConfirmActionBinding
 import com.example.music_app.databinding.FragmentPlaylistDetailBinding
+import com.example.music_app.player.PlayerManager
+import com.example.music_app.ui.library.PlaylistDetailViewModel
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
-import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
-import com.example.music_app.data.repository.SoundCloudSocialRepository
-import com.example.music_app.ui.library.PlaylistDetailViewModel
-import android.graphics.Color
-import androidx.core.graphics.drawable.toDrawable
-import com.example.music_app.databinding.DialogConfirmActionBinding
-import com.example.music_app.databinding.DialogInputActionBinding
-import com.example.music_app.databinding.DialogSelectPlaylistBinding
-import com.example.music_app.ui.player.PlaylistPickerAdapter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,6 +43,8 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
     private var currentSongs: List<Song> = emptyList()
     private var ownerId: String = ""
     private var coverUrl: String = ""
+    private var isCurrentPlaylistLiked = false
+
     private fun isOwnerPlaylist(): Boolean {
         if (isSoundCloudApiPlaylist()) return false
 
@@ -86,18 +85,17 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         playlistId = arguments?.getString(ARG_PLAYLIST_ID).orEmpty()
         playlistName = arguments?.getString(ARG_PLAYLIST_NAME).orEmpty()
 
-        binding.tvPlaylistName.text =
-            playlistName.ifBlank { getString(R.string.playlist) }
-        binding.tvPlaylistSubtitle.text =
-            if (isSoundCloudApiPlaylist()) {
-                getString(R.string.soundcloud_api_playlist_subtitle)
-            } else {
-                getString(R.string.playlist_detail_subtitle)
-            }
+        binding.tvPlaylistName.text = playlistName.ifBlank { getString(R.string.playlist) }
+        binding.tvPlaylistSubtitle.text = if (isSoundCloudApiPlaylist()) {
+            getString(R.string.soundcloud_api_playlist_subtitle)
+        } else {
+            getString(R.string.playlist_detail_subtitle)
+        }
 
         setupRecyclerView()
         setupListeners()
         observeViewModel()
+        updatePlaylistActions()
 
         viewModel.loadPlaylistSongs(
             playlistId = playlistId,
@@ -109,6 +107,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         super.onResume()
 
         if (playlistId.isNotBlank()) {
+            updatePlaylistActions()
             viewModel.loadPlaylistSongs(
                 playlistId = playlistId,
                 ownerId = ownerId
@@ -118,9 +117,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
 
     private fun setupRecyclerView() {
         adapter = SongAdapter(
-            onItemClick = { song ->
-                openPlayer(song)
-            },
+            onItemClick = { song -> openPlayer(song) },
             onItemLongClick = { song ->
                 if (isOwnerPlaylist()) {
                     confirmRemoveSong(song)
@@ -139,7 +136,6 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
 
         binding.btnPlayAll.setOnClickListener {
             val firstSong = currentSongs.firstOrNull()
-
             if (firstSong == null) {
                 showToast(getString(R.string.no_songs_in_playlist))
             } else {
@@ -147,8 +143,12 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             }
         }
 
-        binding.btnSavePlaylist.setOnClickListener {
-            showSavePlaylistDialog()
+        binding.btnAddCurrentSong.setOnClickListener {
+            addCurrentSongToPlaylist()
+        }
+
+        binding.btnTogglePlaylistLike.setOnClickListener {
+            togglePlaylistLike()
         }
     }
 
@@ -158,8 +158,6 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             adapter.setData(songs)
 
             binding.tvEmpty.isVisible = songs.isEmpty()
-            binding.btnSavePlaylist.isVisible =
-                !isOwnerPlaylist() && songs.isNotEmpty()
             binding.tvSongCount.text =
                 getString(R.string.playlist_song_count_format, songs.size)
 
@@ -179,6 +177,94 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearErrorMessage()
+            }
+        }
+    }
+
+    private fun updatePlaylistActions() {
+        val isOwner = isOwnerPlaylist()
+        binding.btnAddCurrentSong.isVisible = isOwner
+        binding.btnTogglePlaylistLike.isVisible = !isOwner
+
+        if (!isOwner) {
+            loadPlaylistLikeState()
+        }
+    }
+
+    private fun loadPlaylistLikeState() {
+        if (playlistId.isBlank()) return
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            isCurrentPlaylistLiked = withContext(Dispatchers.IO) {
+                songRepository.isPlaylistLiked(playlistId)
+            }
+            updatePlaylistLikeButton()
+        }
+    }
+
+    private fun togglePlaylistLike() {
+        if (isOwnerPlaylist()) return
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                isCurrentPlaylistLiked = withContext(Dispatchers.IO) {
+                    songRepository.togglePlaylistLike(currentPlaylist())
+                }
+                updatePlaylistLikeButton()
+                showToast(
+                    getString(
+                        if (isCurrentPlaylistLiked) {
+                            R.string.playlist_liked
+                        } else {
+                            R.string.playlist_unliked
+                        }
+                    )
+                )
+            } catch (_: Exception) {
+                showToast(getString(R.string.update_playlist_like_failed))
+            }
+        }
+    }
+
+    private fun updatePlaylistLikeButton() {
+        binding.btnTogglePlaylistLike.text = getString(
+            if (isCurrentPlaylistLiked) {
+                R.string.unlike_playlist
+            } else {
+                R.string.like_playlist
+            }
+        )
+    }
+
+    private fun currentPlaylist(): Playlist {
+        return Playlist(
+            id = playlistId,
+            name = playlistName,
+            coverUrl = coverUrl.ifBlank { currentSongs.firstOrNull()?.coverUrl.orEmpty() },
+            ownerId = ownerId,
+            isPublic = true,
+            songsCount = currentSongs.size.toLong()
+        )
+    }
+
+    private fun addCurrentSongToPlaylist() {
+        if (!isOwnerPlaylist()) return
+
+        val song = PlayerManager.currentSong.value
+        if (song == null) {
+            showToast(getString(R.string.no_song_playing))
+            return
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    songRepository.addSongToPlaylist(playlistId, song)
+                }
+                showToast(getString(R.string.song_added_to_playlist))
+                viewModel.loadPlaylistSongs(playlistId, ownerId)
+            } catch (_: Exception) {
+                showToast(getString(R.string.add_to_playlist_failed))
             }
         }
     }
@@ -221,121 +307,13 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         dialog.show()
     }
 
-    private fun showSavePlaylistDialog() {
-        if (currentSongs.isEmpty()) {
-            showToast(getString(R.string.no_songs_in_playlist))
-            return
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val playlists = withContext(Dispatchers.IO) {
-                    songRepository.getMyPlaylists()
-                }
-
-                if (playlists.isEmpty()) {
-                    showCreatePlaylistThenSave()
-                    return@launch
-                }
-
-                val dialogBinding = DialogSelectPlaylistBinding.inflate(layoutInflater)
-                val dialog = AlertDialog.Builder(requireContext())
-                    .setView(dialogBinding.root)
-                    .create()
-
-                dialogBinding.txtDialogTitle.text = getString(R.string.save_playlist_to_mine)
-                dialogBinding.txtDialogSubtitle.text =
-                    getString(R.string.save_playlist_dialog_subtitle)
-
-                val adapter = PlaylistPickerAdapter { item ->
-                    dialog.dismiss()
-                    addSongsToMyPlaylist(item.id)
-                }
-
-                dialogBinding.rvPlaylists.layoutManager = LinearLayoutManager(requireContext())
-                dialogBinding.rvPlaylists.adapter = adapter
-                adapter.setData(
-                    playlists.map { playlist ->
-                        PlaylistPickerItem(
-                            id = playlist.id,
-                            name = playlist.name,
-                            subtitle = getString(
-                                R.string.playlist_songs_count,
-                                playlist.songsCount
-                            )
-                        )
-                    }
-                )
-
-                dialogBinding.btnCreatePlaylist.setOnClickListener {
-                    dialog.dismiss()
-                    showCreatePlaylistThenSave()
-                }
-                dialogBinding.btnClose.setOnClickListener { dialog.dismiss() }
-
-                dialog.show()
-                dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
-            } catch (_: Exception) {
-                showToast(getString(R.string.load_playlists_failed))
-            }
-        }
-    }
-
-    private fun showCreatePlaylistThenSave() {
-        val dialogBinding = DialogInputActionBinding.inflate(layoutInflater)
-        val dialog = Dialog(requireContext())
-        dialog.setContentView(dialogBinding.root)
-
-        dialogBinding.txtDialogTitle.text = getString(R.string.create_playlist)
-        dialogBinding.txtDialogMessage.text = getString(R.string.create_saved_playlist_message)
-        dialogBinding.edtDialogInput.hint = getString(R.string.playlist_name_hint)
-        dialogBinding.btnConfirm.text = getString(R.string.create)
-        dialogBinding.btnCancel.setOnClickListener { dialog.dismiss() }
-
-        dialogBinding.btnConfirm.setOnClickListener {
-            val name = dialogBinding.edtDialogInput.text?.toString()?.trim().orEmpty()
-            if (name.isBlank()) {
-                showToast(getString(R.string.playlist_name_empty))
-                return@setOnClickListener
-            }
-
-            dialog.dismiss()
-            viewLifecycleOwner.lifecycleScope.launch {
-                try {
-                    val playlist = withContext(Dispatchers.IO) {
-                        songRepository.createPlaylist(name)
-                    }
-                    addSongsToMyPlaylist(playlist.id)
-                } catch (_: Exception) {
-                    showToast(getString(R.string.create_playlist_failed))
-                }
-            }
-        }
-
-        dialog.show()
-        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
-    }
-
-    private fun addSongsToMyPlaylist(targetPlaylistId: String) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                withContext(Dispatchers.IO) {
-                    currentSongs.forEach { song ->
-                        songRepository.addSongToPlaylist(targetPlaylistId, song)
-                    }
-                }
-                showToast(getString(R.string.save_playlist_success))
-            } catch (_: Exception) {
-                showToast(getString(R.string.save_playlist_failed))
-            }
-        }
-    }
     private fun isSoundCloudApiPlaylist(): Boolean {
         return SoundCloudSocialRepository.isSoundCloudApiPlaylist(
             playlistId = playlistId,
             ownerId = ownerId
         )
     }
+
     private fun showToast(message: String) {
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }

@@ -88,21 +88,6 @@
                 android:textSize="16sp" />
 
             <Button
-                android:id="@+id/btnAlbums"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:backgroundTint="@color/black"
-                android:drawableEnd="@drawable/ic_arrow_right"
-                android:drawablePadding="8dp"
-                android:gravity="start|center_vertical"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:text="@string/albums"
-                android:textAllCaps="false"
-                android:textColor="@android:color/white"
-                android:textSize="16sp" />
-
-            <Button
                 android:id="@+id/btnFollowing"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
@@ -149,25 +134,10 @@
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
-                <Button
-                    android:id="@+id/btnSeeAllLib1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:backgroundTint="@color/gray"
-                    android:minWidth="64dp"
-                    android:minHeight="0dp"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:text="@string/see_all"
-                    android:textAllCaps="false"
-                    android:textColor="@android:color/white"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/albumHorizontalList"
+                android:id="@+id/recyclerRecentlyPlayed"
                 android:layout_width="match_parent"
                 android:layout_height="145dp"
                 android:layout_marginTop="12dp"
@@ -176,6 +146,17 @@
                 android:overScrollMode="never"
                 android:paddingEnd="12dp"
                 android:scrollbars="none" />
+
+            <TextView
+                android:id="@+id/tvEmptyRecentlyPlayed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:text="@string/no_recently_played"
+                android:textColor="@color/gray_light"
+                android:textSize="14sp"
+                android:visibility="gone" />
 
             <!-- LISTENING HISTORY HEADER -->
             <LinearLayout
@@ -189,30 +170,15 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/listening_history"
+                    android:text="@string/saved_playlists"
                     android:textColor="@android:color/white"
                     android:textSize="20sp"
-                    android:textStyle="bold" />
-
-                <Button
-                    android:id="@+id/btnSeeAllLib2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:backgroundTint="@color/gray"
-                    android:minWidth="64dp"
-                    android:minHeight="0dp"
-                    android:paddingStart="12dp"
-                    android:paddingEnd="12dp"
-                    android:text="@string/see_all"
-                    android:textAllCaps="false"
-                    android:textColor="@android:color/white"
-                    android:textSize="11sp"
                     android:textStyle="bold" />
 
             </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/albumHorizontalList1"
+                android:id="@+id/recyclerSavedPlaylists"
                 android:layout_width="match_parent"
                 android:layout_height="145dp"
                 android:layout_marginTop="12dp"

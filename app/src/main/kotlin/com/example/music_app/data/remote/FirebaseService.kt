@@ -21,6 +21,10 @@ class FirebaseService(
     private val firestore: FirebaseFirestore
 ) {
 
+    companion object {
+        private const val RECENTLY_PLAYED_LIMIT = 20L
+    }
+
     // =========================
     // IN-APP NOTIFICATIONS
     // =========================
@@ -70,6 +74,25 @@ class FirebaseService(
             .await()
     }
 
+    suspend fun markAllNotificationsRead(userId: String) {
+        if (userId.isBlank()) return
+
+        val unreadNotifications = firestore.collection("users")
+            .document(userId)
+            .collection("notifications")
+            .whereEqualTo("isRead", false)
+            .get()
+            .await()
+
+        if (unreadNotifications.isEmpty) return
+
+        firestore.batch().apply {
+            unreadNotifications.documents.forEach { document ->
+                update(document.reference, "isRead", true)
+            }
+        }.commit().await()
+    }
+
     // =========================
     // SONG
     // =========================
@@ -113,6 +136,21 @@ class FirebaseService(
 
         val snapshot = firestore.collection("songs")
             .whereEqualTo("uploaderId", userId)
+            .get()
+            .await()
+
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Song::class.java)?.copy(id = doc.id)
+        }
+    }
+
+    suspend fun getApprovedSongsByUploaderId(userId: String): List<Song> {
+        if (userId.isBlank()) return emptyList()
+
+        val snapshot = firestore.collection("songs")
+            .whereEqualTo("uploaderId", userId)
+            .whereEqualTo("status", SongStatus.APPROVED)
+            .whereEqualTo("isDeleted", false)
             .get()
             .await()
 
@@ -239,6 +277,35 @@ class FirebaseService(
             .await()
     }
 
+    suspend fun saveRecentlyPlayed(userId: String, song: Song) {
+        if (userId.isBlank() || song.id.isBlank()) return
+
+        val data = mapOf(
+            "songId" to song.id,
+            "title" to song.title,
+            "artist" to song.artist,
+            "coverUrl" to song.coverUrl,
+            "songUrl" to song.songUrl,
+            "duration" to song.duration,
+            "uploaderId" to song.uploaderId,
+            "genre" to song.genre,
+            "status" to song.status,
+            "source" to song.source,
+            "soundCloudId" to song.soundCloudId,
+            "permalinkUrl" to song.permalinkUrl,
+            "streamable" to song.streamable,
+            "access" to song.access,
+            "playedAt" to System.currentTimeMillis()
+        )
+
+        firestore.collection("users")
+            .document(userId)
+            .collection("recentlyPlayed")
+            .document(song.id)
+            .set(data)
+            .await()
+    }
+
     suspend fun getRecentlyPlayedSongs(userId: String): List<Song> {
         if (userId.isBlank()) return emptyList()
 
@@ -246,7 +313,7 @@ class FirebaseService(
             .document(userId)
             .collection("recentlyPlayed")
             .orderBy("playedAt", Query.Direction.DESCENDING)
-            .limit(10)
+            .limit(RECENTLY_PLAYED_LIMIT)
             .get()
             .await()
 
@@ -255,17 +322,19 @@ class FirebaseService(
                 document.getString("songId") ?: document.id
             }
             .distinct()
-            .take(10)
+            .take(RECENTLY_PLAYED_LIMIT.toInt())
 
         if (songIds.isEmpty()) return emptyList()
 
         val songs = mutableListOf<Song>()
 
         songIds.chunked(10).forEach { ids ->
-            val songSnapshot = firestore.collection("songs")
-                .whereIn(FieldPath.documentId(), ids)
-                .get()
-                .await()
+            val songSnapshot = runCatching {
+                firestore.collection("songs")
+                    .whereIn(FieldPath.documentId(), ids)
+                    .get()
+                    .await()
+            }.getOrNull() ?: return@forEach
 
             val batchSongs = songSnapshot.documents.mapNotNull { document ->
                 document.toObject(Song::class.java)?.copy(id = document.id)
@@ -275,10 +344,41 @@ class FirebaseService(
         }
 
         val songMap = songs.associateBy { song -> song.id }
+        val recentlyPlayedMap = recentlySnapshot.documents.associateBy { document ->
+            document.getString("songId") ?: document.id
+        }
 
         return songIds
-            .mapNotNull { songId -> songMap[songId] }
-            .filter { song -> song.status == SongStatus.APPROVED }
+            .mapNotNull { songId ->
+                songMap[songId] ?: recentlyPlayedMap[songId]?.toRecentSong()
+            }
+            .filter { song ->
+                song.status == SongStatus.APPROVED && !song.isDeleted
+            }
+    }
+
+    private fun com.google.firebase.firestore.DocumentSnapshot.toRecentSong(): Song? {
+        val songId = getString("songId") ?: id
+        val title = getString("title").orEmpty()
+
+        if (songId.isBlank() || title.isBlank()) return null
+
+        return Song(
+            id = songId,
+            title = title,
+            artist = getString("artist").orEmpty(),
+            coverUrl = getString("coverUrl").orEmpty(),
+            songUrl = getString("songUrl").orEmpty(),
+            duration = (getLong("duration") ?: 0L).toInt(),
+            uploaderId = getString("uploaderId").orEmpty(),
+            genre = getString("genre").orEmpty(),
+            status = getString("status") ?: SongStatus.APPROVED,
+            source = getString("source").orEmpty(),
+            soundCloudId = getLong("soundCloudId") ?: 0L,
+            permalinkUrl = getString("permalinkUrl").orEmpty(),
+            streamable = getBoolean("streamable") ?: false,
+            access = getString("access").orEmpty()
+        )
     }
 
     // =========================
@@ -471,6 +571,70 @@ class FirebaseService(
         return snapshot.documents.mapNotNull { doc ->
             doc.toObject(Playlist::class.java)?.copy(id = doc.id)
         }
+    }
+
+    suspend fun getPublicUserPlaylists(userId: String): List<Playlist> {
+        if (userId.isBlank()) return emptyList()
+
+        val snapshot = firestore.collection("users")
+            .document(userId)
+            .collection("playlists")
+            .whereEqualTo("isPublic", true)
+            .get()
+            .await()
+
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Playlist::class.java)?.copy(id = doc.id)
+        }.sortedByDescending { playlist ->
+            playlist.updatedAt
+        }
+    }
+
+    suspend fun isPlaylistLiked(userId: String, playlistId: String): Boolean {
+        if (userId.isBlank() || playlistId.isBlank()) return false
+
+        return firestore.collection("users")
+            .document(userId)
+            .collection("likedPlaylists")
+            .document(playlistId)
+            .get()
+            .await()
+            .exists()
+    }
+
+    suspend fun togglePlaylistLike(userId: String, playlist: Playlist): Boolean {
+        if (userId.isBlank() || playlist.id.isBlank()) return false
+
+        val likedPlaylistRef = firestore.collection("users")
+            .document(userId)
+            .collection("likedPlaylists")
+            .document(playlist.id)
+
+        if (likedPlaylistRef.get().await().exists()) {
+            likedPlaylistRef.delete().await()
+            return false
+        }
+
+        likedPlaylistRef.set(
+            playlist.copy(updatedAt = System.currentTimeMillis())
+        ).await()
+
+        return true
+    }
+
+    suspend fun getLikedPlaylists(userId: String): List<Playlist> {
+        if (userId.isBlank()) return emptyList()
+
+        return firestore.collection("users")
+            .document(userId)
+            .collection("likedPlaylists")
+            .orderBy("updatedAt", Query.Direction.DESCENDING)
+            .get()
+            .await()
+            .documents
+            .mapNotNull { document ->
+                document.toObject(Playlist::class.java)?.copy(id = document.id)
+            }
     }
 
     suspend fun deletePlaylist(userId: String, playlistId: String) {

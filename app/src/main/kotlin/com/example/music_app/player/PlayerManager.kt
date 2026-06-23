@@ -44,6 +44,7 @@ object PlayerManager {
     private val musicInteractionRepository = MusicInteractionRepository()
     private var isPreparingRandomSong = false
     private var isExtendingRandomTail = false
+    private var lastRecordedRecentlyPlayedSongId = ""
 
     private const val RANDOM_TAIL_SIZE = 5
     private const val MIN_REMAINING_BEFORE_EXTEND = 3
@@ -123,6 +124,7 @@ object PlayerManager {
                             currentPlaylistIndex = index
                             _currentIndex.value = index
                             _currentSong.value = song
+                            recordRecentlyPlayed(song)
 
                             extendRandomTailIfNeeded()
                         }
@@ -307,6 +309,7 @@ object PlayerManager {
         currentPlaylistIndex = index
         _currentIndex.value = index
         _currentSong.value = song
+        recordRecentlyPlayed(song)
 
         exoPlayer?.apply {
             seekTo(index, 0L)
@@ -329,6 +332,7 @@ object PlayerManager {
         _currentIndex.value = 0
         _playlistSongs.value = listOf(song)
         _currentSong.value = song
+        recordRecentlyPlayed(song)
 
         val mediaItem = createMediaItem(song)
 
@@ -345,6 +349,21 @@ object PlayerManager {
         _isPlaying.value = true
 
         Log.d(TAG, "playSingle: ${song.title}")
+    }
+
+    /** Records every song started by the shared player, including mini-player swipes. */
+    private fun recordRecentlyPlayed(song: Song) {
+        if (song.id.isBlank() || song.id == lastRecordedRecentlyPlayedSongId) return
+
+        lastRecordedRecentlyPlayedSongId = song.id
+
+        playerScope.launch {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    musicInteractionRepository.saveRecentlyPlayed(song)
+                }
+            }
+        }
     }
 
     fun playSongAt(index: Int) {
@@ -658,6 +677,7 @@ object PlayerManager {
         _currentIndex.value = -1
         _currentSong.value = null
         _isPlaying.value = false
+        lastRecordedRecentlyPlayedSongId = ""
     }
 
     fun release() {
@@ -674,6 +694,7 @@ object PlayerManager {
         _isShuffleEnabled.value = false
         _loopMode.value = LoopMode.OFF
         _fallbackSongs.value = emptyList()
+        lastRecordedRecentlyPlayedSongId = ""
     }
 
     fun getCurrentPlaylist(): List<Song> {

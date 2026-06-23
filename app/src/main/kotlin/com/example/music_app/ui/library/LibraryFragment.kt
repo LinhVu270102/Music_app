@@ -16,7 +16,6 @@ import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentLibraryBinding
 import com.example.music_app.player.PlayerManager
-import com.example.music_app.ui.albums.AlbumsFragment
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.playlists.PlaylistDetailFragment
 import com.example.music_app.ui.playlists.PlaylistsFragment
@@ -28,6 +27,7 @@ class LibraryFragment : Fragment() {
 
     companion object {
         private const val TAG = "LibraryFragment"
+        private const val RECENTLY_PLAYED_LIMIT = 20
     }
 
     private var _binding: FragmentLibraryBinding? = null
@@ -72,7 +72,7 @@ class LibraryFragment : Fragment() {
             }
         )
 
-        binding.albumHorizontalList.apply {
+        binding.recyclerRecentlyPlayed.apply {
             layoutManager = GridLayoutManager(
                 requireContext(),
                 2,
@@ -84,7 +84,7 @@ class LibraryFragment : Fragment() {
             setHasFixedSize(true)
         }
 
-        binding.albumHorizontalList1.apply {
+        binding.recyclerSavedPlaylists.apply {
             layoutManager = GridLayoutManager(
                 requireContext(),
                 2,
@@ -119,13 +119,6 @@ class LibraryFragment : Fragment() {
             }
         }
 
-        binding.btnAlbums.setOnClickListener {
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, AlbumsFragment())
-                addToBackStack(null)
-            }
-        }
-
         binding.btnFollowing.setOnClickListener {
             parentFragmentManager.commit {
                 replace(R.id.fragmentContainer, FollowingFragment())
@@ -140,26 +133,20 @@ class LibraryFragment : Fragment() {
             }
         }
 
-        binding.btnSeeAllLib1.setOnClickListener {
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, YourLikesFragment())
-                addToBackStack(null)
-            }
-        }
-
-        binding.btnSeeAllLib2.setOnClickListener {
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, PlaylistsFragment())
-                addToBackStack(null)
-            }
-        }
     }
 
     private fun observeViewModel() {
         viewModel.recentlyPlayed.observe(viewLifecycleOwner) { songs ->
-            currentRecentlySongs = songs
-            recentlyAdapter.setData(songs)
-            PlayerManager.setFallbackSongs(songs)
+            showRecentlyPlayedSongs(songs)
+        }
+
+        PlayerManager.currentSong.observe(viewLifecycleOwner) { song ->
+            if (song == null) return@observe
+
+            showRecentlyPlayedSongs(
+                (listOf(song) + currentRecentlySongs.filter { it.id != song.id })
+                    .take(RECENTLY_PLAYED_LIMIT)
+            )
         }
 
         viewModel.playlists.observe(viewLifecycleOwner) { playlists ->
@@ -172,6 +159,14 @@ class LibraryFragment : Fragment() {
                 viewModel.clearErrorMessage()
             }
         }
+    }
+
+    private fun showRecentlyPlayedSongs(songs: List<Song>) {
+        currentRecentlySongs = songs
+        recentlyAdapter.setData(songs)
+        binding.tvEmptyRecentlyPlayed.visibility =
+            if (songs.isEmpty()) View.VISIBLE else View.GONE
+        PlayerManager.setFallbackSongs(songs)
     }
 
     private fun openPlayer(song: Song) {
@@ -204,5 +199,10 @@ class LibraryFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.loadLibraryData()
     }
 }

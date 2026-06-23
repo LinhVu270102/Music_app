@@ -21,8 +21,12 @@ class MusicInteractionRepository {
                 song
             }
 
-        if (playableSong.songUrl.isNotBlank()) {
-            firebaseService.upsertSong(playableSong)
+        if (playableSong.isSoundCloudSong() && playableSong.songUrl.isNotBlank()) {
+            // A cache write must not prevent playback or listening history if
+            // Firestore is temporarily unavailable.
+            runCatching {
+                firebaseService.upsertSong(playableSong)
+            }
         }
 
         return playableSong
@@ -30,25 +34,21 @@ class MusicInteractionRepository {
 
     suspend fun preparePlayableSongAndSaveRecently(song: Song): Song {
         val playableSong = preparePlayableSong(song)
-
-        val userId = auth.currentUser?.uid
-
-        if (
-            userId != null &&
-            playableSong.id.isNotBlank() &&
-            playableSong.songUrl.isNotBlank()
-        ) {
-            firebaseService.saveRecentlyPlayed(
-                userId = userId,
-                songId = playableSong.id
-            )
-        }
+        saveRecentlyPlayed(playableSong)
 
         return playableSong
     }
 
+    suspend fun saveRecentlyPlayed(song: Song) {
+        val userId = auth.currentUser?.uid ?: return
+
+        if (song.id.isBlank() || song.isDeleted) return
+
+        firebaseService.saveRecentlyPlayed(userId, song)
+    }
+
     suspend fun ensureSongSaved(song: Song) {
-        if (song.id.isNotBlank()) {
+        if (song.isSoundCloudSong() && song.id.isNotBlank()) {
             firebaseService.upsertSong(song)
         }
     }

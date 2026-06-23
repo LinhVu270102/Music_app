@@ -60,6 +60,7 @@ class LibraryViewModel : ViewModel() {
 
             try {
                 val firebasePlaylists = repository.getMyPlaylists()
+                val likedPlaylists = repository.getLikedPlaylists()
                 val apiPlaylists = runCatching {
                     soundCloudSocialRepository.getUserApiPlaylists()
                         .map { apiPlaylist ->
@@ -69,7 +70,7 @@ class LibraryViewModel : ViewModel() {
                         }
                 }.getOrDefault(emptyList())
 
-                val result = (firebasePlaylists + apiPlaylists)
+                val result = (firebasePlaylists + likedPlaylists + apiPlaylists)
                     .distinctBy { playlist -> playlist.id }
                     .sortedByDescending { playlist -> playlist.updatedAt }
                 _playlists.value = result

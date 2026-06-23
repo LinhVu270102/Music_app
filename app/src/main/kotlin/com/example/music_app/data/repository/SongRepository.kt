@@ -68,7 +68,7 @@ class SongRepository {
         if (song.id.isBlank()) return
         if (song.isDeleted) return
 
-        firebaseService.saveRecentlyPlayed(userId, song.id)
+        firebaseService.saveRecentlyPlayed(userId, song)
     }
 
     suspend fun getRecentlyPlayedSongs(): List<Song> {
@@ -147,10 +147,7 @@ class SongRepository {
 
 
     suspend fun getSongsByUserId(userId: String): List<Song> {
-        return firebaseService.getSongsByUploaderId(userId)
-            .filter { song ->
-                song.status == SongStatus.APPROVED && !song.isDeleted
-            }
+        return firebaseService.getApprovedSongsByUploaderId(userId)
     }
 
     suspend fun getUserById(userId: String): User? {
@@ -320,10 +317,28 @@ class SongRepository {
     suspend fun getPublicPlaylistsByUserId(userId: String): List<Playlist> {
         if (userId.isBlank()) return emptyList()
 
-        return firebaseService.getUserPlaylists(userId)
-            .filter { playlist ->
-                playlist.isPublic
-            }
+        return firebaseService.getPublicUserPlaylists(userId)
+    }
+
+    suspend fun isPlaylistLiked(playlistId: String): Boolean {
+        val userId = auth.currentUser?.uid ?: return false
+        return firebaseService.isPlaylistLiked(userId, playlistId)
+    }
+
+    suspend fun togglePlaylistLike(playlist: Playlist): Boolean {
+        val userId = auth.currentUser?.uid
+            ?: throw AppException(R.string.not_logged_in)
+
+        if (playlist.ownerId == userId) {
+            throw AppException(R.string.cannot_like_own_playlist)
+        }
+
+        return firebaseService.togglePlaylistLike(userId, playlist)
+    }
+
+    suspend fun getLikedPlaylists(): List<Playlist> {
+        val userId = auth.currentUser?.uid ?: return emptyList()
+        return firebaseService.getLikedPlaylists(userId)
     }
 
     suspend fun getPlaylistSongs(
@@ -472,6 +487,11 @@ class SongRepository {
     suspend fun markNotificationRead(notificationId: String) {
         val userId = auth.currentUser?.uid ?: return
         firebaseService.markNotificationRead(userId, notificationId)
+    }
+
+    suspend fun markAllNotificationsRead() {
+        val userId = auth.currentUser?.uid ?: return
+        firebaseService.markAllNotificationsRead(userId)
     }
 
     suspend fun getFollowingUsers(): List<User> {

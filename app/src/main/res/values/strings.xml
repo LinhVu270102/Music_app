@@ -533,6 +533,17 @@
     <!-- Playlist / Player -->
     <string name="no_song_playing">No song is playing</string>
     <string name="add_to_playlist_failed">Could not add to playlist</string>
+    <string name="add_current_song">Add current song</string>
+    <string name="song_added_to_playlist">Song added to playlist</string>
+    <string name="like_playlist">Like playlist</string>
+    <string name="unlike_playlist">Unlike playlist</string>
+    <string name="playlist_liked">Playlist saved to your library</string>
+    <string name="playlist_unliked">Playlist removed from your library</string>
+    <string name="cannot_like_own_playlist">You cannot like your own playlist</string>
+    <string name="update_playlist_like_failed">Could not update playlist like</string>
+    <string name="mark_all_read">Mark all read</string>
+    <string name="no_recently_played">No recently played songs yet.</string>
+    <string name="saved_playlists">Saved playlists</string>
 
     <!-- Uploader moderation -->
     <string name="only_rejected_song_can_resubmit">Only rejected songs can be resubmitted for review</string>
