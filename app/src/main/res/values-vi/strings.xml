@@ -142,6 +142,11 @@
     <string name="follow">Theo dõi</string>
     <string name="comment">Bình luận</string>
     <string name="current_playlist">Danh sách phát hiện tại</string>
+    <string name="shuffle_on">Đang phát ngẫu nhiên</string>
+    <string name="shuffle_off">Đã tắt phát ngẫu nhiên</string>
+    <string name="loop_off">Đã tắt lặp</string>
+    <string name="loop_playlist">Đang lặp danh sách phát</string>
+    <string name="loop_one">Đang lặp bài hát hiện tại</string>
     <string name="view_comments">Xem bình luận</string>
     <string name="like_song_button">Nút thích bài hát</string>
 

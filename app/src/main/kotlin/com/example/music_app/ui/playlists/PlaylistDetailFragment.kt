@@ -19,6 +19,7 @@ import com.example.music_app.databinding.FragmentPlaylistDetailBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
+import com.example.music_app.ui.common.showCustomDialog
 
 class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
 
@@ -244,8 +245,6 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             .setView(dialogBinding.root)
             .create()
 
-        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
-
         dialogBinding.txtDialogTitle.text = getString(R.string.remove_from_playlist_title)
         dialogBinding.txtDialogMessage.text =
             getString(R.string.remove_song_from_playlist_confirm, song.title)
@@ -264,8 +263,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             )
         }
 
-        dialog.show()
-        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+        dialog.showCustomDialog()
     }
 
     private fun showToast(message: String) {

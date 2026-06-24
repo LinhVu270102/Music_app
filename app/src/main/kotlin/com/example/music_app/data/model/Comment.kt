@@ -1,5 +1,8 @@
 package com.example.music_app.data.model
 
+import com.google.firebase.firestore.IgnoreExtraProperties
+
+@IgnoreExtraProperties
 data class Comment(
     val id: String = "",
     val songId: String = "",

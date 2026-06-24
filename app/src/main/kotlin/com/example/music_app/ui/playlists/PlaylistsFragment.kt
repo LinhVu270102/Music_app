@@ -15,6 +15,7 @@ import android.graphics.Color
 import androidx.core.graphics.drawable.toDrawable
 import com.example.music_app.databinding.DialogConfirmActionBinding
 import com.example.music_app.databinding.DialogInputActionBinding
+import com.example.music_app.ui.common.showCustomDialog
 
 class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
 
@@ -114,8 +115,7 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
             dialog.dismiss()
         }
 
-        dialog.show()
-        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+        dialog.showCustomDialog()
     }
 
     private fun confirmDeletePlaylist(playlist: Playlist) {
@@ -138,8 +138,7 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
             viewModel.deletePlaylist(playlist.id)
         }
 
-        dialog.show()
-        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+        dialog.showCustomDialog()
     }
 
     private fun showToast(message: String) {

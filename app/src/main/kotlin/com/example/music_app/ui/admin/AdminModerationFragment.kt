@@ -13,6 +13,7 @@ import com.example.music_app.databinding.FragmentAdminModerationBinding
 import android.graphics.Color
 import androidx.core.graphics.drawable.toDrawable
 import com.example.music_app.databinding.DialogInputActionBinding
+import com.example.music_app.ui.common.showCustomDialog
 
 class AdminModerationFragment : Fragment(R.layout.fragment_admin_moderation) {
 
@@ -93,8 +94,6 @@ class AdminModerationFragment : Fragment(R.layout.fragment_admin_moderation) {
             .setView(dialogBinding.root)
             .create()
 
-        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
-
         dialogBinding.txtDialogTitle.text = getString(R.string.reject_reason)
         dialogBinding.txtDialogMessage.text = getString(R.string.enter_reject_reason)
         dialogBinding.edtDialogInput.hint = getString(R.string.enter_reject_reason)
@@ -120,8 +119,7 @@ class AdminModerationFragment : Fragment(R.layout.fragment_admin_moderation) {
             viewModel.rejectSong(song, reason)
         }
 
-        dialog.show()
-        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+        dialog.showCustomDialog()
     }
 
     override fun onDestroyView() {

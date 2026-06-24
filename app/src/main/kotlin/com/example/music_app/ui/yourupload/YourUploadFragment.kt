@@ -17,6 +17,7 @@ import com.example.music_app.ui.song.SongAdapter
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import com.example.music_app.databinding.DialogConfirmActionBinding
+import com.example.music_app.ui.common.showCustomDialog
 
 class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
 
@@ -157,8 +158,6 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
             .setView(dialogBinding.root)
             .create()
 
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-
         dialogBinding.txtDialogTitle.text = getString(R.string.delete_song)
         dialogBinding.txtDialogMessage.text =
             getString(R.string.delete_song_confirm_with_name, song.title)
@@ -173,8 +172,7 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
             viewModel.deleteSong(song)
         }
 
-        dialog.show()
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.showCustomDialog()
     }
 
 
