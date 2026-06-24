@@ -8,6 +8,8 @@ data class Comment(
     val avatarUrl: String = "",
     val content: String = "",
     val timelinePositionMs: Long = 0L,
+    val likesCount: Long = 0L,
+    val isLikedByCurrentUser: Boolean = false,
     val reportsCount: Long = 0L,
     val isDeleted: Boolean = false,
     val deletedBy: String = "",

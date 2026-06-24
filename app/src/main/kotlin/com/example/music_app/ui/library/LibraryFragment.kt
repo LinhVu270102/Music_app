@@ -144,11 +144,7 @@ class LibraryFragment : Fragment() {
 
         PlayerManager.currentSong.observe(viewLifecycleOwner) { song ->
             if (song == null) return@observe
-
-            showRecentlyPlayedSongs(
-                (listOf(song) + currentRecentlySongs.filter { it.id != song.id })
-                    .take(RECENTLY_PLAYED_LIMIT)
-            )
+            viewModel.recordJustPlayed(song)
         }
 
         viewModel.playlists.observe(viewLifecycleOwner) { playlists ->

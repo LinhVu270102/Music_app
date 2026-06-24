@@ -7,21 +7,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.model.toPlaylist
 import com.example.music_app.data.repository.PlaylistRepository
 import com.example.music_app.data.repository.SongRepository
-import com.example.music_app.data.repository.SoundCloudPlaylistRepository
 import kotlinx.coroutines.launch
 
 class LibraryViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "LibraryViewModel"
+        private const val RECENTLY_PLAYED_LIMIT = 20
     }
 
     private val repository = SongRepository()
     private val playlistRepository = PlaylistRepository()
-    private val soundCloudPlaylistRepository = SoundCloudPlaylistRepository()
 
     private val _recentlyPlayed = MutableLiveData<List<Song>>()
     val recentlyPlayed: LiveData<List<Song>> = _recentlyPlayed
@@ -43,12 +41,15 @@ class LibraryViewModel : ViewModel() {
             val start = System.currentTimeMillis()
 
             try {
-                val songs = repository.getRecentlyPlayedSongs()
-                _recentlyPlayed.value = songs
+                val remoteSongs = repository.getRecentlyPlayedSongs()
+                _recentlyPlayed.value = mergeRecentSongs(
+                    remoteSongs = remoteSongs,
+                    localSongs = _recentlyPlayed.value.orEmpty()
+                )
 
                 Log.d(
                     TAG,
-                    "Recently loaded: ${songs.size} songs in ${System.currentTimeMillis() - start} ms"
+                    "Recently loaded: ${remoteSongs.size} songs in ${System.currentTimeMillis() - start} ms"
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Recently failed", e)
@@ -64,11 +65,7 @@ class LibraryViewModel : ViewModel() {
             try {
                 val firebasePlaylists = playlistRepository.getMyPlaylists()
                 val likedPlaylists = playlistRepository.getLikedPlaylists()
-                val apiPlaylists = runCatching {
-                    soundCloudPlaylistRepository.getUserApiPlaylists().map { it.toPlaylist() }
-                }.getOrDefault(emptyList())
-
-                val result = (firebasePlaylists + likedPlaylists + apiPlaylists)
+                val result = (firebasePlaylists + likedPlaylists)
                     .distinctBy { playlist -> playlist.id }
                     .sortedByDescending { playlist -> playlist.updatedAt }
                 _playlists.value = result
@@ -87,4 +84,20 @@ class LibraryViewModel : ViewModel() {
     fun clearErrorMessage() {
         _errorMessageResId.value = null
     }
+
+    fun recordJustPlayed(song: Song) {
+        _recentlyPlayed.value = (listOf(song) + _recentlyPlayed.value.orEmpty()
+            .filter { item -> item.id != song.id })
+            .take(RECENTLY_PLAYED_LIMIT)
+    }
+
+    private fun mergeRecentSongs(
+        remoteSongs: List<Song>,
+        localSongs: List<Song>
+    ): List<Song> {
+        return (localSongs + remoteSongs)
+            .distinctBy(Song::id)
+            .take(RECENTLY_PLAYED_LIMIT)
+    }
+
 }

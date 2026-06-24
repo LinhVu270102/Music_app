@@ -14,6 +14,7 @@ import java.util.Locale
 
 class CommentAdapter(
     private var currentUserId: String = "",
+    private val onLikeClick: (Comment) -> Unit,
     private val onMoreClick: (Comment, View) -> Unit,
     private val onTimelineClick: (Comment) -> Unit
 ) : ListAdapter<Comment, CommentAdapter.CommentViewHolder>(CommentDiffCallback) {
@@ -55,11 +56,13 @@ class CommentAdapter(
             binding.txtCommentTimeAgo.text =
                 formatTimeAgo(context, comment.createdAt)
 
-            binding.txtCommentLikeCount.text =
-                context.getString(R.string.default_comment_like_count)
+            binding.txtCommentLikeCount.text = comment.likesCount.toString()
 
             // Quan trọng: reset trạng thái ViewHolder, tránh bị lệch khi RecyclerView tái sử dụng item
-            binding.btnLikeComment.alpha = 0.5f
+            binding.btnLikeComment.alpha = if (comment.isLikedByCurrentUser) 1f else 0.5f
+            binding.btnLikeComment.setImageResource(
+                if (comment.isLikedByCurrentUser) R.drawable.ic_liked else R.drawable.ic_like
+            )
             binding.txtMore.visibility = View.VISIBLE
 
             // Nếu muốn comment của chính mình nổi bật hơn một chút
@@ -85,7 +88,7 @@ class CommentAdapter(
                 .into(binding.imgSmallAvatar)
 
             binding.btnLikeComment.setOnClickListener {
-                binding.btnLikeComment.alpha = 1f
+                onLikeClick(comment)
             }
 
             binding.txtReply.setOnClickListener {

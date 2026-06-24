@@ -121,6 +121,7 @@ class AdminModerationFragment : Fragment(R.layout.fragment_admin_moderation) {
         }
 
         dialog.show()
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     }
 
     override fun onDestroyView() {

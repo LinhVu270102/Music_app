@@ -19,7 +19,9 @@ const TOKEN_CACHE_FILE = path.join(__dirname, ".soundcloud-token-cache.json");
 const ORANGE_STORE_FILE = path.join(__dirname, "data", "orange-music-store.json");
 
 const SEARCH_CACHE_TTL_MS = 2 * 60 * 1000;
-const STREAM_CACHE_TTL_MS = 10 * 60 * 1000;
+// SoundCloud CDN URLs are signed and can expire quickly. Cache the local
+// proxy URL for a short period instead of exposing a signed CDN URL to Android.
+const STREAM_CACHE_TTL_MS = 2 * 60 * 1000;
 
 let cachedToken = null;
 let cachedTokenExpiresAt = 0;
@@ -323,7 +325,11 @@ async function resolveProgressiveStreamUrl(req, streamApiUrl, accessToken) {
         response.data.destroy();
       }
 
-      return finalUrl;
+      // Keep the SoundCloud API URL behind the local proxy. Each proxy request
+      // follows a fresh redirect to the signed CDN URL and adds OAuth when it
+      // is required. Returning the CDN URL directly causes ExoPlayer 403s when
+      // that signature expires or the CDN rejects the Android request.
+      return buildProxyUrl(req, "/soundcloud/proxy/media", streamApiUrl);
     }
 
     const contentType = response.headers["content-type"] || "";
@@ -351,7 +357,7 @@ async function resolveProgressiveStreamUrl(req, streamApiUrl, accessToken) {
       if (location) {
         const finalUrl = toAbsoluteUrl(streamApiUrl, location);
         console.log("Resolved CDN URL from redirect error:", finalUrl);
-        return finalUrl;
+        return buildProxyUrl(req, "/soundcloud/proxy/media", streamApiUrl);
       }
     }
 

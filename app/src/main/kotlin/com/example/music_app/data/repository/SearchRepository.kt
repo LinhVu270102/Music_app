@@ -5,7 +5,6 @@ import com.example.music_app.data.model.SearchResultBundle
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.SongStatus
 import com.example.music_app.data.model.User
-import com.example.music_app.data.model.toPlaylist
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -14,8 +13,6 @@ import kotlinx.coroutines.tasks.await
 class SearchRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
-    private val soundCloudRepository = SoundCloudRepository()
-    private val soundCloudPlaylistRepository = SoundCloudPlaylistRepository()
 
     suspend fun search(keyword: String): SearchResultBundle {
         val query = keyword.trim()
@@ -55,16 +52,7 @@ class SearchRepository {
             emptyList()
         }
 
-        val soundCloudTracks = try {
-            soundCloudRepository.searchTracks(
-                query = keyword,
-                limit = 20
-            )
-        } catch (_: Exception) {
-            emptyList()
-        }
-
-        return (firebaseTracks + soundCloudTracks)
+        return firebaseTracks
             .distinctBy { song -> song.id }
             .sortedWith(
                 compareByDescending<Song> { song ->
@@ -99,20 +87,16 @@ class SearchRepository {
         if (query.isBlank()) return emptyList()
 
         val firestorePlaylists = try {
-            firestore.collectionGroup("playlists")
+            // PlaylistRemoteDataSource keeps a public root mirror specifically for search.
+            // Querying that mirror avoids a collection-group index dependency and includes
+            // catalog playlists and public user playlists.
+            firestore.collection("playlists")
                 .whereEqualTo("isPublic", true)
                 .get()
                 .await()
                 .documents
                 .mapNotNull { doc ->
-                    doc.toObject(Playlist::class.java)?.copy(
-                        id = doc.id,
-                        ownerId = doc.getString("ownerId").orEmpty().ifBlank {
-                            // Existing playlists were stored below users/{uid};
-                            // use their parent document as a migration-safe owner.
-                            doc.reference.parent.parent?.id.orEmpty()
-                        }
-                    )
+                    doc.toObject(Playlist::class.java)?.copy(id = doc.id)
                 }
                 .filter { playlist ->
                     playlist.matchesKeyword(query)
@@ -126,21 +110,7 @@ class SearchRepository {
             emptyList()
         }
 
-        val apiPlaylists = try {
-            soundCloudPlaylistRepository.getUserApiPlaylists().map { it.toPlaylist() }
-                .filter { playlist ->
-                    playlist.matchesKeyword(query)
-                }
-        } catch (e: Exception) {
-            android.util.Log.e(
-                "SearchRepository",
-                "search api playlists failed: ${e.message}",
-                e
-            )
-            emptyList()
-        }
-
-        val result = (firestorePlaylists + apiPlaylists)
+        val result = firestorePlaylists
             .distinctBy { playlist ->
                 playlist.id
             }
@@ -155,7 +125,7 @@ class SearchRepository {
 
         android.util.Log.d(
             "SearchRepository",
-            "searchPlaylists query=$query firestore=${firestorePlaylists.size}, api=${apiPlaylists.size}, total=${result.size}"
+            "searchPlaylists query=$query firestore=${firestorePlaylists.size}, total=${result.size}"
         )
 
         return result

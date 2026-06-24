@@ -13,7 +13,6 @@ import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.remote.soundcloud.isSoundCloudSong
 import com.example.music_app.data.repository.MusicInteractionRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +48,9 @@ object PlayerManager {
 
     private val _playlistSongs = MutableLiveData<List<Song>>(emptyList())
     val playlistSongs: LiveData<List<Song>> = _playlistSongs
+
+    private val _playbackContext = MutableLiveData<PlaybackContext?>(null)
+    val playbackContext: LiveData<PlaybackContext?> = _playbackContext
 
     private val _currentIndex = MutableLiveData(-1)
     val currentIndex: LiveData<Int> = _currentIndex
@@ -104,10 +106,9 @@ object PlayerManager {
                             )
                         }
 
-                        if (playbackState == Player.STATE_ENDED) {
-                            Log.d(TAG, "Playback ended, play next")
-                            playNext()
-                        }
+                        // ExoPlayer owns automatic transitions. Calling our own
+                        // next-song routine here used to override repeat-one,
+                        // repeat-playlist and shuffle at the end of a track.
                     }
 
                     override fun onMediaItemTransition(
@@ -123,7 +124,6 @@ object PlayerManager {
                             _currentSong.value = song
                             historyRecorder.record(song)
 
-                            extendRandomTailIfNeeded()
                         }
                     }
 
@@ -135,10 +135,7 @@ object PlayerManager {
                         val httpError = findHttpError(error)
 
                         _errorMessageResId.value =
-                            when (httpError?.responseCode) {
-                                429 -> R.string.soundcloud_rate_limited
-                                else -> R.string.playback_failed
-                            }
+                            R.string.playback_failed
                     }
                 })
             }
@@ -178,6 +175,7 @@ object PlayerManager {
         }
 
         _currentIndex.value = -1
+        _playbackContext.value = null
 
         applyShuffleMode()
         applyLoopMode()
@@ -187,7 +185,8 @@ object PlayerManager {
 
     fun playPlaylist(
         songs: List<Song>,
-        startSong: Song
+        startSong: Song,
+        context: PlaybackContext? = null
     ) {
         val validSongs = songs
             .filter { song -> song.id.isNotBlank() && song.songUrl.isNotBlank() }
@@ -202,6 +201,9 @@ object PlayerManager {
         playbackQueue.replace(validSongs)
 
         _playlistSongs.value = validSongs
+        _playbackContext.value = context?.takeIf { playbackContext ->
+            playbackContext.isPlaylist
+        }
 
         val mediaItems = validSongs.map(PlaybackMediaItemFactory::create)
 
@@ -289,6 +291,7 @@ object PlayerManager {
         val singleSongPlaylist = playbackQueue.replaceWithSingle(song)
         _currentIndex.value = 0
         _playlistSongs.value = singleSongPlaylist
+        _playbackContext.value = null
         _currentSong.value = song
         historyRecorder.record(song)
 
@@ -319,61 +322,59 @@ object PlayerManager {
     }
 
     fun playNext() {
-        val songs = _playlistSongs.value.orEmpty()
-        val currentIndex = _currentIndex.value ?: -1
+        val player = exoPlayer ?: return
 
-        if (songs.size > 1 && currentIndex in songs.indices) {
-            val isLastSong = currentIndex == songs.lastIndex
-
-            if (!isLastSong) {
-                playSongAt(currentIndex + 1)
-                return
-            }
-
-            when (_loopMode.value ?: LoopMode.OFF) {
-                LoopMode.ONE -> {
-                    playSongAt(currentIndex)
-                    return
-                }
-
-                LoopMode.PLAYLIST -> {
-                    playSongAt(0)
-                    return
-                }
-
-                LoopMode.OFF -> {
-                    playRandomFallback(
-                        excludeIds = songs.map { song -> song.id }.toSet()
-                    )
-                    return
-                }
-            }
+        if (player.hasNextMediaItem()) {
+            player.seekToNextMediaItem()
+            player.play()
+        } else if (_loopMode.value == LoopMode.PLAYLIST && player.mediaItemCount > 0) {
+            player.seekToDefaultPosition(0)
+            player.play()
         }
-
-        playRandomFallback()
     }
 
     fun playPrevious() {
-        val songs = _playlistSongs.value.orEmpty()
-        val currentIndex = _currentIndex.value ?: -1
+        val player = exoPlayer ?: return
 
-        Log.d(
-            TAG,
-            "playPrevious: playlistSize=${songs.size}, currentIndex=$currentIndex, fallbackSize=${_fallbackSongs.value.orEmpty().size}"
-        )
-
-        if (songs.size > 1 && currentIndex in songs.indices) {
-            if (currentIndex - 1 >= 0) {
-                playSongAt(currentIndex - 1)
-                return
-            }
-
-            playRandomFallback()
-            return
+        if (player.hasPreviousMediaItem()) {
+            player.seekToPreviousMediaItem()
+            player.play()
+        } else if (_loopMode.value == LoopMode.PLAYLIST && player.mediaItemCount > 0) {
+            player.seekToDefaultPosition(player.mediaItemCount - 1)
+            player.play()
+        } else {
+            player.seekTo(0L)
         }
-
-        playRandomFallback()
     }
+
+    fun peekNextSong(): Song? {
+        val player = exoPlayer ?: return null
+        val nextIndex = player.nextMediaItemIndex
+            .takeIf { it != C.INDEX_UNSET }
+            ?: if (_loopMode.value == LoopMode.PLAYLIST && player.mediaItemCount > 0) 0 else C.INDEX_UNSET
+        return peekQueueSong(nextIndex)
+    }
+
+    fun peekPreviousSong(): Song? {
+        val player = exoPlayer ?: return null
+        val previousIndex = player.previousMediaItemIndex
+            .takeIf { it != C.INDEX_UNSET }
+            ?: if (_loopMode.value == LoopMode.PLAYLIST && player.mediaItemCount > 0) {
+                player.mediaItemCount - 1
+            } else {
+                C.INDEX_UNSET
+            }
+        return peekQueueSong(previousIndex)
+    }
+
+    private fun peekQueueSong(mediaIndex: Int): Song? {
+        val player = exoPlayer ?: return null
+        if (mediaIndex == C.INDEX_UNSET || mediaIndex !in 0 until player.mediaItemCount) return null
+
+        val mediaId = player.getMediaItemAt(mediaIndex).mediaId
+        return playbackQueue.snapshot().firstOrNull { song -> song.id == mediaId }
+    }
+
     private fun extendRandomTailIfNeeded() {
         val player = exoPlayer ?: return
         val currentIndex = _currentIndex.value ?: -1
@@ -407,7 +408,7 @@ object PlayerManager {
                 val preparedSongs = withContext(Dispatchers.IO) {
                     candidates.mapNotNull { song ->
                         runCatching {
-                            if (song.songUrl.isBlank() || song.isSoundCloudSong()) {
+                            if (song.songUrl.isBlank()) {
                                 musicInteractionRepository.preparePlayableSong(song)
                             } else {
                                 song
@@ -597,6 +598,7 @@ object PlayerManager {
         playbackQueue.clear()
 
         _playlistSongs.value = emptyList()
+        _playbackContext.value = null
         _currentIndex.value = -1
         _currentSong.value = null
         _isPlaying.value = false
@@ -610,6 +612,7 @@ object PlayerManager {
         playbackQueue.clear()
 
         _playlistSongs.value = emptyList()
+        _playbackContext.value = null
         _currentIndex.value = -1
         _currentSong.value = null
         _isPlaying.value = false

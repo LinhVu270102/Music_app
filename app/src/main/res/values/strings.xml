@@ -65,7 +65,7 @@
     <string name="notification">Notification</string>
 
     <string name="genre_hip_hop_rap">Hip Hop &amp; Rap</string>
-    <string name="genre_soundcloud">SoundCloud</string>
+    <string name="genre_rock">Rock</string>
     <string name="genre_rnb">R&amp;B</string>
     <string name="genre_pop">Pop</string>
     <string name="genre_electronic">Electronic</string>
@@ -338,14 +338,11 @@
     <string name="rule_inappropriate_image_title">Inappropriate images</string>
     <string name="rule_inappropriate_image_description">Do not allow offensive, sensitive, violent, or misleading cover images.</string>
 
-    <string name="soundcloud_search_failed">SoundCloud search failed</string>
-    <string name="soundcloud_stream_failed">Could not get SoundCloud stream</string>
     <string name="song_url_empty">Song URL is empty</string>
 
     <string name="playback_failed">Could not play this song</string>
     <string name="player_not_ready">Player is not ready</string>
 
-    <string name="soundcloud_rate_limited">SoundCloud is rate limited. Please try again later.</string>
 
     <string name="no_permission">You do not have permission</string>
     <string name="song_deleted">This song has been deleted</string>
@@ -456,6 +453,7 @@
     <string name="search_result_count">%1$d results</string>
     <string name="search_result_count_placeholder">0 results</string>
     <string name="playlist_songs_count">%1$d songs</string>
+    <string name="user_search_subtitle">OrangeMusic • %1$d uploaded songs</string>
     <string name="profile_result_selected">Profile: %1$s</string>
     <string name="playlist_result_selected">Playlist: %1$s</string>
     <string name="hide_comment_confirm">Do you want to hide this comment?</string>
@@ -512,7 +510,6 @@
     <string name="play_all">Play all</string>
     <string name="no_songs_in_playlist">No songs in this playlist.</string>
     <string name="seek_to_comment_timeline">Jumped to %1$s</string>
-    <string name="soundcloud_source">SoundCloud</string>
     <string name="orange_music_source">Orange Music</string>
     <string name="api_artist_search_subtitle">%1$s • %2$d tracks</string>
     <string name="artist_profile">Artist profile</string>
@@ -523,9 +520,6 @@
     <string name="no_artist_songs">No songs found for this artist.</string>
     <string name="open_artist_profile_failed">Could not open artist profile.</string>
     <string name="online_song_cannot_follow">Online songs do not have a followable uploader.</string>
-    <string name="soundcloud_playlist_count_format">Orange Music • %1$d songs</string>
-    <string name="soundcloud_api_playlist_subtitle">SoundCloud playlist saved in Orange Music</string>
-    <string name="api_playlist_delete_not_supported">SoundCloud server playlist deletion is not supported yet.</string>
     <string name="tap_to_search_again">Tap to search again</string>
     <string name="no_recent_searches">No recent searches</string>
     <string name="delete_playlist_confirm_with_name">Are you sure you want to delete playlist "%1$s"?</string>
@@ -554,4 +548,9 @@
     <string name="could_not_play_this_song">Could not play this song</string>
     <string name="delete_song_confirm_with_name">Are you sure you want to delete "%1$s"?</string>
     <string name="login_required">Please log in to continue.</string>
+    <string name="profile_photo">Profile photo</string>
+    <string name="change_profile_photo">Change profile photo</string>
+    <string name="edit_profile_social_hint">Choose a photo that helps people recognize you.</string>
+    <string name="profile_about_section">About you</string>
+    <string name="profile_music_section">Your music taste</string>
 </resources>

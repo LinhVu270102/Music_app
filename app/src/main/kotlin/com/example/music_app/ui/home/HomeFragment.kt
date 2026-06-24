@@ -43,7 +43,7 @@ class HomeFragment : Fragment() {
     private val genreQueryPairs by lazy {
         listOf(
             binding.chipHipHop to "hip hop rap",
-            binding.chipSoundCloud to "soundcloud music",
+            binding.chipRock to "rock",
             binding.chipRnB to "rnb",
             binding.chipPop to "pop music",
             binding.chipElectronic to "electronic music",
@@ -211,6 +211,12 @@ class HomeFragment : Fragment() {
         }
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
             binding.swipeRefreshLayout.isRefreshing = isLoading
+        }
+
+        viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
+            messageResId ?: return@observe
+            showToast(getString(messageResId))
+            viewModel.clearErrorMessage()
         }
     }
 

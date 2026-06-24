@@ -8,7 +8,6 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
 import com.example.music_app.domain.usecase.PlaylistUseCase
-import com.example.music_app.data.model.isSoundCloudApiPlaylist
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -33,15 +32,10 @@ class PlaylistDetailViewModel : ViewModel() {
 
     // Public screen actions
     fun isCurrentUserPlaylistOwner(
-        ownerId: String,
-        isSoundCloudPlaylist: Boolean
+        ownerId: String
     ): Boolean {
         // Server rules remain the source of truth; this only controls the UI.
-        return playlistUseCase.isCurrentUserOwner(ownerId, isSoundCloudPlaylist)
-    }
-
-    fun isSoundCloudPlaylist(playlistId: String, ownerId: String): Boolean {
-        return isSoundCloudApiPlaylist(playlistId, ownerId)
+        return playlistUseCase.isCurrentUserOwner(ownerId)
     }
 
     fun loadPlaylistSongs(

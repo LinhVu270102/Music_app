@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.User
 import com.example.music_app.data.repository.SocialRepository
+import com.example.music_app.player.state.ArtistFollowState
+import com.example.music_app.player.state.PlayerInteractionState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -19,6 +21,14 @@ class FollowingViewModel : ViewModel() {
 
     private val _errorMessageResId = MutableLiveData<Int?>()
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
+
+    private val followObserver = androidx.lifecycle.Observer<ArtistFollowState> {
+        loadFollowingUsers()
+    }
+
+    init {
+        PlayerInteractionState.artistFollowUpdates.observeForever(followObserver)
+    }
 
     fun loadFollowingUsers() {
         viewModelScope.launch {
@@ -36,5 +46,10 @@ class FollowingViewModel : ViewModel() {
 
     fun clearErrorMessage() {
         _errorMessageResId.value = null
+    }
+
+    override fun onCleared() {
+        PlayerInteractionState.artistFollowUpdates.removeObserver(followObserver)
+        super.onCleared()
     }
 }

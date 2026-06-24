@@ -46,11 +46,52 @@
             android:layout_marginTop="16dp"
             android:visibility="gone" />
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/imgProfileAvatar"
+                android:layout_width="112dp"
+                android:layout_height="112dp"
+                android:background="@drawable/bg_profile_avatar"
+                android:contentDescription="@string/profile_photo"
+                android:padding="3dp"
+                android:scaleType="centerCrop" />
+
+            <TextView
+                android:id="@+id/btnChangeAvatar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_genre_chip_selected"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingStart="16dp"
+                android:paddingTop="8dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                android:text="@string/change_profile_photo"
+                android:textColor="@color/white"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/edit_profile_social_hint"
+                android:textColor="@color/gray_light"
+                android:textSize="13sp" />
+        </LinearLayout>
+
         <EditText
             android:id="@+id/edtFullName"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="12dp"
             android:background="@drawable/bg_search_box"
             android:hint="@string/full_name"
             android:inputType="textPersonName"
@@ -58,6 +99,15 @@
             android:paddingEnd="16dp"
             android:textColor="@android:color/white"
             android:textColorHint="@android:color/darker_gray" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="@string/profile_about_section"
+            android:textColor="@color/orange"
+            android:textSize="15sp"
+            android:textStyle="bold" />
 
         <EditText
             android:id="@+id/edtDisplayName"
@@ -137,6 +187,15 @@
             android:paddingEnd="16dp"
             android:textColor="@android:color/white"
             android:textColorHint="@android:color/darker_gray" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:text="@string/profile_music_section"
+            android:textColor="@color/orange"
+            android:textSize="15sp"
+            android:textStyle="bold" />
 
         <EditText
             android:id="@+id/edtFavoriteGenres"

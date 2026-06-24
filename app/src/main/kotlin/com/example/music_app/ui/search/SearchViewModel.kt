@@ -8,14 +8,12 @@ import com.example.music_app.R
 import com.example.music_app.data.model.SearchResultBundle
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SearchRepository
-import com.example.music_app.data.repository.SoundCloudRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 
 class SearchViewModel : ViewModel() {
 
     private val searchRepository = SearchRepository()
-    private val soundCloudRepository = SoundCloudRepository()
 
     private val _searchResults = MutableLiveData(SearchResultBundle())
     val searchResults: LiveData<SearchResultBundle> = _searchResults
@@ -35,13 +33,8 @@ class SearchViewModel : ViewModel() {
     private val _errorMessageResId = MutableLiveData<Int?>()
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
 
-    private val _apiArtistTrackCounts = MutableLiveData<ApiArtistTrackCounts?>()
-    val apiArtistTrackCounts: LiveData<ApiArtistTrackCounts?> = _apiArtistTrackCounts
-
     private var isPreparingSong = false
     private var searchJob: Job? = null
-    private var artistTrackCountJob: Job? = null
-    private val artistTrackCountCache = mutableMapOf<String, Int>()
 
     fun loadSongs() {
         _searchResults.value = SearchResultBundle()
@@ -86,20 +79,13 @@ class SearchViewModel : ViewModel() {
                 isPreparingSong = true
                 _isLoading.value = true
 
-                val playableSong =
-                    if (song.songUrl.isNotBlank()) {
-                        song
-                    } else {
-                        soundCloudRepository.getPlayableSong(song)
-                    }
-
-                if (playableSong.songUrl.isBlank()) {
+                if (song.songUrl.isBlank()) {
                     _errorMessageResId.value = R.string.song_url_empty
                 } else {
-                    _playSongEvent.value = playableSong
+                    _playSongEvent.value = song
                 }
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.soundcloud_stream_failed
+                _errorMessageResId.value = R.string.playback_failed
             } finally {
                 _isLoading.value = false
                 isPreparingSong = false
@@ -107,39 +93,7 @@ class SearchViewModel : ViewModel() {
         }
     }
 
-    fun loadApiArtistTrackCounts(
-        profiles: List<SearchResultItem.ApiArtistProfile>,
-        keyword: String,
-        tab: SearchTab
-    ) {
-        artistTrackCountJob?.cancel()
-        if (profiles.isEmpty()) return
-
-        artistTrackCountJob = viewModelScope.launch {
-            val counts = buildMap {
-                profiles.forEach { profile ->
-                    val key = profile.artistName.trim().lowercase()
-                    val remoteCount = artistTrackCountCache[key]
-                        ?: soundCloudRepository.getArtistTrackCount(profile.artistName).also { count ->
-                            if (count > 0) artistTrackCountCache[key] = count
-                        }
-
-                    put(key, maxOf(profile.trackCount, remoteCount))
-                }
-            }
-
-            _apiArtistTrackCounts.value = ApiArtistTrackCounts(
-                keyword = keyword,
-                tab = tab,
-                counts = counts
-            )
-        }
-    }
-
     fun clearSearchResult() {
-        artistTrackCountJob?.cancel()
-        artistTrackCountCache.clear()
-        _apiArtistTrackCounts.value = null
         _searchResults.value = SearchResultBundle()
         _songs.value = emptyList()
     }
@@ -152,10 +106,3 @@ class SearchViewModel : ViewModel() {
         _errorMessageResId.value = null
     }
 }
-
-/** Artist counts enriched from SoundCloud for the active search request. */
-data class ApiArtistTrackCounts(
-    val keyword: String,
-    val tab: SearchTab,
-    val counts: Map<String, Int>
-)

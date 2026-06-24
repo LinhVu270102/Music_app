@@ -35,10 +35,18 @@ class SongRepository {
     }
 
     suspend fun getAllSongs(): List<Song> {
-        return songRemoteDataSource.getAllSongsWithIds()
-            .filter { song ->
-                song.status == SongStatus.APPROVED && !song.isDeleted
-            }
+        // Firestore rules only allow a public query that explicitly constrains
+        // the catalog to approved, non-deleted songs.
+        val approvedSongs = songRemoteDataSource.getApprovedSongs()
+        // Do not let a legacy query denied by an older deployed rule hide the
+        // already-readable, normalized catalog.
+        val legacySongs = runCatching {
+            songRemoteDataSource.getLegacyApprovedSongs()
+        }.getOrDefault(emptyList())
+
+        return (approvedSongs + legacySongs)
+            .distinctBy(Song::id)
+            .filter { song -> !song.isDeleted }
     }
 
     suspend fun upsertSong(song: Song) {
@@ -50,7 +58,7 @@ class SongRepository {
 
         return songRemoteDataSource.getRecentlyPlayedSongs(userId)
             .filter { song ->
-                song.status == SongStatus.APPROVED && !song.isDeleted
+                song.status.equals(SongStatus.APPROVED, ignoreCase = true) && !song.isDeleted
             }
     }
 

@@ -7,7 +7,10 @@
     "start": "node server.js",
     "dev": "node server.js",
     "import:playlists": "node scripts/import-api-playlists-to-firestore.js",
-    "populate:playlists": "node scripts/populate-api-playlists-with-random-songs.js"
+    "populate:playlists": "node scripts/populate-api-playlists-with-random-songs.js",
+    "seed:catalog": "node scripts/seed-soundcloud-catalog.js",
+    "verify:catalog": "node scripts/verify-soundcloud-catalog.js",
+    "migrate:catalog": "node scripts/migrate-catalog-songs.js"
   },
   "keywords": [],
   "author": "",
@@ -20,4 +23,3 @@
     "firebase-admin": "^14.0.0"
   }
 }
-

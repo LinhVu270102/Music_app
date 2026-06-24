@@ -124,6 +124,19 @@ class CommentViewModel : ViewModel() {
         }
     }
 
+    fun toggleCommentLike(songId: String, comment: Comment) {
+        viewModelScope.launch {
+            try {
+                commentRepository.toggleCommentLike(songId, comment)
+                loadComments(songId)
+            } catch (e: AppException) {
+                _errorMessageResId.value = e.messageResId
+            } catch (_: Exception) {
+                _errorMessageResId.value = R.string.update_like_failed
+            }
+        }
+    }
+
     fun clearErrorMessage() {
         _errorMessageResId.value = null
     }

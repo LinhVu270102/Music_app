@@ -64,11 +64,24 @@
         android:textColor="@color/gray_light"
         android:textSize="16sp" />
 
+    <TextView
+        android:id="@+id/playerPlaylistName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/playerArtist"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:singleLine="true"
+        android:textColor="@color/orange"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
     <SeekBar
         android:id="@+id/playerSeekBar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/playerArtist"
+        android:layout_below="@id/playerPlaylistName"
         android:layout_marginTop="24dp"
         android:progressTint="@color/orange"
         android:thumbTint="@color/orange" />

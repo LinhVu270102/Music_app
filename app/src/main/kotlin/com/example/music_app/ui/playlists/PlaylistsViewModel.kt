@@ -6,17 +6,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.Playlist
-import com.example.music_app.data.model.isSoundCloudApiPlaylist
-import com.example.music_app.data.model.toPlaylist
 import com.example.music_app.data.repository.PlaylistRepository
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
-import com.example.music_app.data.repository.SoundCloudPlaylistRepository
 
 class PlaylistsViewModel : ViewModel() {
 
     private val repository = PlaylistRepository()
-    private val soundCloudPlaylistRepository = SoundCloudPlaylistRepository()
 
     private val _playlists = MutableLiveData<List<Playlist>>()
     val playlists: LiveData<List<Playlist>> = _playlists
@@ -27,17 +23,12 @@ class PlaylistsViewModel : ViewModel() {
     fun loadPlaylists() {
         viewModelScope.launch {
             try {
-                val firebasePlaylists = repository.getMyPlaylists()
-
-                val apiPlaylists =
-                    try {
-                        soundCloudPlaylistRepository.getUserApiPlaylists().map { it.toPlaylist() }
-                    } catch (_: Exception) {
-                        emptyList()
-                    }
+                val myPlaylists = repository.getMyPlaylists()
+                val likedPlaylists = repository.getLikedPlaylists()
 
                 _playlists.value =
-                    (firebasePlaylists + apiPlaylists)
+                    (myPlaylists + likedPlaylists)
+                        .distinctBy { playlist -> playlist.id }
                         .sortedByDescending { playlist ->
                             playlist.updatedAt
                         }
@@ -75,8 +66,8 @@ class PlaylistsViewModel : ViewModel() {
         }
     }
 
-    fun isSoundCloudPlaylist(playlist: Playlist): Boolean {
-        return playlist.isSoundCloudApiPlaylist()
+    fun canDeletePlaylist(playlist: Playlist): Boolean {
+        return playlist.ownerId.isNotBlank() && playlist.ownerId == repository.getCurrentUserId()
     }
 
     fun clearErrorMessage() {

@@ -16,7 +16,6 @@ import com.example.music_app.databinding.ItemSearchSectionHeaderBinding
 class SearchAdapter(
     private val onTrackClick: (Song) -> Unit,
     private val onProfileClick: (User) -> Unit,
-    private val onApiArtistProfileClick: (SearchResultItem.ApiArtistProfile) -> Unit,
     private val onPlaylistClick: (Playlist) -> Unit,
     private val onRecentQueryClick: (String) -> Unit
 ) : ListAdapter<SearchResultItem, RecyclerView.ViewHolder>(SearchResultDiffCallback) {
@@ -30,7 +29,6 @@ class SearchAdapter(
             is SearchResultItem.Header -> VIEW_TYPE_HEADER
             is SearchResultItem.Track -> VIEW_TYPE_RESULT
             is SearchResultItem.Profile -> VIEW_TYPE_RESULT
-            is SearchResultItem.ApiArtistProfile -> VIEW_TYPE_RESULT
             is SearchResultItem.PlaylistItem -> VIEW_TYPE_RESULT
             is SearchResultItem.RecentQuery -> VIEW_TYPE_RESULT
         }
@@ -72,10 +70,6 @@ class SearchAdapter(
 
             is SearchResultItem.Profile -> {
                 (holder as ResultViewHolder).bindProfile(item.user)
-            }
-
-            is SearchResultItem.ApiArtistProfile -> {
-                (holder as ResultViewHolder).bindApiArtistProfile(item)
             }
 
             is SearchResultItem.PlaylistItem -> {
@@ -128,10 +122,10 @@ class SearchAdapter(
             }
 
             binding.txtTitle.text = displayName
-            binding.txtArtist.text =
-                user.username.ifBlank {
-                    user.email
-                }
+            binding.txtArtist.text = binding.root.context.getString(
+                R.string.user_search_subtitle,
+                user.uploadedSongsCount
+            )
 
             Glide.with(binding.root)
                 .load(user.avatarUrl.ifBlank { R.drawable.music_orange })
@@ -164,33 +158,6 @@ class SearchAdapter(
                 onPlaylistClick(playlist)
             }
         }
-        fun bindApiArtistProfile(profile: SearchResultItem.ApiArtistProfile) {
-            resetCoverImage()
-            val context = binding.root.context
-
-            binding.txtTitle.text =
-                profile.artistName.ifBlank {
-                    context.getString(R.string.unknown_artist)
-                }
-
-            binding.txtArtist.text =
-                context.getString(
-                    R.string.api_artist_search_subtitle,
-                    getSourceLabel(profile.source),
-                    profile.trackCount
-                )
-
-            Glide.with(binding.root)
-                .load(profile.avatarUrl.ifBlank { R.drawable.music_orange })
-                .placeholder(R.drawable.music_orange)
-                .error(R.drawable.music_orange)
-                .centerCrop()
-                .into(binding.imgCover)
-
-            binding.root.setOnClickListener {
-                onApiArtistProfileClick(profile)
-            }
-        }
         fun bindRecentQuery(query: String) {
             val context = binding.root.context
 
@@ -213,15 +180,6 @@ class SearchAdapter(
             binding.imgCover.setPadding(0, 0, 0, 0)
         }
 
-        private fun getSourceLabel(source: String): String {
-            val context = binding.root.context
-
-            return if (source.equals("soundcloud", ignoreCase = true)) {
-                context.getString(R.string.soundcloud_source)
-            } else {
-                context.getString(R.string.orange_music_source)
-            }
-        }
     }
 
     companion object {
@@ -240,8 +198,6 @@ class SearchAdapter(
                         oldItem.song.id == newItem.song.id
                     oldItem is SearchResultItem.Profile && newItem is SearchResultItem.Profile ->
                         oldItem.user.uid == newItem.user.uid
-                    oldItem is SearchResultItem.ApiArtistProfile && newItem is SearchResultItem.ApiArtistProfile ->
-                        oldItem.artistName == newItem.artistName && oldItem.source == newItem.source
                     oldItem is SearchResultItem.PlaylistItem && newItem is SearchResultItem.PlaylistItem ->
                         oldItem.playlist.id == newItem.playlist.id
                     oldItem is SearchResultItem.RecentQuery && newItem is SearchResultItem.RecentQuery ->

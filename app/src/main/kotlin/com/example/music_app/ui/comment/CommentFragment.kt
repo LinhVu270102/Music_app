@@ -96,6 +96,9 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
     private fun setupRecyclerView() {
         adapter = CommentAdapter(
             currentUserId = activeUserId,
+            onLikeClick = { comment ->
+                viewModel.toggleCommentLike(songId, comment)
+            },
             onMoreClick = { comment, _ ->
                 dialogController.showOptions(comment)
             },
