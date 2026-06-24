@@ -648,12 +648,12 @@ function getPublicUser(userId, fallback = {}) {
 
 app.get("/", (req, res) => {
   res.json({
-    message: "Orange Music SoundCloud server is running",
+    message: "Orange Music streaming proxy is running",
     mode: "progressive-only",
     endpoints: [
       "/health",
       "/searchSoundCloudTracks?q=lofi&limit=10",
-      "/getSoundCloudStreamUrl?trackId=123456789",
+      "/getStreamUrl?trackId=123456789",
       "/debug/buffering-test?trackId=123456789&bytes=1048576",
 
       "/getSoundCloudArtistProfile?artist=Alan%20Walker&limit=20",
@@ -714,7 +714,7 @@ app.get("/debug/buffering-test", async (req, res) => {
     const resolveStart = Date.now();
 
     const streamResponse = await axios.get(
-      `${baseUrl}/getSoundCloudStreamUrl`,
+      `${baseUrl}/getStreamUrl`,
       {
         params: {
           trackId: trackId
@@ -949,7 +949,7 @@ app.get("/soundcloud/proxy/media", async (req, res) => {
   }
 });
 
-app.get("/getSoundCloudStreamUrl", async (req, res) => {
+async function resolveLegacyStreamUrl(req, res) {
   try {
     const trackId = normalizeTrackId(req.query.trackId);
 
@@ -1083,7 +1083,7 @@ app.get("/getSoundCloudStreamUrl", async (req, res) => {
 
     return res.status(200).json(result);
   } catch (error) {
-    logSoundCloudError("getSoundCloudStreamUrl", error);
+    logSoundCloudError("getStreamUrl", error);
 
     if (isRateLimitError(error)) {
       return res.status(429).json(
@@ -1101,7 +1101,12 @@ app.get("/getSoundCloudStreamUrl", async (req, res) => {
       )
     );
   }
-});
+}
+
+// New Android builds use this provider-neutral endpoint. Keep the old route so
+// installed development APKs continue working while the app is updated.
+app.get("/getStreamUrl", resolveLegacyStreamUrl);
+app.get("/getSoundCloudStreamUrl", resolveLegacyStreamUrl);
 
 app.get("/getSoundCloudArtistProfile", async (req, res) => {
   try {
@@ -1608,6 +1613,6 @@ app.post("/toggleSoundCloudTrackLike", (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Orange Music SoundCloud server is running on http://localhost:${PORT}`);
+  console.log(`Orange Music streaming proxy is running on http://localhost:${PORT}`);
   console.log("Mode: progressive-only");
 });

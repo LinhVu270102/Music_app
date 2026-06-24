@@ -142,6 +142,11 @@
     <string name="follow">Follow</string>
     <string name="comment">Comment</string>
     <string name="current_playlist">Current playlist</string>
+    <string name="shuffle_on">Shuffle on</string>
+    <string name="shuffle_off">Shuffle off</string>
+    <string name="loop_off">Loop off</string>
+    <string name="loop_playlist">Loop playlist</string>
+    <string name="loop_one">Loop current song</string>
     <string name="view_comments">View comments</string>
     <string name="like_song_button">Like song button</string>
 

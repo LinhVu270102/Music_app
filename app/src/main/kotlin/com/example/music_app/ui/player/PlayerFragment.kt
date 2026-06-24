@@ -187,9 +187,6 @@ class PlayerFragment : Fragment() {
         binding.btnSongOptions.setOnClickListener {
             PlayerManager.currentSong.value?.let(songOptionsDialogs::show)
         }
-        binding.btnCurrentPlaylist.setOnClickListener {
-            playlistDialogs.showCurrentPlaylist()
-        }
     }
 
     private fun initObservers() {
@@ -422,6 +419,9 @@ class PlayerFragment : Fragment() {
     private fun updateShuffleIcon() {
         val enabled = PlayerManager.isShuffleEnabled.value == true
         binding.btnShuffle.alpha = if (enabled) 1f else 0.4f
+        binding.btnShuffle.contentDescription = getString(
+            if (enabled) R.string.shuffle_on else R.string.shuffle_off
+        )
     }
 
     private fun updateLoopIcon() {
@@ -429,16 +429,19 @@ class PlayerFragment : Fragment() {
             PlayerManager.LoopMode.OFF -> {
                 binding.btnLoop.setImageResource(R.drawable.ic_loop)
                 binding.btnLoop.alpha = 0.4f
+                binding.btnLoop.contentDescription = getString(R.string.loop_off)
             }
 
             PlayerManager.LoopMode.PLAYLIST -> {
                 binding.btnLoop.setImageResource(R.drawable.ic_loop)
                 binding.btnLoop.alpha = 1f
+                binding.btnLoop.contentDescription = getString(R.string.loop_playlist)
             }
 
             PlayerManager.LoopMode.ONE -> {
                 binding.btnLoop.setImageResource(R.drawable.ic_loop1)
                 binding.btnLoop.alpha = 1f
+                binding.btnLoop.contentDescription = getString(R.string.loop_one)
             }
 
             null -> {

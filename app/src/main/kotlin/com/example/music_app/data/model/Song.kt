@@ -1,5 +1,8 @@
 package com.example.music_app.data.model
 
+import com.google.firebase.firestore.IgnoreExtraProperties
+
+@IgnoreExtraProperties
 data class Song(
     val id: String = "",
 
@@ -41,5 +44,5 @@ data class Song(
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
 
-    // The player uses the Firebase Storage URL above as its single audio source.
+    // songUrl is resolved from Firebase Storage or the temporary legacy streaming proxy.
 )
