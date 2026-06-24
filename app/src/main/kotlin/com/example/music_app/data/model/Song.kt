@@ -41,10 +41,5 @@ data class Song(
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
 
-    // SoundCloud
-    val source: String = "",
-    val soundCloudId: Long = 0L,
-    val permalinkUrl: String = "",
-    val streamable: Boolean = false,
-    val access: String = ""
+    // The player uses the Firebase Storage URL above as its single audio source.
 )

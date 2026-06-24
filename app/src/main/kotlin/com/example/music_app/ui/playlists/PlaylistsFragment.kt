@@ -1,9 +1,7 @@
 package com.example.music_app.ui.playlists
 
-import android.app.AlertDialog
 import android.os.Bundle
 import android.view.View
-import android.widget.EditText
 import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -16,6 +14,7 @@ import android.app.Dialog
 import android.graphics.Color
 import androidx.core.graphics.drawable.toDrawable
 import com.example.music_app.databinding.DialogConfirmActionBinding
+import com.example.music_app.databinding.DialogInputActionBinding
 
 class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
 
@@ -58,16 +57,11 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
                     .commit()
             },
             onDeleteClick = { playlist ->
-                if (viewModel.isSoundCloudPlaylist(playlist)) {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.api_playlist_delete_not_supported),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                } else {
+                if (viewModel.canDeletePlaylist(playlist)) {
                     confirmDeletePlaylist(playlist)
                 }
-            }
+            },
+            canDelete = viewModel::canDeletePlaylist
         )
 
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -99,38 +93,29 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
     }
 
     private fun showCreatePlaylistDialog() {
-        val input = EditText(requireContext()).apply {
-            hint = getString(R.string.playlist_name_hint)
-            setSingleLine(true)
-            setPadding(36, 24, 36, 24)
+        val dialogBinding = DialogInputActionBinding.inflate(layoutInflater)
+        val dialog = Dialog(requireContext()).apply {
+            setContentView(dialogBinding.root)
         }
 
-        val dialog = AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.create_playlist))
-            .setIcon(R.drawable.music_orange)
-            .setMessage(getString(R.string.create_playlist_message))
-            .setView(input)
-            .setPositiveButton(getString(R.string.create), null)
-            .setNegativeButton(getString(R.string.cancel), null)
-            .create()
-
-        dialog.setOnShowListener {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val name = input.text.toString().trim()
-                if (name.isBlank()) {
-                    Toast.makeText(
-                        requireContext(),
-                        getString(R.string.playlist_name_empty),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                } else {
-                    viewModel.createPlaylist(name)
-                    dialog.dismiss()
-                }
+        dialogBinding.txtDialogTitle.text = getString(R.string.create_playlist)
+        dialogBinding.txtDialogMessage.text = getString(R.string.create_playlist_message)
+        dialogBinding.edtDialogInput.hint = getString(R.string.playlist_name_hint)
+        dialogBinding.btnConfirm.text = getString(R.string.create)
+        dialogBinding.btnCancel.setOnClickListener { dialog.dismiss() }
+        dialogBinding.btnConfirm.setOnClickListener {
+            val name = dialogBinding.edtDialogInput.text.toString().trim()
+            if (name.isBlank()) {
+                showToast(getString(R.string.playlist_name_empty))
+                return@setOnClickListener
             }
+
+            viewModel.createPlaylist(name)
+            dialog.dismiss()
         }
 
         dialog.show()
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     }
 
     private fun confirmDeletePlaylist(playlist: Playlist) {
@@ -155,6 +140,10 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
 
         dialog.show()
         dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroyView() {

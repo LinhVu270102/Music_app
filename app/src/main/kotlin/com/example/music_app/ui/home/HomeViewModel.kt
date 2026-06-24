@@ -7,21 +7,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.repository.SoundCloudRepository
+import com.example.music_app.data.repository.SongRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.supervisorScope
 
+/** Builds home rows from the Firestore music catalog, grouped by genre. */
 class HomeViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "HomeViewModel"
     }
 
-    private val soundCloudRepository = SoundCloudRepository()
-
+    private val songRepository = SongRepository()
     private var isLoadingHome = false
+    private var catalogSongs: List<Song> = emptyList()
 
     private val genreCache = mutableMapOf<String, List<Song>>()
 
@@ -43,159 +42,85 @@ class HomeViewModel : ViewModel() {
     private val _errorMessageResId = MutableLiveData<Int?>()
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
 
-    private fun List<Song>.randomizedDistinct(limit: Int? = null): List<Song> {
-        val mixed = distinctBy { song ->
-            song.id.ifBlank { "${song.title}-${song.artist}" }
-        }.shuffled()
-
-        return if (limit == null) mixed else mixed.take(limit)
-    }
-
     fun loadHomeDataFast() {
-        val firstPaintStart = System.currentTimeMillis()
-
-        val cachedData = HomeMemoryCache.data
-
-        if (cachedData != null) {
-            _relatedTracks.value = cachedData.relatedTracks
-            _moreLike.value = cachedData.moreLike
-            _hotForYou.value = cachedData.hotForYou
-            _trendingByGenre.value = cachedData.trendingByGenre
-
-            Log.d(
-                TAG,
-                "Home first paint from cache in ${System.currentTimeMillis() - firstPaintStart} ms"
-            )
-
+        if (HomeMemoryCache.isValid()) HomeMemoryCache.data?.let { cached ->
+            _relatedTracks.value = cached.relatedTracks
+            _moreLike.value = cached.moreLike
+            _hotForYou.value = cached.hotForYou
+            _trendingByGenre.value = cached.trendingByGenre
             return
         }
-
-        if (isLoadingHome) {
-            Log.d(TAG, "Home is already loading, skip duplicate request")
-            return
-        }
-
-        Log.d(TAG, "Home cache is empty, initial load")
         refreshHomeDataInBackground()
     }
 
     fun refreshHomeDataByUser() {
-        if (isLoadingHome) {
-            Log.d(TAG, "Home is already loading, skip user refresh")
-            return
-        }
-
-        Log.d(TAG, "User refresh home data")
+        HomeMemoryCache.clear()
         refreshHomeDataInBackground()
     }
 
     private fun refreshHomeDataInBackground() {
+        if (isLoadingHome) return
+
         viewModelScope.launch(Dispatchers.IO) {
-            val start = System.currentTimeMillis()
+            isLoadingHome = true
+            _isLoading.postValue(true)
 
             try {
-                isLoadingHome = true
-                _isLoading.postValue(true)
+                catalogSongs = songRepository.getAllSongs()
+                genreCache.clear()
 
-                val homeData = supervisorScope {
-                    val relatedDeferred = async {
-                        safeSearchTracks("lofi chill", 12)
-                    }
-
-                    val moreDeferred = async {
-                        safeSearchTracks("pop music", 12)
-                    }
-
-                    val hotDeferred = async {
-                        safeSearchTracks("trending music", 12)
-                    }
-
-                    val trendingDeferred = async {
-                        safeSearchTracks("hip hop rap", 16)
-                    }
-
-                    val related = relatedDeferred.await()
-                    val more = moreDeferred.await()
-                    val hot = hotDeferred.await()
-                    val trending = trendingDeferred.await()
-
-                    HomeData(
-                        relatedTracks = related.randomizedDistinct(4),
-                        moreLike = more.randomizedDistinct(6),
-                        hotForYou = hot.randomizedDistinct(6),
-                        trendingByGenre = trending.randomizedDistinct(8)
-                    )
-                }
+                val homeData = HomeData(
+                    relatedTracks = songsForGenre("chill", "lofi", "acoustic").take(4),
+                    moreLike = songsForGenre("pop").take(6),
+                    hotForYou = catalogSongs
+                        .sortedWith(compareByDescending<Song> { it.plays + it.likes }
+                            .thenByDescending(Song::createdAt))
+                        .take(6),
+                    trendingByGenre = songsForGenre("hip hop", "rap", "hiphop").take(8)
+                )
 
                 HomeMemoryCache.save(homeData)
-
                 _relatedTracks.postValue(homeData.relatedTracks)
                 _moreLike.postValue(homeData.moreLike)
                 _hotForYou.postValue(homeData.hotForYou)
                 _trendingByGenre.postValue(homeData.trendingByGenre)
-
-                Log.d(
-                    TAG,
-                    "Home refresh loaded in ${System.currentTimeMillis() - start} ms"
-                )
-            } catch (e: Exception) {
-                Log.e(TAG, "Home load failed", e)
-
-                if (HomeMemoryCache.data == null) {
-                    _errorMessageResId.postValue(R.string.soundcloud_search_failed)
-                }
+            } catch (error: Exception) {
+                Log.e(TAG, "Unable to load Firebase catalog", error)
+                _errorMessageResId.postValue(R.string.load_song_failed)
             } finally {
-                _isLoading.postValue(false)
                 isLoadingHome = false
-            }
-        }
-    }
-
-    private suspend fun safeSearchTracks(
-        query: String,
-        limit: Int
-    ): List<Song> {
-        return try {
-            val start = System.currentTimeMillis()
-
-            val result = soundCloudRepository.searchTracks(
-                query = query,
-                limit = limit
-            )
-
-            Log.d(
-                TAG,
-                "Search '$query' loaded ${result.size} songs in ${System.currentTimeMillis() - start} ms"
-            )
-
-            result
-        } catch (e: Exception) {
-            Log.e(TAG, "Search '$query' failed", e)
-            emptyList()
-        }
-    }
-
-    fun loadTrendingByGenreFast(query: String) {
-        if (query.isBlank()) return
-
-        genreCache[query]?.let { cachedSongs ->
-            _trendingByGenre.value = cachedSongs.randomizedDistinct(8)
-            return
-        }
-
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                _isLoading.postValue(true)
-
-                val rawSongs = safeSearchTracks(query, 16)
-                val randomSongs = rawSongs.randomizedDistinct(8)
-
-                genreCache[query] = rawSongs
-                _trendingByGenre.postValue(randomSongs)
-            } finally {
                 _isLoading.postValue(false)
             }
         }
+    }
+
+    fun loadTrendingByGenreFast(genre: String) {
+        if (genre.isBlank()) return
+
+        genreCache[genre]?.let(_trendingByGenre::postValue)
+            ?: viewModelScope.launch(Dispatchers.IO) {
+                _isLoading.postValue(true)
+                val songs = songsForGenre(genre).take(8)
+                genreCache[genre] = songs
+                _trendingByGenre.postValue(songs)
+                _isLoading.postValue(false)
+            }
+    }
+
+    private fun songsForGenre(vararg terms: String): List<Song> {
+        val normalizedTerms = terms.map(String::lowercase)
+        val matchingSongs = catalogSongs.filter { song ->
+            val searchable = listOf(song.genre, song.title, song.artist)
+                .plus(song.tags)
+                .joinToString(" ")
+                .lowercase()
+            normalizedTerms.any(searchable::contains)
+        }
+
+        return (matchingSongs.ifEmpty { catalogSongs })
+            .distinctBy(Song::id)
+            .sortedWith(compareByDescending<Song> { it.plays + it.likes }
+                .thenByDescending(Song::createdAt))
     }
 
     fun clearErrorMessage() {

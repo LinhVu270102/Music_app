@@ -26,7 +26,6 @@ import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.playlists.PlaylistDetailFragment
 import com.example.music_app.ui.player.PlaybackLauncher
-import com.example.music_app.ui.profile.ApiArtistProfileFragment
 import com.example.music_app.ui.profile.ProfileFragment
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -81,9 +80,6 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             },
             onProfileClick = { user ->
                 openProfileResult(user)
-            },
-            onApiArtistProfileClick = { profile ->
-                openApiArtistProfileResult(profile)
             },
             onPlaylistClick = { playlist ->
                 openPlaylistResult(playlist)
@@ -260,24 +256,6 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             binding.btnCancel.isEnabled = !isLoading
         }
 
-        viewModel.apiArtistTrackCounts.observe(viewLifecycleOwner) { update ->
-            update ?: return@observe
-
-            val currentKeyword = binding.edtSearch.text.toString().trim()
-            if (!currentKeyword.equals(update.keyword, ignoreCase = true)) return@observe
-            if (currentTab != update.tab) return@observe
-
-            val updatedItems = searchAdapter.currentList.map { item ->
-                if (item is SearchResultItem.ApiArtistProfile) {
-                    val key = item.artistName.trim().lowercase()
-                    item.copy(trackCount = update.counts[key] ?: item.trackCount)
-                } else {
-                    item
-                }
-            }
-
-            searchAdapter.setData(updatedItems)
-        }
     }
 
     private fun restoreLatestSearchInSession() {
@@ -424,25 +402,6 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
         searchAdapter.setData(items)
         PlayerManager.setFallbackSongs(currentSearchSongs)
-
-        updateApiArtistProfileTrackCounts(
-            items = items,
-            keywordSnapshot = keyword,
-            tabSnapshot = currentTab
-        )
-    }
-
-    private fun updateApiArtistProfileTrackCounts(
-        items: List<SearchResultItem>,
-        keywordSnapshot: String,
-        tabSnapshot: SearchTab
-    ) {
-        val apiProfiles = items.filterIsInstance<SearchResultItem.ApiArtistProfile>()
-        viewModel.loadApiArtistTrackCounts(
-            profiles = apiProfiles,
-            keyword = keywordSnapshot,
-            tab = tabSnapshot
-        )
     }
     private fun openProfileResult(user: User) {
         if (user.uid.isBlank()) {
@@ -457,25 +416,6 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             replace(
                 R.id.fragmentContainer,
                 ProfileFragment.newInstance(user.uid)
-            )
-            addToBackStack(null)
-        }
-    }
-
-    private fun openApiArtistProfileResult(
-        profile: SearchResultItem.ApiArtistProfile
-    ) {
-        hideKeyboard()
-        binding.edtSearch.clearFocus()
-
-        parentFragmentManager.commit {
-            replace(
-                R.id.fragmentContainer,
-                ApiArtistProfileFragment.newInstance(
-                    artistName = profile.artistName,
-                    source = profile.source,
-                    coverUrl = profile.avatarUrl
-                )
             )
             addToBackStack(null)
         }

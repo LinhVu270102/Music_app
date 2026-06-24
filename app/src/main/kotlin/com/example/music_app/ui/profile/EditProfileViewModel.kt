@@ -1,5 +1,6 @@
 package com.example.music_app.ui.profile
 
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -83,6 +84,22 @@ class EditProfileViewModel : ViewModel() {
                     .onFailure { error ->
                         _errorMessage.value = error.message
                     }
+            }
+        }
+    }
+
+    fun updateAvatar(uri: Uri) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isLoading.postValue(true)
+            val result = userRepository.uploadCurrentUserAvatar(uri)
+
+            withContext(Dispatchers.Main) {
+                _isLoading.value = false
+                result.onSuccess { updatedUser ->
+                    _user.value = updatedUser
+                }.onFailure { error ->
+                    _errorMessage.value = error.message
+                }
             }
         }
     }

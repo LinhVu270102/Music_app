@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SocialRepository
+import com.example.music_app.player.state.PlayerInteractionState
+import com.example.music_app.player.state.SongLikeState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -19,6 +21,14 @@ class YourLikesViewModel : ViewModel() {
 
     private val _errorMessageResId = MutableLiveData<Int?>()
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
+
+    private val likeObserver = androidx.lifecycle.Observer<SongLikeState> {
+        loadLikedSongs()
+    }
+
+    init {
+        PlayerInteractionState.songLikeUpdates.observeForever(likeObserver)
+    }
 
     fun loadLikedSongs() {
         viewModelScope.launch {
@@ -34,5 +44,10 @@ class YourLikesViewModel : ViewModel() {
 
     fun clearErrorMessage() {
         _errorMessageResId.value = null
+    }
+
+    override fun onCleared() {
+        PlayerInteractionState.songLikeUpdates.removeObserver(likeObserver)
+        super.onCleared()
     }
 }

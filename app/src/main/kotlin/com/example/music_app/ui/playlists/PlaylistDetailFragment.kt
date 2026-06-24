@@ -37,12 +37,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
     private var isCurrentPlaylistLiked = false
 
     private fun isOwnerPlaylist(): Boolean {
-        if (isSoundCloudApiPlaylist()) return false
-
-        return viewModel.isCurrentUserPlaylistOwner(
-            ownerId = ownerId,
-            isSoundCloudPlaylist = false
-        )
+        return viewModel.isCurrentUserPlaylistOwner(ownerId)
     }
 
     companion object {
@@ -77,11 +72,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         playlistName = arguments?.getString(ARG_PLAYLIST_NAME).orEmpty()
 
         binding.tvPlaylistName.text = playlistName.ifBlank { getString(R.string.playlist) }
-        binding.tvPlaylistSubtitle.text = if (isSoundCloudApiPlaylist()) {
-            getString(R.string.soundcloud_api_playlist_subtitle)
-        } else {
-            getString(R.string.playlist_detail_subtitle)
-        }
+        binding.tvPlaylistSubtitle.text = getString(R.string.playlist_detail_subtitle)
 
         setupRecyclerView()
         setupListeners()
@@ -240,7 +231,9 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         PlaybackLauncher.openPlayer(
             fragment = this,
             song = song,
-            playlist = currentSongs
+            playlist = currentSongs,
+            playlistId = playlistId,
+            playlistName = playlistName
         )
     }
 
@@ -272,13 +265,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         }
 
         dialog.show()
-    }
-
-    private fun isSoundCloudApiPlaylist(): Boolean {
-        return viewModel.isSoundCloudPlaylist(
-            playlistId = playlistId,
-            ownerId = ownerId
-        )
+        dialog.window?.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
     }
 
     private fun showToast(message: String) {

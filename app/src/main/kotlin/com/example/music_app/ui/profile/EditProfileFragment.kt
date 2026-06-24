@@ -5,6 +5,8 @@ import android.view.View
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.activity.result.contract.ActivityResultContracts
+import com.bumptech.glide.Glide
 import com.example.music_app.R
 import com.example.music_app.data.model.User
 import com.example.music_app.databinding.FragmentEditProfileBinding
@@ -15,6 +17,11 @@ class EditProfileFragment : Fragment(R.layout.fragment_edit_profile) {
     private val binding get() = _binding!!
 
     private val viewModel: EditProfileViewModel by viewModels()
+    private val pickAvatar = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri ?: return@registerForActivityResult
+        Glide.with(this).load(uri).circleCrop().into(binding.imgProfileAvatar)
+        viewModel.updateAvatar(uri)
+    }
 
     override fun onViewCreated(
         view: View,
@@ -37,6 +44,10 @@ class EditProfileFragment : Fragment(R.layout.fragment_edit_profile) {
 
         binding.btnSaveProfile.setOnClickListener {
             saveProfile()
+        }
+
+        binding.btnChangeAvatar.setOnClickListener {
+            pickAvatar.launch("image/*")
         }
     }
 
@@ -85,6 +96,12 @@ class EditProfileFragment : Fragment(R.layout.fragment_edit_profile) {
     }
 
     private fun bindUser(user: User) {
+        Glide.with(this)
+            .load(user.avatarUrl.ifBlank { R.drawable.music_orange })
+            .placeholder(R.drawable.music_orange)
+            .error(R.drawable.music_orange)
+            .circleCrop()
+            .into(binding.imgProfileAvatar)
         binding.edtFullName.setText(user.fullName)
         binding.edtDisplayName.setText(user.displayName)
         binding.edtUsername.setText(user.username)

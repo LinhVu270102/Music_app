@@ -65,7 +65,7 @@
     <string name="notification">Thông báo</string>
 
     <string name="genre_hip_hop_rap">Hip Hop &amp; Rap</string>
-    <string name="genre_soundcloud">SoundCloud</string>
+    <string name="genre_rock">Rock</string>
     <string name="genre_rnb">R&amp;B</string>
     <string name="genre_pop">Pop</string>
     <string name="genre_electronic">Electronic</string>
@@ -338,14 +338,11 @@
     <string name="rule_inappropriate_image_title">Hình ảnh không phù hợp</string>
     <string name="rule_inappropriate_image_description">Không cho phép ảnh bìa phản cảm, nhạy cảm, bạo lực hoặc gây hiểu nhầm cho người nghe.</string>
 
-    <string name="soundcloud_search_failed">Tìm kiếm SoundCloud thất bại</string>
-    <string name="soundcloud_stream_failed">Không thể lấy đường dẫn phát từ SoundCloud</string>
     <string name="song_url_empty">Không có đường dẫn phát nhạc</string>
 
     <string name="playback_failed">Không thể phát bài hát này</string>
     <string name="player_not_ready">Trình phát chưa sẵn sàng</string>
 
-    <string name="soundcloud_rate_limited">SoundCloud đang giới hạn lượt phát. Vui lòng thử lại sau.</string>
 
     <string name="no_permission">Bạn không có quyền thực hiện thao tác này</string>
     <string name="song_deleted">Bài hát này đã bị xóa</string>
@@ -456,6 +453,7 @@
     <string name="search_result_count">%1$d kết quả</string>
     <string name="search_result_count_placeholder">0 kết quả</string>
     <string name="playlist_songs_count">%1$d bài hát</string>
+    <string name="user_search_subtitle">OrangeMusic • %1$d bài hát đã đăng</string>
     <string name="profile_result_selected">Hồ sơ: %1$s</string>
     <string name="playlist_result_selected">Danh sách phát: %1$s</string>
     <string name="hide_comment_confirm">Bạn có muốn ẩn bình luận này không?</string>
@@ -512,7 +510,6 @@
     <string name="play_all">Phát tất cả</string>
     <string name="no_songs_in_playlist">Chưa có bài hát trong danh sách phát này.</string>
     <string name="seek_to_comment_timeline">Đã tua đến %1$s</string>
-    <string name="soundcloud_source">SoundCloud</string>
     <string name="orange_music_source">Orange Music</string>
     <string name="api_artist_search_subtitle">%1$s • %2$d bài hát</string>
     <string name="artist_profile">Hồ sơ nghệ sĩ</string>
@@ -523,9 +520,6 @@
     <string name="no_artist_songs">Chưa tìm thấy bài hát nào của nghệ sĩ này.</string>
     <string name="open_artist_profile_failed">Không thể mở hồ sơ nghệ sĩ.</string>
     <string name="online_song_cannot_follow">Bài hát online không có người đăng để theo dõi.</string>
-    <string name="soundcloud_playlist_count_format">Orange Music • %1$d bài hát</string>
-    <string name="soundcloud_api_playlist_subtitle">Danh sách SoundCloud được lưu trong Orange Music</string>
-    <string name="api_playlist_delete_not_supported">Chưa hỗ trợ xóa danh sách phát SoundCloud trên server.</string>
     <string name="tap_to_search_again">Nhấn để tìm kiếm lại</string>
     <string name="no_recent_searches">Chưa có tìm kiếm gần đây</string>
     <string name="delete_playlist_confirm_with_name">Bạn có chắc muốn xóa playlist "%1$s" không?</string>
@@ -554,4 +548,9 @@
     <string name="could_not_play_this_song">Không thể phát bài hát này</string>
     <string name="delete_song_confirm_with_name">Bạn có chắc muốn xóa bài hát "%1$s" không?</string>
     <string name="login_required">Vui lòng đăng nhập để tiếp tục.</string>
+    <string name="profile_photo">Ảnh đại diện</string>
+    <string name="change_profile_photo">Đổi ảnh đại diện</string>
+    <string name="edit_profile_social_hint">Chọn ảnh giúp mọi người dễ nhận ra bạn.</string>
+    <string name="profile_about_section">Thông tin về bạn</string>
+    <string name="profile_music_section">Gu âm nhạc của bạn</string>
 </resources>

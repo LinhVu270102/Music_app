@@ -226,6 +226,12 @@ class PlayerFragment : Fragment() {
             updateLoopIcon()
         }
 
+        PlayerManager.playbackContext.observe(viewLifecycleOwner) { context ->
+            binding.playerPlaylistName.visibility =
+                if (context?.isPlaylist == true) View.VISIBLE else View.GONE
+            binding.playerPlaylistName.text = context?.playlistName.orEmpty()
+        }
+
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 showToast(getString(it))
@@ -343,7 +349,7 @@ class PlayerFragment : Fragment() {
             isCurrentArtistFollowed = false
             binding.btnFollow.isEnabled = false
             binding.btnFollow.alpha = 0.4f
-            binding.tvFollowCount.text = getString(R.string.soundcloud_source)
+            binding.tvFollowCount.text = "0"
             updateFollowIcon()
             return
         }

@@ -174,6 +174,7 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
         }
 
         dialog.show()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
     }
 
 

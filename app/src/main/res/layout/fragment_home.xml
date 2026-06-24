@@ -172,9 +172,9 @@
                             android:text="@string/genre_hip_hop_rap" />
 
                         <TextView
-                            android:id="@+id/chipSoundCloud"
+                            android:id="@+id/chipRock"
                             style="@style/GenreChip"
-                            android:text="@string/genre_soundcloud" />
+                            android:text="@string/genre_rock" />
 
                         <TextView
                             android:id="@+id/chipRnB"

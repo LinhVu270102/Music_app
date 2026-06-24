@@ -1,5 +1,6 @@
 package com.example.music_app.data.repository
 
+import android.net.Uri
 import com.example.music_app.R
 import com.example.music_app.data.model.AccountStatus
 import com.example.music_app.data.model.User
@@ -9,6 +10,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -16,7 +18,8 @@ import kotlinx.coroutines.tasks.await
  */
 class UserRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
+    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
 ) {
 
     private val usersCollection = firestore.collection("users")
@@ -192,6 +195,35 @@ class UserRepository(
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    suspend fun uploadCurrentUserAvatar(uri: Uri): Result<User> {
+        return try {
+            val firebaseUser = auth.currentUser
+                ?: return Result.failure(AppException(R.string.not_logged_in))
+
+            val reference = storage.reference.child("avatars/${firebaseUser.uid}/profile.jpg")
+            reference.putFile(uri).await()
+            val avatarUrl = reference.downloadUrl.await().toString()
+
+            usersCollection.document(firebaseUser.uid)
+                .set(
+                    mapOf(
+                        "avatarUrl" to avatarUrl,
+                        "updatedAt" to System.currentTimeMillis()
+                    ),
+                    SetOptions.merge()
+                )
+                .await()
+
+            val updatedSnapshot = usersCollection.document(firebaseUser.uid).get().await()
+            val updatedUser = updatedSnapshot.toObject(User::class.java)?.copy(uid = updatedSnapshot.id)
+                ?: return Result.failure(AppException(R.string.user_not_found))
+
+            Result.success(updatedUser)
+        } catch (error: Exception) {
+            Result.failure(error)
         }
     }
 

@@ -10,8 +10,6 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.PlaylistRepository
 import com.example.music_app.data.repository.SocialRepository
 import com.example.music_app.data.repository.SongRepository
-import com.example.music_app.data.repository.SoundCloudPlaylistRepository
-import com.example.music_app.data.repository.SoundCloudSocialRepository
 import com.example.music_app.player.state.ArtistFollowState
 import com.example.music_app.player.state.PlayerInteractionState
 import com.example.music_app.player.state.SongLikeState
@@ -25,8 +23,6 @@ class PlayerViewModel : ViewModel() {
     private val repository = SongRepository()
     private val playlistRepository = PlaylistRepository()
     private val socialRepository = SocialRepository()
-    private val soundCloudSocialRepository = SoundCloudSocialRepository()
-    private val soundCloudPlaylistRepository = SoundCloudPlaylistRepository()
 
     // Screen state
     private val _song = MutableLiveData<Song?>()
@@ -69,21 +65,15 @@ class PlayerViewModel : ViewModel() {
     }
 
     fun loadLikeState(song: Song) {
-        // SoundCloud and Firebase keep social data in different stores.
         viewModelScope.launch {
             runCatching {
-                if (soundCloudSocialRepository.isSoundCloudSong(song)) {
-                    val social = soundCloudSocialRepository.getTrackSocial(song.id)
-                    SongLikeState(song.id, social.liked, social.likesCount, social.commentsCount)
-                } else {
-                    val cached = PlayerInteractionState.songState(song.id)
-                    SongLikeState(
-                        song.id,
-                        socialRepository.isSongLiked(song.id),
-                        cached?.likesCount ?: song.likes,
-                        cached?.commentsCount ?: song.commentsCount
-                    )
-                }
+                val cached = PlayerInteractionState.songState(song.id)
+                SongLikeState(
+                    song.id,
+                    socialRepository.isSongLiked(song.id),
+                    cached?.likesCount ?: song.likes,
+                    cached?.commentsCount ?: song.commentsCount
+                )
             }.getOrNull()?.let(PlayerInteractionState::publishSongLike)
         }
     }
@@ -91,20 +81,15 @@ class PlayerViewModel : ViewModel() {
     fun toggleLike(song: Song) {
         viewModelScope.launch {
             try {
-                val state = if (soundCloudSocialRepository.isSoundCloudSong(song)) {
-                    val social = soundCloudSocialRepository.toggleTrackLike(song.id)
-                    SongLikeState(song.id, social.liked, social.likesCount, social.commentsCount)
-                } else {
-                    val liked = socialRepository.toggleSongLike(song)
-                    val cached = PlayerInteractionState.songState(song.id)
-                    val count = cached?.likesCount ?: song.likes
-                    SongLikeState(
-                        song.id,
-                        liked,
-                        if (liked) count + 1 else (count - 1).coerceAtLeast(0),
-                        cached?.commentsCount ?: song.commentsCount
-                    )
-                }
+                val liked = socialRepository.toggleSongLike(song)
+                val cached = PlayerInteractionState.songState(song.id)
+                val count = cached?.likesCount ?: song.likes
+                val state = SongLikeState(
+                    song.id,
+                    liked,
+                    if (liked) count + 1 else (count - 1).coerceAtLeast(0),
+                    cached?.commentsCount ?: song.commentsCount
+                )
 
                 PlayerInteractionState.publishSongLike(state)
                 _successMessageResId.value = if (state.liked) {
@@ -228,32 +213,15 @@ class PlayerViewModel : ViewModel() {
     fun requestPlaylistPicker(song: Song) {
         viewModelScope.launch {
             try {
-                val isSoundCloudSong = soundCloudSocialRepository.isSoundCloudSong(song)
-                val source = if (isSoundCloudSong) {
-                    PlayerPlaylistSource.SOUNDCLOUD
-                } else {
-                    PlayerPlaylistSource.FIREBASE
+                val options = playlistRepository.getMyPlaylists().map { playlist ->
+                    PlayerPlaylistOption(
+                        id = playlist.id,
+                        name = playlist.name,
+                        songsCount = playlist.songsCount
+                    )
                 }
 
-                val options = if (isSoundCloudSong) {
-                    soundCloudPlaylistRepository.getUserApiPlaylists().map { playlist ->
-                        PlayerPlaylistOption(
-                            id = playlist.id,
-                            name = playlist.name,
-                            songsCount = playlist.songsCount.toLong()
-                        )
-                    }
-                } else {
-                    playlistRepository.getMyPlaylists().map { playlist ->
-                        PlayerPlaylistOption(
-                            id = playlist.id,
-                            name = playlist.name,
-                            songsCount = playlist.songsCount
-                        )
-                    }
-                }
-
-                _playlistPickerState.value = PlayerPlaylistPickerState(song, source, options)
+                _playlistPickerState.value = PlayerPlaylistPickerState(song, options)
             } catch (error: AppException) {
                 _errorMessageResId.value = error.messageResId
             } catch (_: Exception) {
@@ -264,8 +232,7 @@ class PlayerViewModel : ViewModel() {
 
     fun createPlaylistAndAddSong(
         name: String,
-        song: Song,
-        source: PlayerPlaylistSource
+        song: Song
     ) {
         if (name.isBlank()) {
             _errorMessageResId.value = R.string.playlist_name_empty
@@ -274,13 +241,8 @@ class PlayerViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                if (source == PlayerPlaylistSource.SOUNDCLOUD) {
-                    val playlist = soundCloudPlaylistRepository.createUserApiPlaylist(name)
-                    soundCloudPlaylistRepository.addTrackToUserApiPlaylist(playlist.id, song)
-                } else {
-                    val playlist = playlistRepository.createPlaylist(name)
-                    playlistRepository.addSongToPlaylist(playlist.id, song)
-                }
+                val playlist = playlistRepository.createPlaylist(name)
+                playlistRepository.addSongToPlaylist(playlist.id, song)
                 _successMessageResId.value = R.string.added_to_playlist_success
             } catch (error: AppException) {
                 _errorMessageResId.value = error.messageResId
@@ -292,8 +254,7 @@ class PlayerViewModel : ViewModel() {
 
     fun addSongToPlaylist(
         playlistId: String,
-        song: Song,
-        source: PlayerPlaylistSource
+        song: Song
     ) {
         if (playlistId.isBlank()) {
             _errorMessageResId.value = R.string.playlist_not_found
@@ -302,11 +263,7 @@ class PlayerViewModel : ViewModel() {
 
         viewModelScope.launch {
             try {
-                if (source == PlayerPlaylistSource.SOUNDCLOUD) {
-                    soundCloudPlaylistRepository.addTrackToUserApiPlaylist(playlistId, song)
-                } else {
-                    playlistRepository.addSongToPlaylist(playlistId, song)
-                }
+                playlistRepository.addSongToPlaylist(playlistId, song)
                 _successMessageResId.value = R.string.added_to_playlist_success
             } catch (error: AppException) {
                 _errorMessageResId.value = error.messageResId

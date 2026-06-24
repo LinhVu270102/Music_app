@@ -6,7 +6,6 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.music_app.data.model.Playlist
-import com.example.music_app.data.model.isSoundCloudApiPlaylist
 import com.example.music_app.databinding.ItemPlaylistBinding
 import androidx.core.view.isVisible
 import com.bumptech.glide.Glide
@@ -14,6 +13,7 @@ import com.example.music_app.R
 
 class PlaylistAdapter(
     private val onItemClick: (Playlist) -> Unit,
+    private val canDelete: (Playlist) -> Boolean,
     private val onDeleteClick: (Playlist) -> Unit
 ) : ListAdapter<Playlist, PlaylistAdapter.PlaylistViewHolder>(DiffCallback) {
 
@@ -27,17 +27,11 @@ class PlaylistAdapter(
 
         fun bind(playlist: Playlist) {
             val context = binding.root.context
-            val isApiPlaylist = playlist.isSoundCloudApiPlaylist()
-
             binding.txtPlaylistName.text = playlist.name
 
             binding.txtPlaylistInfo.text =
                 context.getString(
-                    if (isApiPlaylist) {
-                        R.string.soundcloud_playlist_count_format
-                    } else {
-                        R.string.playlist_songs_count
-                    },
+                    R.string.playlist_songs_count,
                     playlist.songsCount
                 )
 
@@ -48,7 +42,7 @@ class PlaylistAdapter(
                 .centerCrop()
                 .into(binding.imgPlaylistCover)
 
-            binding.btnDeletePlaylist.isVisible = !isApiPlaylist
+            binding.btnDeletePlaylist.isVisible = canDelete(playlist)
 
             binding.root.setOnClickListener {
                 onItemClick(playlist)
