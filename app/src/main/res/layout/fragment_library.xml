@@ -170,12 +170,23 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/saved_playlists"
+                    android:text="@string/recently_played_playlists"
                     android:textColor="@android:color/white"
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
             </LinearLayout>
+
+            <TextView
+                android:id="@+id/tvEmptySavedPlaylists"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:text="@string/no_recently_played_playlists"
+                android:textColor="@color/gray_light"
+                android:textSize="14sp"
+                android:visibility="gone" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerSavedPlaylists"
@@ -188,16 +199,6 @@
                 android:paddingEnd="12dp"
                 android:scrollbars="none" />
 
-            <TextView
-                android:id="@+id/tvEmptySavedPlaylists"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:gravity="center_vertical"
-                android:text="@string/no_playlists"
-                android:textColor="@color/gray_light"
-                android:textSize="14sp"
-                android:visibility="gone" />
 
         </LinearLayout>
 
