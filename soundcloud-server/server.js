@@ -171,6 +171,28 @@ function buildProxyUrl(req, pathName, targetUrl) {
   return `${getBaseUrlFromRequest(req)}${pathName}?url=${encodeURIComponent(targetUrl)}`;
 }
 
+function rebuildProxyUrlForRequest(req, streamUrl) {
+  try {
+    const parsedUrl = new URL(streamUrl);
+    const targetUrl = parsedUrl.searchParams.get("url");
+
+    if (parsedUrl.pathname === "/soundcloud/proxy/media" && targetUrl) {
+      return buildProxyUrl(req, "/soundcloud/proxy/media", targetUrl);
+    }
+  } catch (_) {
+    // A non-proxy URL can be returned unchanged.
+  }
+
+  return streamUrl;
+}
+
+function buildClientStreamResult(req, result) {
+  return {
+    ...result,
+    streamUrl: rebuildProxyUrlForRequest(req, result.streamUrl)
+  };
+}
+
 function shouldSendSoundCloudAuth(targetUrl) {
   try {
     const host = new URL(targetUrl).hostname;
@@ -963,7 +985,7 @@ async function resolveLegacyStreamUrl(req, res) {
 
     if (cachedStream) {
       console.log(`Return cached stream for track ${trackId}`);
-      return res.status(200).json(cachedStream);
+      return res.status(200).json(buildClientStreamResult(req, cachedStream));
     }
 
     const accessToken = await getSoundCloudAccessToken();
@@ -1081,7 +1103,7 @@ async function resolveLegacyStreamUrl(req, res) {
 
     setToCache(streamCache, trackId, result, STREAM_CACHE_TTL_MS);
 
-    return res.status(200).json(result);
+    return res.status(200).json(buildClientStreamResult(req, result));
   } catch (error) {
     logSoundCloudError("getStreamUrl", error);
 

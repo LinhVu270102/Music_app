@@ -365,7 +365,9 @@ class PlayerFragment : Fragment() {
 
         PlayerInteractionState.artistState(targetUserId)?.let { cachedState ->
             isCurrentArtistFollowed = cachedState.followed
-            binding.tvFollowCount.text = formatCount(cachedState.followerCount ?: 0L)
+            cachedState.followerCount?.let { count ->
+                binding.tvFollowCount.text = formatCount(count)
+            }
             updateFollowIcon()
         }
 

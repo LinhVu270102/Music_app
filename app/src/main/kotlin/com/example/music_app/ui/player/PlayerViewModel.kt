@@ -10,6 +10,7 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.PlaylistRepository
 import com.example.music_app.data.repository.SocialRepository
 import com.example.music_app.data.repository.SongRepository
+import com.example.music_app.player.PlayerManager
 import com.example.music_app.player.state.ArtistFollowState
 import com.example.music_app.player.state.PlayerInteractionState
 import com.example.music_app.player.state.SongLikeState
@@ -88,7 +89,8 @@ class PlayerViewModel : ViewModel() {
                     song.id,
                     liked,
                     if (liked) count + 1 else (count - 1).coerceAtLeast(0),
-                    cached?.commentsCount ?: song.commentsCount
+                    cached?.commentsCount ?: song.commentsCount,
+                    changedByUser = true
                 )
 
                 PlayerInteractionState.publishSongLike(state)
@@ -110,10 +112,13 @@ class PlayerViewModel : ViewModel() {
 
         viewModelScope.launch {
             runCatching {
+                val followed = socialRepository.isFollowing(userId)
                 ArtistFollowState(
                     userId = userId,
-                    followed = socialRepository.isFollowing(userId),
-                    followerCount = socialRepository.getFollowerCount(userId)
+                    followed = followed,
+                    followerCount = runCatching {
+                        socialRepository.getFollowerCount(userId)
+                    }.getOrNull()
                 )
             }.getOrNull()?.let(PlayerInteractionState::publishArtistFollow)
         }
@@ -128,11 +133,14 @@ class PlayerViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val followed = socialRepository.toggleFollow(userId)
+                val followerCount = runCatching {
+                    socialRepository.getFollowerCount(userId)
+                }.getOrNull()
                 PlayerInteractionState.publishArtistFollow(
                     ArtistFollowState(
                         userId = userId,
                         followed = followed,
-                        followerCount = socialRepository.getFollowerCount(userId)
+                        followerCount = followerCount
                     )
                 )
                 _successMessageResId.value = if (followed) {
@@ -213,7 +221,10 @@ class PlayerViewModel : ViewModel() {
     fun requestPlaylistPicker(song: Song) {
         viewModelScope.launch {
             try {
-                val options = playlistRepository.getMyPlaylists().map { playlist ->
+                val activePlaylistId = PlayerManager.playbackContext.value?.playlistId
+                val options = playlistRepository.getMyPlaylists()
+                    .filterNot { playlist -> playlist.id == activePlaylistId }
+                    .map { playlist ->
                     PlayerPlaylistOption(
                         id = playlist.id,
                         name = playlist.name,
@@ -258,6 +269,10 @@ class PlayerViewModel : ViewModel() {
     ) {
         if (playlistId.isBlank()) {
             _errorMessageResId.value = R.string.playlist_not_found
+            return
+        }
+        if (playlistId == PlayerManager.playbackContext.value?.playlistId) {
+            _errorMessageResId.value = R.string.song_already_in_current_playlist
             return
         }
 

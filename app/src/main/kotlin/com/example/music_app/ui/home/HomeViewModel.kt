@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.repository.SocialRepository
 import com.example.music_app.data.repository.SongRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -16,9 +17,13 @@ class HomeViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "HomeViewModel"
+        private const val YOUR_LIKES_LIMIT = 4
+        private const val MORE_LIKE_LIMIT = 6
+        private const val MORE_LIKE_ARTIST_LIMIT = 3
     }
 
     private val songRepository = SongRepository()
+    private val socialRepository = SocialRepository()
     private var isLoadingHome = false
     private var catalogSongs: List<Song> = emptyList()
 
@@ -58,6 +63,11 @@ class HomeViewModel : ViewModel() {
         refreshHomeDataInBackground()
     }
 
+    fun refreshHomeDataAfterLikeChanged() {
+        HomeMemoryCache.clear()
+        refreshHomeDataInBackground()
+    }
+
     private fun refreshHomeDataInBackground() {
         if (isLoadingHome) return
 
@@ -69,9 +79,40 @@ class HomeViewModel : ViewModel() {
                 catalogSongs = songRepository.getAllSongs()
                 genreCache.clear()
 
+                val likedSongs = socialRepository.getLikedSongs()
+                val recentlyPlayedRanks = songRepository.getRecentlyPlayedSongs()
+                    .mapIndexed { index, song -> song.id to index }
+                    .toMap()
+                val rankedLikedSongs = likedSongs
+                    .sortedWith(
+                        compareByDescending<Song> { it.plays }
+                            .thenBy { recentlyPlayedRanks[it.id] ?: Int.MAX_VALUE }
+                            .thenByDescending(Song::updatedAt)
+                    )
+                val likedSongIds = rankedLikedSongs.mapTo(mutableSetOf(), Song::id)
+                val selectedArtists = rankedLikedSongs
+                    .map(Song::artist)
+                    .map(String::trim)
+                    .filter(String::isNotBlank)
+                    .distinctBy(String::lowercase)
+                    .shuffled()
+                    .take(MORE_LIKE_ARTIST_LIMIT)
+                    .map(String::lowercase)
+                    .toSet()
+                val moreFromLikedArtists = if (selectedArtists.isEmpty()) {
+                    emptyList()
+                } else {
+                    catalogSongs
+                        .filterNot { song -> song.id in likedSongIds }
+                        .filter { song -> song.artist.trim().lowercase() in selectedArtists }
+                        .shuffled()
+                        .take(MORE_LIKE_LIMIT)
+                        .toList()
+                }
+
                 val homeData = HomeData(
-                    relatedTracks = songsForGenre("chill", "lofi", "acoustic").take(4),
-                    moreLike = songsForGenre("pop").take(6),
+                    relatedTracks = rankedLikedSongs.take(YOUR_LIKES_LIMIT),
+                    moreLike = moreFromLikedArtists,
                     hotForYou = catalogSongs
                         .sortedWith(compareByDescending<Song> { it.plays + it.likes }
                             .thenByDescending(Song::createdAt))
@@ -126,4 +167,5 @@ class HomeViewModel : ViewModel() {
     fun clearErrorMessage() {
         _errorMessageResId.value = null
     }
+
 }

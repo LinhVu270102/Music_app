@@ -35,6 +35,12 @@
     <string name="login_button">ĐĂNG NHẬP</string>
     <string name="register_button">ĐĂNG KÝ</string>
     <string name="register_title">Đăng ký</string>
+    <string name="register_social_subtitle">Tạo bản sắc âm nhạc và cá nhân hóa từng gợi ý dành cho bạn.</string>
+    <string name="register_identity_section">Danh tính của bạn</string>
+    <string name="register_account_section">Tài khoản</string>
+    <string name="register_social_section">Thông tin cá nhân</string>
+    <string name="register_music_section">Gu âm nhạc</string>
+    <string name="register_security_section">Bảo mật</string>
 
     <string name="empty_email_or_password">Vui lòng nhập email và mật khẩu</string>
     <string name="login_failed">Đăng nhập thất bại</string>
@@ -45,6 +51,10 @@
     <string name="invalid_email">Email không hợp lệ</string>
     <string name="empty_email">Vui lòng nhập email</string>
     <string name="empty_display_name">Vui lòng nhập tên hiển thị</string>
+    <string name="empty_full_name">Vui lòng nhập họ và tên</string>
+    <string name="empty_username">Vui lòng nhập tên người dùng</string>
+    <string name="unlike">Bỏ thích</string>
+    <string name="song_already_in_current_playlist">Bài hát này đã có trong playlist đang phát</string>
     <string name="password_too_short">Mật khẩu phải có ít nhất 6 ký tự</string>
 
     <!-- ================= MAIN NAVIGATION ================= -->

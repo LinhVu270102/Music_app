@@ -17,6 +17,7 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.DialogConfirmActionBinding
 import com.example.music_app.databinding.FragmentPlaylistDetailBinding
 import com.example.music_app.player.PlayerManager
+import com.example.music_app.player.state.PlayerInteractionState
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
 import com.example.music_app.ui.common.showCustomDialog
@@ -105,7 +106,12 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
                 if (isOwnerPlaylist()) {
                     confirmRemoveSong(song)
                 }
-            }
+            },
+            onLikeClick = viewModel::toggleSongLike,
+            isSongLiked = { song ->
+                viewModel.songLikeStates.value?.get(song.id) == true
+            },
+            useFullWidth = true
         )
 
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -139,6 +145,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         viewModel.songs.observe(viewLifecycleOwner) { songs ->
             currentSongs = songs
             adapter.setData(songs)
+            viewModel.loadSongLikeStates(songs)
 
             binding.tvEmpty.isVisible = songs.isEmpty()
             binding.tvSongCount.text =
@@ -174,11 +181,25 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             isCurrentPlaylistLiked = isLiked
             updatePlaylistLikeButton()
         }
+
+        viewModel.songLikeStates.observe(viewLifecycleOwner) {
+            adapter.setData(currentSongs)
+        }
+
+        PlayerInteractionState.songLikeUpdates.observe(viewLifecycleOwner) { state ->
+            viewModel.applySharedSongLikeState(state)
+        }
+
+        PlayerManager.playbackContext.observe(viewLifecycleOwner) {
+            updatePlaylistActions()
+        }
     }
 
     private fun updatePlaylistActions() {
         val isOwner = isOwnerPlaylist()
-        binding.btnAddCurrentSong.isVisible = isOwner
+        val isCurrentPlaybackPlaylist =
+            PlayerManager.playbackContext.value?.playlistId == playlistId
+        binding.btnAddCurrentSong.isVisible = isOwner && !isCurrentPlaybackPlaylist
         binding.btnTogglePlaylistLike.isVisible = !isOwner
 
         if (!isOwner) {
@@ -192,13 +213,13 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
     }
 
     private fun updatePlaylistLikeButton() {
-        binding.btnTogglePlaylistLike.text = getString(
-            if (isCurrentPlaylistLiked) {
-                R.string.unlike_playlist
-            } else {
-                R.string.like_playlist
-            }
+        binding.btnTogglePlaylistLike.setImageResource(
+            if (isCurrentPlaylistLiked) R.drawable.ic_liked else R.drawable.ic_like
         )
+        binding.btnTogglePlaylistLike.contentDescription = getString(
+            if (isCurrentPlaylistLiked) R.string.unlike_playlist else R.string.like_playlist
+        )
+        binding.btnTogglePlaylistLike.alpha = if (isCurrentPlaylistLiked) 1f else 0.55f
     }
 
     private fun currentPlaylist(): Playlist {
@@ -214,6 +235,10 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
 
     private fun addCurrentSongToPlaylist() {
         if (!isOwnerPlaylist()) return
+        if (PlayerManager.playbackContext.value?.playlistId == playlistId) {
+            showToast(getString(R.string.song_already_in_current_playlist))
+            return
+        }
 
         val song = PlayerManager.currentSong.value
         if (song == null) {

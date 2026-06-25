@@ -7,7 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.repository.SocialRepository
 import com.example.music_app.domain.usecase.PlaylistUseCase
+import com.example.music_app.player.state.PlayerInteractionState
+import com.example.music_app.player.state.SongLikeState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -16,6 +19,7 @@ class PlaylistDetailViewModel : ViewModel() {
 
     // Dependencies
     private val playlistUseCase = PlaylistUseCase()
+    private val socialRepository = SocialRepository()
 
     // Screen state
     private val _songs = MutableLiveData<List<Song>>()
@@ -29,6 +33,9 @@ class PlaylistDetailViewModel : ViewModel() {
 
     private val _isPlaylistLiked = MutableLiveData(false)
     val isPlaylistLiked: LiveData<Boolean> = _isPlaylistLiked
+
+    private val _songLikeStates = MutableLiveData<Map<String, Boolean>>(emptyMap())
+    val songLikeStates: LiveData<Map<String, Boolean>> = _songLikeStates
 
     // Public screen actions
     fun isCurrentUserPlaylistOwner(
@@ -124,6 +131,65 @@ class PlaylistDetailViewModel : ViewModel() {
                 _errorMessageResId.value = R.string.add_to_playlist_failed
             }
         }
+    }
+
+    fun loadSongLikeStates(songs: List<Song>) {
+        if (songs.isEmpty()) {
+            _songLikeStates.value = emptyMap()
+            return
+        }
+
+        viewModelScope.launch {
+            val likeStates = songs.associate { song ->
+                song.id to runCatching {
+                    socialRepository.isSongLiked(song.id)
+                }.getOrDefault(false)
+            }
+            _songLikeStates.value = likeStates
+
+            songs.forEach { song ->
+                PlayerInteractionState.publishSongLike(
+                    SongLikeState(
+                        songId = song.id,
+                        liked = likeStates[song.id] == true,
+                        likesCount = song.likes,
+                        commentsCount = song.commentsCount
+                    )
+                )
+            }
+        }
+    }
+
+    fun toggleSongLike(song: Song) {
+        if (song.id.isBlank()) return
+
+        viewModelScope.launch {
+            try {
+                val liked = socialRepository.toggleSongLike(song)
+                val previous = PlayerInteractionState.songState(song.id)
+                val baseLikes = previous?.likesCount ?: song.likes
+                val state = SongLikeState(
+                    songId = song.id,
+                    liked = liked,
+                    likesCount = if (liked) baseLikes + 1 else (baseLikes - 1).coerceAtLeast(0),
+                    commentsCount = previous?.commentsCount ?: song.commentsCount,
+                    changedByUser = true
+                )
+
+                PlayerInteractionState.publishSongLike(state)
+                applySharedSongLikeState(state)
+            } catch (e: AppException) {
+                _errorMessageResId.value = e.messageResId
+            } catch (_: Exception) {
+                _errorMessageResId.value = R.string.update_like_failed
+            }
+        }
+    }
+
+    fun applySharedSongLikeState(state: SongLikeState) {
+        _songLikeStates.value = _songLikeStates.value.orEmpty() + (
+            state.songId to state.liked
+        )
     }
 
     fun clearErrorMessage() {

@@ -132,6 +132,15 @@ class SongRepository {
         return songRemoteDataSource.getApprovedSongsByUploaderId(userId)
     }
 
+    suspend fun getSongsByArtistName(artistName: String): List<Song> {
+        val normalizedArtistName = normalizeArtistName(artistName)
+        if (normalizedArtistName.isBlank()) return emptyList()
+
+        return getAllSongs().filter { song ->
+            normalizeArtistName(song.artist) == normalizedArtistName
+        }
+    }
+
     suspend fun getUserById(userId: String): User? {
         return userRemoteDataSource.getById(userId)
     }
@@ -185,6 +194,14 @@ class SongRepository {
         )
 
         return reportRemoteDataSource.create(report)
+    }
+
+    private fun normalizeArtistName(value: String): String {
+        return java.text.Normalizer
+            .normalize(value, java.text.Normalizer.Form.NFD)
+            .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+            .trim()
+            .lowercase()
     }
 
 }

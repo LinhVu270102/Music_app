@@ -37,7 +37,8 @@
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:fillViewport="true">
 
         <LinearLayout
@@ -86,6 +87,18 @@
                 android:text="@string/no_bio"
                 android:textColor="@color/white"
                 android:textSize="14sp" />
+
+            <ImageButton
+                android:id="@+id/btnFollowArtist"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="14dp"
+                android:background="@drawable/bg_circle_dark"
+                android:contentDescription="@string/follow"
+                android:padding="10dp"
+                android:src="@drawable/ic_follow"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/tvUploadedTitle"
