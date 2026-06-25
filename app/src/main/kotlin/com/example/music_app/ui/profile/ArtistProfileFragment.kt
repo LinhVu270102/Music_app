@@ -83,6 +83,13 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
     }
 
     private fun setupListeners() {
+        binding.swipeRefreshArtistProfile.setOnRefreshListener {
+            viewModel.loadArtistProfile(
+                userId = artistId,
+                artistName = artistName
+            )
+        }
+
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
@@ -117,6 +124,7 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
                 .error(R.drawable.music_orange)
                 .circleCrop()
                 .into(binding.imgArtistAvatar)
+            binding.swipeRefreshArtistProfile.isRefreshing = false
         }
 
         viewModel.songs.observe(viewLifecycleOwner) { songs ->
@@ -126,6 +134,7 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
             adapter.setLikedSongIds(viewModel.likedSongIds)
 
             binding.tvEmpty.isVisible = songs.isEmpty()
+            binding.swipeRefreshArtistProfile.isRefreshing = false
         }
 
         viewModel.songLikeStates.observe(viewLifecycleOwner) {
@@ -136,6 +145,7 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
             messageResId?.let {
                 Toast.makeText(requireContext(), getString(it), Toast.LENGTH_SHORT).show()
                 viewModel.clearErrorMessage()
+                binding.swipeRefreshArtistProfile.isRefreshing = false
             }
         }
 

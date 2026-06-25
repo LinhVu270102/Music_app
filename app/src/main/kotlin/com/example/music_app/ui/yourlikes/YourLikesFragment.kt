@@ -53,6 +53,10 @@ class YourLikesFragment : Fragment(R.layout.fragment_your_likes) {
     }
 
     private fun setupListeners() {
+        binding.swipeRefreshYourLikes.setOnRefreshListener {
+            viewModel.loadLikedSongs()
+        }
+
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
@@ -62,12 +66,14 @@ class YourLikesFragment : Fragment(R.layout.fragment_your_likes) {
         viewModel.likedSongs.observe(viewLifecycleOwner) { songs ->
             currentSongs = songs
             adapter.setData(songs)
+            binding.swipeRefreshYourLikes.isRefreshing = false
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearErrorMessage()
+                binding.swipeRefreshYourLikes.isRefreshing = false
             }
         }
     }

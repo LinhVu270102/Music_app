@@ -48,6 +48,10 @@ class AdminReportFragment : Fragment(R.layout.fragment_admin_report) {
     }
 
     private fun setupListeners() {
+        binding.swipeRefreshAdminReports.setOnRefreshListener {
+            viewModel.loadReports()
+        }
+
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
@@ -68,12 +72,14 @@ class AdminReportFragment : Fragment(R.layout.fragment_admin_report) {
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
             binding.progressLoading.visibility =
                 if (isLoading) View.VISIBLE else View.GONE
+            binding.swipeRefreshAdminReports.isRefreshing = isLoading
         }
 
         viewModel.messageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 Toast.makeText(requireContext(), getString(it), Toast.LENGTH_SHORT).show()
                 viewModel.clearMessage()
+                binding.swipeRefreshAdminReports.isRefreshing = false
             }
         }
     }

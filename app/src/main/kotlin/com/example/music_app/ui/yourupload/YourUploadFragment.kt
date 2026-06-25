@@ -64,6 +64,10 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
     }
 
     private fun setupListeners() {
+        binding.swipeRefreshYourUpload.setOnRefreshListener {
+            viewModel.loadMyUploadedSongs()
+        }
+
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
@@ -75,12 +79,14 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
             adapter.setData(songs)
 
             binding.tvEmpty.isVisible = songs.isEmpty()
+            binding.swipeRefreshYourUpload.isRefreshing = false
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearErrorMessage()
+                binding.swipeRefreshYourUpload.isRefreshing = false
             }
         }
 
@@ -88,12 +94,14 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearSuccessMessage()
+                binding.swipeRefreshYourUpload.isRefreshing = false
             }
         }
         viewModel.actionMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearActionMessage()
+                binding.swipeRefreshYourUpload.isRefreshing = false
             }
         }
     }
