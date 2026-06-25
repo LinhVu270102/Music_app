@@ -3,8 +3,10 @@ package com.example.music_app.main
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
+import android.view.ViewTreeObserver
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -36,6 +38,7 @@ import kotlinx.coroutines.withContext
 import com.example.music_app.ui.admin.AdminModerationFragment
 import com.example.music_app.ui.admin.AdminReportFragment
 import com.example.music_app.ui.admin.AdminCommentModerationFragment
+import kotlin.math.max
 
 class MainActivity : BaseActivity<ActivityMainBinding>() {
 
@@ -53,6 +56,9 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         }
 
     private lateinit var footerNavigation: FooterNavigationController
+    private val keyboardVisibleFrame = Rect()
+    private var keyboardLayoutListener: ViewTreeObserver.OnGlobalLayoutListener? = null
+    private var isKeyboardVisible = false
 
     override fun getViewBinding(): ActivityMainBinding {
         return ActivityMainBinding.inflate(layoutInflater)
@@ -73,6 +79,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
         setupFooter()
         setupMiniPlayer()
+        setupKeyboardVisibilityObserver()
 
         supportFragmentManager.addOnBackStackChangedListener {
             updateMainChromeVisibility()
@@ -138,7 +145,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                     currentFragment is AdminCommentModerationFragment ||
                     currentFragment is AdminModerationFragment
 
-        if (shouldHideMainChrome) {
+        if (shouldHideMainChrome || isKeyboardVisible) {
             setFooterVisible(false)
             miniPlayerController.hideAll()
         } else {
@@ -189,6 +196,41 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         footerNavigation.bind()
     }
 
+    private fun setupKeyboardVisibilityObserver() {
+        keyboardLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
+            updateKeyboardVisibility(isKeyboardShowingByVisibleFrame())
+        }
+
+        binding.mainLayout.viewTreeObserver.addOnGlobalLayoutListener(keyboardLayoutListener)
+        binding.mainLayout.post {
+            updateKeyboardVisibility(isKeyboardShowingByVisibleFrame())
+        }
+    }
+
+    private fun isKeyboardShowingByVisibleFrame(): Boolean {
+        val rootView = binding.mainLayout.rootView
+        val rootHeight = rootView.height
+
+        if (rootHeight <= 0) return false
+
+        rootView.getWindowVisibleDisplayFrame(keyboardVisibleFrame)
+
+        val hiddenHeight = rootHeight - keyboardVisibleFrame.height()
+        val keyboardThreshold = max(
+            (resources.displayMetrics.density * MIN_KEYBOARD_HEIGHT_DP).toInt(),
+            (rootHeight * MIN_KEYBOARD_HEIGHT_RATIO).toInt()
+        )
+
+        return hiddenHeight > keyboardThreshold
+    }
+
+    private fun updateKeyboardVisibility(visible: Boolean) {
+        if (visible == isKeyboardVisible) return
+
+        isKeyboardVisible = visible
+        updateMainChromeVisibility()
+    }
+
     private fun openFooterTab(tab: FooterTab) {
         val fragment = when (tab) {
             FooterTab.HOME -> HomeFragment()
@@ -199,7 +241,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
         openMainFragment(fragment)
         footerNavigation.select(tab)
-        footerNavigation.setVisible(true)
+        setFooterVisible(true)
         updateMiniPlayerVisibility()
     }
 
@@ -311,17 +353,37 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
         val isAdminDashboard = currentFragment is AdminDashboardFragment
 
         miniPlayerController.setVisible(
-            hasSong && !isPlayerScreen && !isCommentScreen && !isAdminDashboard
+            hasSong &&
+                    !isKeyboardVisible &&
+                    !isPlayerScreen &&
+                    !isCommentScreen &&
+                    !isAdminDashboard
         )
     }
 
     fun setMiniPlayerVisible(visible: Boolean) {
         val hasSong = PlayerManager.currentSong.value != null
 
-        miniPlayerController.setVisible(visible && hasSong)
+        miniPlayerController.setVisible(visible && hasSong && !isKeyboardVisible)
     }
 
     fun setFooterVisible(visible: Boolean) {
-        footerNavigation.setVisible(visible)
+        footerNavigation.setVisible(visible && !isKeyboardVisible)
+    }
+
+    override fun onDestroy() {
+        keyboardLayoutListener?.let { listener ->
+            if (binding.mainLayout.viewTreeObserver.isAlive) {
+                binding.mainLayout.viewTreeObserver.removeOnGlobalLayoutListener(listener)
+            }
+        }
+        keyboardLayoutListener = null
+
+        super.onDestroy()
+    }
+
+    private companion object {
+        const val MIN_KEYBOARD_HEIGHT_DP = 120f
+        const val MIN_KEYBOARD_HEIGHT_RATIO = 0.15f
     }
 }
