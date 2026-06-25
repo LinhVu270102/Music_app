@@ -20,6 +20,7 @@ class PlaylistDetailViewModel : ViewModel() {
     // Dependencies
     private val playlistUseCase = PlaylistUseCase()
     private val socialRepository = SocialRepository()
+    private val pendingSongLikeIds = mutableSetOf<String>()
 
     // Screen state
     private val _songs = MutableLiveData<List<Song>>()
@@ -36,6 +37,10 @@ class PlaylistDetailViewModel : ViewModel() {
 
     private val _songLikeStates = MutableLiveData<Map<String, Boolean>>(emptyMap())
     val songLikeStates: LiveData<Map<String, Boolean>> = _songLikeStates
+    val likedSongIds: Set<String>
+        get() = _songLikeStates.value.orEmpty()
+            .filterValues { isLiked -> isLiked }
+            .keys
 
     // Public screen actions
     fun isCurrentUserPlaylistOwner(
@@ -142,7 +147,8 @@ class PlaylistDetailViewModel : ViewModel() {
         viewModelScope.launch {
             val likeStates = songs.associate { song ->
                 song.id to runCatching {
-                    socialRepository.isSongLiked(song.id)
+                    PlayerInteractionState.songState(song.id)?.liked
+                        ?: socialRepository.isSongLiked(song.id)
                 }.getOrDefault(false)
             }
             _songLikeStates.value = likeStates
@@ -162,26 +168,50 @@ class PlaylistDetailViewModel : ViewModel() {
 
     fun toggleSongLike(song: Song) {
         if (song.id.isBlank()) return
+        if (song.id in pendingSongLikeIds) return
+
+        val previousState = PlayerInteractionState.songState(song.id)
+        val wasLiked = _songLikeStates.value.orEmpty()[song.id]
+            ?: previousState?.liked
+            ?: false
+        val baseLikes = previousState?.likesCount ?: song.likes
+        val optimisticState = SongLikeState(
+            songId = song.id,
+            liked = !wasLiked,
+            likesCount = nextLikesCount(baseLikes, !wasLiked),
+            commentsCount = previousState?.commentsCount ?: song.commentsCount,
+            changedByUser = true
+        )
+
+        pendingSongLikeIds += song.id
+        PlayerInteractionState.publishSongLike(optimisticState)
+        applySharedSongLikeState(optimisticState)
 
         viewModelScope.launch {
             try {
                 val liked = socialRepository.toggleSongLike(song)
-                val previous = PlayerInteractionState.songState(song.id)
-                val baseLikes = previous?.likesCount ?: song.likes
                 val state = SongLikeState(
                     songId = song.id,
                     liked = liked,
-                    likesCount = if (liked) baseLikes + 1 else (baseLikes - 1).coerceAtLeast(0),
-                    commentsCount = previous?.commentsCount ?: song.commentsCount,
+                    likesCount = if (liked == optimisticState.liked) {
+                        optimisticState.likesCount
+                    } else {
+                        nextLikesCount(baseLikes, liked)
+                    },
+                    commentsCount = optimisticState.commentsCount,
                     changedByUser = true
                 )
 
                 PlayerInteractionState.publishSongLike(state)
                 applySharedSongLikeState(state)
             } catch (e: AppException) {
+                revertSongLike(song, wasLiked, baseLikes, previousState)
                 _errorMessageResId.value = e.messageResId
             } catch (_: Exception) {
+                revertSongLike(song, wasLiked, baseLikes, previousState)
                 _errorMessageResId.value = R.string.update_like_failed
+            } finally {
+                pendingSongLikeIds -= song.id
             }
         }
     }
@@ -190,6 +220,31 @@ class PlaylistDetailViewModel : ViewModel() {
         _songLikeStates.value = _songLikeStates.value.orEmpty() + (
             state.songId to state.liked
         )
+    }
+
+    private fun revertSongLike(
+        song: Song,
+        wasLiked: Boolean,
+        baseLikes: Long,
+        previousState: SongLikeState?
+    ) {
+        val revertedState = SongLikeState(
+            songId = song.id,
+            liked = wasLiked,
+            likesCount = baseLikes,
+            commentsCount = previousState?.commentsCount ?: song.commentsCount,
+            changedByUser = true
+        )
+
+        PlayerInteractionState.publishSongLike(revertedState)
+        applySharedSongLikeState(revertedState)
+    }
+
+    private fun nextLikesCount(
+        baseLikes: Long,
+        liked: Boolean
+    ): Long {
+        return if (liked) baseLikes + 1 else (baseLikes - 1).coerceAtLeast(0)
     }
 
     fun clearErrorMessage() {
