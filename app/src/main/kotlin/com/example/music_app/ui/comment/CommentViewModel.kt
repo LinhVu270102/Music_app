@@ -8,6 +8,8 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Comment
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.CommentRepository
+import com.example.music_app.player.state.PlayerInteractionState
+import com.example.music_app.player.state.SongCommentState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -45,7 +47,9 @@ class CommentViewModel : ViewModel() {
     fun loadComments(songId: String) {
         viewModelScope.launch {
             try {
-                _comments.value = commentRepository.getComments(songId)
+                val comments = commentRepository.getComments(songId)
+                _comments.value = comments
+                publishCommentCount(songId, comments)
             } catch (_: Exception) {
                 _errorMessageResId.value = R.string.load_comments_failed
             }
@@ -143,5 +147,14 @@ class CommentViewModel : ViewModel() {
 
     fun clearSuccessMessage() {
         _successMessageResId.value = null
+    }
+
+    private fun publishCommentCount(songId: String, comments: List<Comment>) {
+        PlayerInteractionState.publishSongComments(
+            SongCommentState(
+                songId = songId,
+                commentsCount = comments.size.toLong()
+            )
+        )
     }
 }

@@ -269,6 +269,14 @@ class PlayerFragment : Fragment() {
             updateLikeIcon()
         }
 
+        PlayerInteractionState.songCommentUpdates.observe(viewLifecycleOwner) { state ->
+            val displayedSong = PlayerManager.currentSong.value ?: viewModel.song.value
+
+            if (displayedSong?.id != state.songId) return@observe
+
+            binding.tvCommentCount.text = formatCount(state.commentsCount)
+        }
+
         PlayerInteractionState.artistFollowUpdates.observe(viewLifecycleOwner) { state ->
             val displayedSong = PlayerManager.currentSong.value ?: viewModel.song.value
 
@@ -287,7 +295,11 @@ class PlayerFragment : Fragment() {
         val cachedLikeState = PlayerInteractionState.songState(song.id)
         isCurrentSongLiked = cachedLikeState?.liked ?: false
         binding.tvLikeCount.text = formatCount(cachedLikeState?.likesCount ?: song.likes)
-        binding.tvCommentCount.text = formatCount(cachedLikeState?.commentsCount ?: song.commentsCount)
+        binding.tvCommentCount.text = formatCount(
+            PlayerInteractionState.commentCount(song.id)
+                ?: cachedLikeState?.commentsCount
+                ?: song.commentsCount
+        )
         updateLikeIcon()
 
         loadLikeState(song)
