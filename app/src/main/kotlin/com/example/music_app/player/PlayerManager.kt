@@ -122,7 +122,7 @@ object PlayerManager {
                         if (song != null) {
                             _currentIndex.value = index
                             _currentSong.value = song
-                            historyRecorder.record(song)
+                            historyRecorder.record(song, _playbackContext.value)
 
                         }
                     }
@@ -272,7 +272,7 @@ object PlayerManager {
 
         _currentIndex.value = index
         _currentSong.value = song
-        historyRecorder.record(song)
+        historyRecorder.record(song, _playbackContext.value)
 
         exoPlayer?.apply {
             seekTo(index, 0L)
@@ -293,7 +293,7 @@ object PlayerManager {
         _playlistSongs.value = singleSongPlaylist
         _playbackContext.value = null
         _currentSong.value = song
-        historyRecorder.record(song)
+        historyRecorder.record(song, null)
 
         val mediaItem = PlaybackMediaItemFactory.create(song)
 

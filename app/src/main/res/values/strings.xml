@@ -553,6 +553,8 @@
     <string name="mark_all_read">Mark all read</string>
     <string name="no_recently_played">No recently played songs yet.</string>
     <string name="saved_playlists">Saved playlists</string>
+    <string name="recently_played_playlists">Listening History</string>
+    <string name="no_recently_played_playlists">No recently played playlists yet.</string>
 
     <!-- Uploader moderation -->
     <string name="only_rejected_song_can_resubmit">Only rejected songs can be resubmitted for review</string>

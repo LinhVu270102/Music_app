@@ -9,6 +9,7 @@ import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.PlaylistRepository
 import com.example.music_app.data.repository.SongRepository
+import com.example.music_app.player.PlaybackContext
 import kotlinx.coroutines.launch
 
 class LibraryViewModel : ViewModel() {
@@ -33,7 +34,7 @@ class LibraryViewModel : ViewModel() {
     fun loadLibraryData() {
         Log.d(TAG, "loadLibraryData called")
         loadRecentlyPlayed()
-        loadMyPlaylists()
+        loadRecentlyPlayedPlaylists()
     }
 
     private fun loadRecentlyPlayed() {
@@ -58,20 +59,20 @@ class LibraryViewModel : ViewModel() {
         }
     }
 
-    private fun loadMyPlaylists() {
+    private fun loadRecentlyPlayedPlaylists() {
         viewModelScope.launch {
             val start = System.currentTimeMillis()
 
             try {
-                val result = playlistRepository.getLibraryPlaylists()
+                val result = playlistRepository.getRecentlyPlayedPlaylists()
                 _playlists.value = result
 
                 Log.d(
                     TAG,
-                    "Playlists loaded: ${result.size} playlists in ${System.currentTimeMillis() - start} ms"
+                    "Recently played playlists loaded: ${result.size} playlists in ${System.currentTimeMillis() - start} ms"
                 )
             } catch (e: Exception) {
-                Log.e(TAG, "Playlists failed", e)
+                Log.e(TAG, "Recently played playlists failed", e)
                 _playlists.value = emptyList()
             }
         }
@@ -84,6 +85,21 @@ class LibraryViewModel : ViewModel() {
     fun recordJustPlayed(song: Song) {
         _recentlyPlayed.value = (listOf(song) + _recentlyPlayed.value.orEmpty()
             .filter { item -> item.id != song.id })
+            .take(RECENTLY_PLAYED_LIMIT)
+    }
+
+    fun recordJustPlayedPlaylist(context: PlaybackContext?) {
+        val playbackContext = context?.takeIf { item -> item.isPlaylist } ?: return
+        val playlist = Playlist(
+            id = playbackContext.playlistId,
+            name = playbackContext.playlistName,
+            coverUrl = playbackContext.playlistCoverUrl,
+            ownerId = playbackContext.playlistOwnerId,
+            updatedAt = System.currentTimeMillis()
+        )
+
+        _playlists.value = (listOf(playlist) + _playlists.value.orEmpty()
+            .filter { item -> item.id != playlist.id })
             .take(RECENTLY_PLAYED_LIMIT)
     }
 

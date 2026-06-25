@@ -552,7 +552,9 @@
     <string name="update_playlist_like_failed">Không thể cập nhật lượt thích playlist</string>
     <string name="mark_all_read">Đọc tất cả</string>
     <string name="no_recently_played">Chưa có bài hát nghe gần đây.</string>
-    <string name="saved_playlists">Playlist đã lưu</string>
+    <string name="saved_playlists">Danh sách phát đã lưu</string>
+    <string name="recently_played_playlists">Lịch sử nghe</string>
+    <string name="no_recently_played_playlists">Chưa có danh sách phát nghe gần đây.</string>
 
     <!-- Uploader moderation -->
     <string name="only_rejected_song_can_resubmit">Chỉ bài hát bị từ chối mới có thể gửi duyệt lại</string>

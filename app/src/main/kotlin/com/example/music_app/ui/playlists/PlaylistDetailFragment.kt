@@ -260,7 +260,9 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             song = song,
             playlist = currentSongs,
             playlistId = playlistId,
-            playlistName = playlistName
+            playlistName = playlistName,
+            playlistOwnerId = ownerId,
+            playlistCoverUrl = coverUrl.ifBlank { currentSongs.firstOrNull()?.coverUrl.orEmpty() }
         )
     }
 

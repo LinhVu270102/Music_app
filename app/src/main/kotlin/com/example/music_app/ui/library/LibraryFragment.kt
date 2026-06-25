@@ -147,6 +147,10 @@ class LibraryFragment : Fragment() {
             viewModel.recordJustPlayed(song)
         }
 
+        PlayerManager.playbackContext.observe(viewLifecycleOwner) { context ->
+            viewModel.recordJustPlayedPlaylist(context)
+        }
+
         viewModel.playlists.observe(viewLifecycleOwner) { playlists ->
             playlistAdapter.setData(playlists)
             binding.tvEmptySavedPlaylists.visibility =

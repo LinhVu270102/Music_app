@@ -24,7 +24,9 @@ object PlaybackLauncher {
         song: Song,
         playlist: List<Song> = emptyList(),
         playlistId: String = "",
-        playlistName: String = ""
+        playlistName: String = "",
+        playlistOwnerId: String = "",
+        playlistCoverUrl: String = ""
     ) {
         if (isOpeningPlayer) return
         isOpeningPlayer = true
@@ -54,7 +56,12 @@ object PlaybackLauncher {
                 PlayerManager.playPlaylist(
                     songs = playableQueue,
                     startSong = playableSong,
-                    context = PlaybackContext(playlistId = playlistId, playlistName = playlistName)
+                    context = PlaybackContext(
+                        playlistId = playlistId,
+                        playlistName = playlistName,
+                        playlistOwnerId = playlistOwnerId,
+                        playlistCoverUrl = playlistCoverUrl
+                    )
                 )
 
                 fragment.parentFragmentManager.commit {
