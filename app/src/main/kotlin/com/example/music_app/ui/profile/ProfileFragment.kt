@@ -14,6 +14,7 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.User
 import com.example.music_app.databinding.FragmentProfileBinding
+import com.example.music_app.player.state.PlayerInteractionState
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
 
@@ -144,6 +145,10 @@ class ProfileFragment : Fragment() {
                 if (isFollowing) R.string.following else R.string.follow
             )
             binding.btnFollowProfile.alpha = if (isFollowing) 1f else 0.55f
+        }
+
+        PlayerInteractionState.artistFollowUpdates.observe(viewLifecycleOwner) { state ->
+            viewModel.applySharedFollowState(state)
         }
     }
 

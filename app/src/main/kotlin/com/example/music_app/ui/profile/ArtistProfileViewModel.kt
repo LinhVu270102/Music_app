@@ -45,7 +45,18 @@ class ArtistProfileViewModel : ViewModel() {
 
                 if (artistName.isNotBlank()) {
                     val artistSongs = repository.getSongsByArtistName(artistName)
+                    val resolvedArtistId = artistSongs
+                        .firstOrNull { song -> song.uploaderId.isNotBlank() }
+                        ?.uploaderId
+                        .orEmpty()
+                    val currentUserId = repository.getCurrentUserId()
+                    val followable = resolvedArtistId.isNotBlank() &&
+                        resolvedArtistId != currentUserId
+
+                    artistId = resolvedArtistId
+
                     _artist.value = User(
+                        uid = resolvedArtistId,
                         displayName = artistName,
                         username = artistName,
                         avatarUrl = artistSongs.firstOrNull()?.coverUrl.orEmpty(),
@@ -53,24 +64,48 @@ class ArtistProfileViewModel : ViewModel() {
                         uploadedSongsCount = artistSongs.size.toLong()
                     )
                     _songs.value = artistSongs
-                    _canFollow.value = false
-                    _isFollowing.value = false
+                    _canFollow.value = followable
+                    _isFollowing.value = if (followable) {
+                        val cachedState = PlayerInteractionState.artistState(resolvedArtistId)
+                        cachedState?.followed ?: socialRepository.isFollowing(resolvedArtistId)
+                    } else {
+                        false
+                    }
+
+                    if (followable) {
+                        publishCurrentFollowState(resolvedArtistId)
+                    }
                     return@launch
                 }
 
-                val artist = repository.getUserById(userId)
+                val artistSongs = repository.getSongsByUserId(userId)
+                val artist = repository.getUserById(userId) ?: artistSongs.firstOrNull()?.let { song ->
+                    User(
+                        uid = userId,
+                        displayName = song.artist,
+                        username = song.artist,
+                        avatarUrl = song.coverUrl,
+                        fullName = song.artist,
+                        uploadedSongsCount = artistSongs.size.toLong()
+                    )
+                }
+
                 _artist.value = artist
-                _songs.value = repository.getSongsByUserId(userId)
+                _songs.value = artistSongs
 
                 val currentUserId = repository.getCurrentUserId()
-                val followable = artist != null &&
-                    userId.isNotBlank() &&
+                val followable = userId.isNotBlank() &&
                     userId != currentUserId
                 _canFollow.value = followable
                 _isFollowing.value = if (followable) {
-                    socialRepository.isFollowing(userId)
+                    val cachedState = PlayerInteractionState.artistState(userId)
+                    cachedState?.followed ?: socialRepository.isFollowing(userId)
                 } else {
                     false
+                }
+
+                if (followable) {
+                    publishCurrentFollowState(userId)
                 }
             } catch (e: Exception) {
                 _errorMessage.value = R.string.load_artist_profile_failed
@@ -108,6 +143,21 @@ class ArtistProfileViewModel : ViewModel() {
         if (state.userId == artistId) {
             _isFollowing.value = state.followed
         }
+    }
+
+    private suspend fun publishCurrentFollowState(userId: String) {
+        val followed = _isFollowing.value == true
+        val followerCount = runCatching {
+            socialRepository.getFollowerCount(userId)
+        }.getOrNull()
+
+        PlayerInteractionState.publishArtistFollow(
+            ArtistFollowState(
+                userId = userId,
+                followed = followed,
+                followerCount = followerCount
+            )
+        )
     }
 
     fun clearErrorMessage() {
