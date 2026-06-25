@@ -34,6 +34,10 @@ class AdminDashboardFragment : Fragment(R.layout.fragment_admin_dashboard) {
     }
 
     private fun setupListeners() {
+        binding.swipeRefreshAdminDashboard.setOnRefreshListener {
+            viewModel.loadDashboard()
+        }
+
         binding.btnBack.setOnClickListener {
             logout()
         }
@@ -70,12 +74,14 @@ class AdminDashboardFragment : Fragment(R.layout.fragment_admin_dashboard) {
         viewModel.stats.observe(viewLifecycleOwner) { stats ->
             renderStats(stats)
             renderNotification(stats)
+            binding.swipeRefreshAdminDashboard.isRefreshing = false
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearErrorMessage()
+                binding.swipeRefreshAdminDashboard.isRefreshing = false
             }
         }
     }

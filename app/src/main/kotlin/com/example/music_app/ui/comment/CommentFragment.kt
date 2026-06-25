@@ -112,6 +112,10 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
     }
 
     private fun setupListeners() {
+        binding.swipeRefreshComments.setOnRefreshListener {
+            refreshComments()
+        }
+
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
@@ -152,17 +156,20 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         viewModel.song.observe(viewLifecycleOwner) { song ->
             currentSong = song
             updateCommentInputState(song)
+            binding.swipeRefreshComments.isRefreshing = false
         }
 
         viewModel.comments.observe(viewLifecycleOwner) { comments ->
             adapter.updateCurrentUserId(viewModel.getCurrentUserId())
             adapter.setData(comments)
+            binding.swipeRefreshComments.isRefreshing = false
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearErrorMessage()
+                binding.swipeRefreshComments.isRefreshing = false
             }
         }
 
@@ -170,8 +177,22 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearSuccessMessage()
+                binding.swipeRefreshComments.isRefreshing = false
             }
         }
+    }
+
+    private fun refreshComments() {
+        val fallbackSong =
+            PlayerManager.currentSong.value?.takeIf { song ->
+                song.id == songId
+            }
+
+        viewModel.loadSong(
+            songId = songId,
+            fallbackSong = fallbackSong
+        )
+        viewModel.loadComments(songId)
     }
 
     private fun updateCommentInputState(song: Song?) {

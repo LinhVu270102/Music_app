@@ -57,6 +57,10 @@ class AdminModerationFragment : Fragment(R.layout.fragment_admin_moderation) {
     }
 
     private fun setupListeners() {
+        binding.swipeRefreshAdminModeration.setOnRefreshListener {
+            viewModel.loadPendingSongs()
+        }
+
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
@@ -77,12 +81,14 @@ class AdminModerationFragment : Fragment(R.layout.fragment_admin_moderation) {
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
             binding.progressLoading.visibility =
                 if (isLoading) View.VISIBLE else View.GONE
+            binding.swipeRefreshAdminModeration.isRefreshing = isLoading
         }
 
         viewModel.messageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 Toast.makeText(requireContext(), getString(it), Toast.LENGTH_SHORT).show()
                 viewModel.clearMessage()
+                binding.swipeRefreshAdminModeration.isRefreshing = false
             }
         }
     }

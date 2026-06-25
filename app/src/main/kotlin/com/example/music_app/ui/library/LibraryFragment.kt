@@ -100,6 +100,10 @@ class LibraryFragment : Fragment() {
     }
 
     private fun setupListeners() {
+        binding.swipeRefreshLibrary.setOnRefreshListener {
+            viewModel.loadLibraryData()
+        }
+
         binding.btnSetting.setOnClickListener {
             parentFragmentManager.commit {
                 replace(R.id.fragmentContainer, SettingFragment())
@@ -140,6 +144,7 @@ class LibraryFragment : Fragment() {
     private fun observeViewModel() {
         viewModel.recentlyPlayed.observe(viewLifecycleOwner) { songs ->
             showRecentlyPlayedSongs(songs)
+            binding.swipeRefreshLibrary.isRefreshing = false
         }
 
         PlayerManager.currentSong.observe(viewLifecycleOwner) { song ->
@@ -155,12 +160,14 @@ class LibraryFragment : Fragment() {
             playlistAdapter.setData(playlists)
             binding.tvEmptySavedPlaylists.visibility =
                 if (playlists.isEmpty()) View.VISIBLE else View.GONE
+            binding.swipeRefreshLibrary.isRefreshing = false
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearErrorMessage()
+                binding.swipeRefreshLibrary.isRefreshing = false
             }
         }
     }

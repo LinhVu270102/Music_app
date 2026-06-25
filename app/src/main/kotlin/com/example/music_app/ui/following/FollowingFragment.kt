@@ -61,6 +61,10 @@ class FollowingFragment : Fragment(R.layout.fragment_following) {
     }
 
     private fun setupListeners() {
+        binding.swipeRefreshFollowing.setOnRefreshListener {
+            viewModel.loadFollowingUsers()
+        }
+
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
@@ -71,12 +75,14 @@ class FollowingFragment : Fragment(R.layout.fragment_following) {
             adapter.setData(users)
             binding.tvEmpty.isVisible = users.isEmpty()
             binding.recyclerView.isVisible = users.isNotEmpty()
+            binding.swipeRefreshFollowing.isRefreshing = false
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 Toast.makeText(requireContext(), getString(it), Toast.LENGTH_SHORT).show()
                 viewModel.clearErrorMessage()
+                binding.swipeRefreshFollowing.isRefreshing = false
             }
         }
     }

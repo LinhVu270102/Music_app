@@ -71,6 +71,10 @@ class ProfileFragment : Fragment() {
     }
 
     private fun setupClickListeners() {
+        binding.swipeRefreshProfile.setOnRefreshListener {
+            viewModel.loadProfile(targetUserId)
+        }
+
         binding.btnEditProfile.setOnClickListener {
             parentFragmentManager.beginTransaction()
                 .replace(R.id.fragmentContainer, EditProfileFragment())
@@ -119,6 +123,7 @@ class ProfileFragment : Fragment() {
 
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
             binding.progressBar.isVisible = isLoading
+            binding.swipeRefreshProfile.isRefreshing = isLoading
         }
 
         viewModel.errorMessage.observe(viewLifecycleOwner) { messageResId ->
@@ -130,6 +135,7 @@ class ProfileFragment : Fragment() {
                 ).show()
 
                 viewModel.clearErrorMessage()
+                binding.swipeRefreshProfile.isRefreshing = false
             }
         }
         viewModel.isOwnProfile.observe(viewLifecycleOwner) { isOwnProfile ->

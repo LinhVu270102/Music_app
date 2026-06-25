@@ -119,6 +119,10 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
     }
 
     private fun setupListeners() {
+        binding.swipeRefreshPlaylistDetail.setOnRefreshListener {
+            refreshPlaylistDetail()
+        }
+
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
@@ -147,6 +151,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             adapter.setData(songs)
             adapter.setLikedSongIds(viewModel.likedSongIds)
             viewModel.loadSongLikeStates(songs)
+            binding.swipeRefreshPlaylistDetail.isRefreshing = false
 
             binding.tvEmpty.isVisible = songs.isEmpty()
             binding.tvSongCount.text =
@@ -168,6 +173,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearErrorMessage()
+                binding.swipeRefreshPlaylistDetail.isRefreshing = false
             }
         }
 
@@ -175,6 +181,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearSuccessMessage()
+                binding.swipeRefreshPlaylistDetail.isRefreshing = false
             }
         }
 
@@ -206,6 +213,14 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         if (!isOwner) {
             viewModel.loadPlaylistLikeState(playlistId)
         }
+    }
+
+    private fun refreshPlaylistDetail() {
+        updatePlaylistActions()
+        viewModel.loadPlaylistSongs(
+            playlistId = playlistId,
+            ownerId = ownerId
+        )
     }
 
     private fun togglePlaylistLike() {

@@ -70,6 +70,10 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
     }
 
     private fun setupListeners() {
+        binding.swipeRefreshPlaylists.setOnRefreshListener {
+            viewModel.loadPlaylists()
+        }
+
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
@@ -83,12 +87,14 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
         viewModel.playlists.observe(viewLifecycleOwner) { playlists ->
             adapter.setData(playlists)
             binding.tvEmpty.isVisible = playlists.isEmpty()
+            binding.swipeRefreshPlaylists.isRefreshing = false
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 Toast.makeText(requireContext(), getString(it), Toast.LENGTH_SHORT).show()
                 viewModel.clearErrorMessage()
+                binding.swipeRefreshPlaylists.isRefreshing = false
             }
         }
     }

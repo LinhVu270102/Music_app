@@ -60,6 +60,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         setupRecyclerView()
         setupSearchBox()
         setupTabs()
+        setupRefresh()
         observeViewModel()
 
         selectTab(SearchTab.ALL)
@@ -203,6 +204,12 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         }
     }
 
+    private fun setupRefresh() {
+        binding.swipeRefreshSearch.setOnRefreshListener {
+            refreshSearchResults()
+        }
+    }
+
     private fun observeViewModel() {
         viewModel.searchResults.observe(viewLifecycleOwner) { result ->
             val keyword = binding.edtSearch.text.toString().trim()
@@ -237,9 +244,27 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearErrorMessage()
+                binding.swipeRefreshSearch.isRefreshing = false
             }
         }
 
+        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            binding.swipeRefreshSearch.isRefreshing = isLoading
+        }
+
+    }
+
+    private fun refreshSearchResults() {
+        val keyword = binding.edtSearch.text.toString().trim()
+
+        if (keyword.isBlank()) {
+            viewModel.loadSongs()
+            showRecentSearches()
+            binding.swipeRefreshSearch.isRefreshing = false
+            return
+        }
+
+        submitSearch(keyword)
     }
 
     private fun restoreLatestSearchInSession() {
