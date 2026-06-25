@@ -63,11 +63,7 @@ class LibraryViewModel : ViewModel() {
             val start = System.currentTimeMillis()
 
             try {
-                val firebasePlaylists = playlistRepository.getMyPlaylists()
-                val likedPlaylists = playlistRepository.getLikedPlaylists()
-                val result = (firebasePlaylists + likedPlaylists)
-                    .distinctBy { playlist -> playlist.id }
-                    .sortedByDescending { playlist -> playlist.updatedAt }
+                val result = playlistRepository.getLibraryPlaylists()
                 _playlists.value = result
 
                 Log.d(

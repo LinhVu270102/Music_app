@@ -53,4 +53,14 @@
         android:src="@drawable/ic_more_vert"
         android:visibility="gone" />
 
+    <ImageButton
+        android:id="@+id/btnLike"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/like"
+        android:padding="8dp"
+        android:src="@drawable/ic_like"
+        android:visibility="gone" />
+
 </LinearLayout>

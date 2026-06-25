@@ -149,6 +149,8 @@ class LibraryFragment : Fragment() {
 
         viewModel.playlists.observe(viewLifecycleOwner) { playlists ->
             playlistAdapter.setData(playlists)
+            binding.tvEmptySavedPlaylists.visibility =
+                if (playlists.isEmpty()) View.VISIBLE else View.GONE
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
