@@ -23,22 +23,7 @@ class PlaylistsViewModel : ViewModel() {
     fun loadPlaylists() {
         viewModelScope.launch {
             try {
-                val myPlaylists = repository.getMyPlaylists()
-                val likedPlaylists = repository.getLikedPlaylists()
-                val currentUserId = repository.getCurrentUserId()
-                val ownPlaylistIds = myPlaylists.mapTo(mutableSetOf()) { playlist ->
-                    playlist.id
-                }
-
-                _playlists.value =
-                    (myPlaylists + likedPlaylists)
-                        .distinctBy { playlist -> playlist.id }
-                        .sortedWith(
-                            compareByDescending<Playlist> { playlist ->
-                                playlist.id in ownPlaylistIds ||
-                                    playlist.ownerId == currentUserId
-                            }.thenByDescending(Playlist::updatedAt)
-                        )
+                _playlists.value = repository.getLibraryPlaylists()
             } catch (e: AppException) {
                 _errorMessageResId.value = e.messageResId
             } catch (_: Exception) {
@@ -74,7 +59,8 @@ class PlaylistsViewModel : ViewModel() {
     }
 
     fun canDeletePlaylist(playlist: Playlist): Boolean {
-        return playlist.ownerId.isNotBlank() && playlist.ownerId == repository.getCurrentUserId()
+        val currentUserId = repository.getCurrentUserId()
+        return currentUserId.isNotBlank() && playlist.ownerId == currentUserId
     }
 
     fun clearErrorMessage() {

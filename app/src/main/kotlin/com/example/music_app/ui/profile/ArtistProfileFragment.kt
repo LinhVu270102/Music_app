@@ -5,17 +5,14 @@ import android.view.View
 import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentArtistProfileBinding
-import com.example.music_app.player.PlayerManager
 import com.example.music_app.player.state.PlayerInteractionState
 import com.example.music_app.ui.player.PlaybackLauncher
-import com.example.music_app.ui.player.PlayerFragment
 import com.example.music_app.ui.song.SongAdapter
 
 class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
@@ -72,7 +69,12 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
         adapter = SongAdapter(
             onItemClick = { song ->
                 playSong(song)
-            }
+            },
+            onLikeClick = viewModel::toggleSongLike,
+            isSongLiked = { song ->
+                viewModel.songLikeStates.value?.get(song.id) == true
+            },
+            useFullWidth = true
         )
 
         binding.rvArtistSongs.layoutManager = LinearLayoutManager(requireContext())
@@ -121,8 +123,13 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
             currentSongs = songs
 
             adapter.setData(songs)
+            adapter.setLikedSongIds(viewModel.likedSongIds)
 
             binding.tvEmpty.isVisible = songs.isEmpty()
+        }
+
+        viewModel.songLikeStates.observe(viewLifecycleOwner) {
+            adapter.setLikedSongIds(viewModel.likedSongIds)
         }
 
         viewModel.errorMessage.observe(viewLifecycleOwner) { messageResId ->
@@ -148,6 +155,10 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
 
         PlayerInteractionState.artistFollowUpdates.observe(viewLifecycleOwner) { state ->
             viewModel.applySharedFollowState(state)
+        }
+
+        PlayerInteractionState.songLikeUpdates.observe(viewLifecycleOwner) { state ->
+            viewModel.applySharedSongLikeState(state)
         }
     }
 

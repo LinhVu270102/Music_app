@@ -122,7 +122,7 @@ class HomeViewModel : ViewModel() {
         genreCache[genre]?.let(_trendingByGenre::postValue)
             ?: viewModelScope.launch(Dispatchers.IO) {
                 _isLoading.postValue(true)
-                val songs = songsForGenre(genre).take(8)
+                val songs = songsForGenre(genre).take(20)
                 genreCache[genre] = songs
                 _trendingByGenre.postValue(songs)
                 _isLoading.postValue(false)

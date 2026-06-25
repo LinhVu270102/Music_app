@@ -188,6 +188,17 @@
                 android:paddingEnd="12dp"
                 android:scrollbars="none" />
 
+            <TextView
+                android:id="@+id/tvEmptySavedPlaylists"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center_vertical"
+                android:text="@string/no_playlists"
+                android:textColor="@color/gray_light"
+                android:textSize="14sp"
+                android:visibility="gone" />
+
         </LinearLayout>
 
     </ScrollView>
