@@ -22,8 +22,15 @@ class AuthRepository {
 
     fun register(
         displayName: String,
+        fullName: String,
+        username: String,
         email: String,
-        password: String
+        password: String,
+        phoneNumber: String,
+        gender: String,
+        country: String,
+        favoriteGenres: List<String>,
+        musicMoodTags: List<String>
     ): Task<Void> {
         return auth.createUserWithEmailAndPassword(email, password)
             .continueWithTask { task ->
@@ -41,9 +48,15 @@ class AuthRepository {
                     uid = uid,
                     email = email,
                     displayName = displayName,
-                    username = generateUsername(displayName, email),
+                    username = username.ifBlank { generateUsername(displayName, email) },
                     avatarUrl = "",
                     bio = "",
+                    fullName = fullName,
+                    phoneNumber = phoneNumber,
+                    gender = gender,
+                    country = country,
+                    favoriteGenres = favoriteGenres,
+                    musicMoodTags = musicMoodTags,
                     role = UserRole.USER,
                     accountStatus = AccountStatus.ACTIVE,
                     createdAt = now,

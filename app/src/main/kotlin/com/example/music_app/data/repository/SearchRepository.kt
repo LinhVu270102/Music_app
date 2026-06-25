@@ -25,34 +25,28 @@ class SearchRepository {
             val tracksDeferred = async { searchTracks(query) }
             val profilesDeferred = async { searchProfiles(query) }
             val playlistsDeferred = async { searchPlaylists(query) }
+            val tracks = tracksDeferred.await()
+            val persistedProfiles = profilesDeferred.await()
 
             SearchResultBundle(
-                tracks = tracksDeferred.await(),
-                profiles = profilesDeferred.await(),
+                tracks = tracks,
+                profiles = (
+                    persistedProfiles + createArtistProfiles(
+                        tracks = tracks,
+                        persistedProfiles = persistedProfiles
+                    )
+                ).distinctBy(User::uid),
                 playlists = playlistsDeferred.await()
             )
         }
     }
 
     private suspend fun searchTracks(keyword: String): List<Song> {
-        val firebaseTracks = try {
-            firestore.collection("songs")
-                .whereEqualTo("status", SongStatus.APPROVED)
-                .whereEqualTo("isDeleted", false)
-                .get()
-                .await()
-                .documents
-                .mapNotNull { doc ->
-                    doc.toObject(Song::class.java)?.copy(id = doc.id)
-                }
-                .filter { song ->
-                    song.matchesKeyword(keyword)
-                }
-        } catch (_: Exception) {
-            emptyList()
-        }
+        val normalizedTracks = fetchTracksByStatus(SongStatus.APPROVED)
+        val legacyTracks = fetchTracksByStatus("APPROVED")
 
-        return firebaseTracks
+        return (normalizedTracks + legacyTracks)
+            .filter { song -> song.matchesKeyword(keyword) }
             .distinctBy { song -> song.id }
             .sortedWith(
                 compareByDescending<Song> { song ->
@@ -61,6 +55,22 @@ class SearchRepository {
                     song.likes + song.plays
                 }
             )
+    }
+
+    private suspend fun fetchTracksByStatus(status: String): List<Song> {
+        return try {
+            firestore.collection("songs")
+                .whereEqualTo("status", status)
+                .whereEqualTo("isDeleted", false)
+                .get()
+                .await()
+                .documents
+                .mapNotNull { doc ->
+                    doc.toObject(Song::class.java)?.copy(id = doc.id)
+                }
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 
     private suspend fun searchProfiles(keyword: String): List<User> {
@@ -147,8 +157,50 @@ class SearchRepository {
                 fullName.contains(keyword, ignoreCase = true)
     }
 
+    private fun createArtistProfiles(
+        tracks: List<Song>,
+        persistedProfiles: List<User>
+    ): List<User> {
+        val persistedArtistNames = persistedProfiles
+            .flatMap { user ->
+                listOf(user.displayName, user.fullName, user.username)
+            }
+            .map(::normalize)
+            .filter(String::isNotBlank)
+            .toSet()
+
+        return tracks
+            .filter { track -> normalize(track.artist).isNotBlank() }
+            .groupBy { track -> normalize(track.artist) }
+            .filterKeys { artistName -> artistName !in persistedArtistNames }
+            .map { (normalizedArtist, artistTracks) ->
+                val firstTrack = artistTracks.first()
+                User(
+                    uid = "$SYNTHETIC_ARTIST_PREFIX$normalizedArtist",
+                    displayName = firstTrack.artist.trim(),
+                    username = firstTrack.artist.trim(),
+                    avatarUrl = firstTrack.coverUrl,
+                    bio = "",
+                    fullName = firstTrack.artist.trim(),
+                    uploadedSongsCount = artistTracks.size.toLong()
+                )
+            }
+    }
+
     private fun Playlist.matchesKeyword(keyword: String): Boolean {
         return name.contains(keyword, ignoreCase = true) ||
                 description.contains(keyword, ignoreCase = true)
+    }
+
+    private fun normalize(value: String): String {
+        return java.text.Normalizer
+            .normalize(value, java.text.Normalizer.Form.NFD)
+            .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+            .trim()
+            .lowercase()
+    }
+
+    companion object {
+        const val SYNTHETIC_ARTIST_PREFIX = "artist:"
     }
 }

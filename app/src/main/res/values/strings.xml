@@ -35,6 +35,12 @@
     <string name="login_button">LOG IN</string>
     <string name="register_button">REGISTER</string>
     <string name="register_title">Register</string>
+    <string name="register_social_subtitle">Create your music identity and personalize every recommendation.</string>
+    <string name="register_identity_section">Your identity</string>
+    <string name="register_account_section">Account</string>
+    <string name="register_social_section">About you</string>
+    <string name="register_music_section">Your music taste</string>
+    <string name="register_security_section">Security</string>
 
     <string name="empty_email_or_password">Please enter email and password</string>
     <string name="login_failed">Login failed</string>
@@ -45,6 +51,10 @@
     <string name="invalid_email">Invalid email</string>
     <string name="empty_email">Please enter email</string>
     <string name="empty_display_name">Please enter display name</string>
+    <string name="empty_full_name">Please enter your full name</string>
+    <string name="empty_username">Please enter a username</string>
+    <string name="unlike">Unlike</string>
+    <string name="song_already_in_current_playlist">This song is already in the current playlist</string>
     <string name="password_too_short">Password must be at least 6 characters</string>
 
     <!-- ================= MAIN NAVIGATION ================= -->

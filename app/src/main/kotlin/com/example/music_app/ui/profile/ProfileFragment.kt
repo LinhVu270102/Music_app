@@ -137,12 +137,13 @@ class ProfileFragment : Fragment() {
         }
 
         viewModel.isFollowing.observe(viewLifecycleOwner) { isFollowing ->
-            binding.btnFollowProfile.text =
-                if (isFollowing) {
-                    getString(R.string.following)
-                } else {
-                    getString(R.string.follow)
-                }
+            binding.btnFollowProfile.setImageResource(
+                if (isFollowing) R.drawable.ic_followed else R.drawable.ic_follow
+            )
+            binding.btnFollowProfile.contentDescription = getString(
+                if (isFollowing) R.string.following else R.string.follow
+            )
+            binding.btnFollowProfile.alpha = if (isFollowing) 1f else 0.55f
         }
     }
 

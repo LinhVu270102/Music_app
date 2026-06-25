@@ -13,6 +13,7 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentArtistProfileBinding
 import com.example.music_app.player.PlayerManager
+import com.example.music_app.player.state.PlayerInteractionState
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.player.PlayerFragment
 import com.example.music_app.ui.song.SongAdapter
@@ -26,16 +27,26 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
 
     private lateinit var adapter: SongAdapter
     private var artistId: String = ""
+    private var artistName: String = ""
 
     private var currentSongs: List<Song> = emptyList()
 
     companion object {
         private const val ARG_USER_ID = "userId"
+        private const val ARG_ARTIST_NAME = "artistName"
 
         fun newInstance(userId: String): ArtistProfileFragment {
             return ArtistProfileFragment().apply {
                 arguments = Bundle().apply {
                     putString(ARG_USER_ID, userId)
+                }
+            }
+        }
+
+        fun newArtistInstance(artistName: String): ArtistProfileFragment {
+            return ArtistProfileFragment().apply {
+                arguments = Bundle().apply {
+                    putString(ARG_ARTIST_NAME, artistName)
                 }
             }
         }
@@ -45,12 +56,16 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
         _binding = FragmentArtistProfileBinding.bind(view)
 
         artistId = arguments?.getString(ARG_USER_ID).orEmpty()
+        artistName = arguments?.getString(ARG_ARTIST_NAME).orEmpty()
 
         setupRecyclerView()
         setupListeners()
         observeViewModel()
 
-        viewModel.loadArtistProfile(artistId)
+        viewModel.loadArtistProfile(
+            userId = artistId,
+            artistName = artistName
+        )
     }
 
     private fun setupRecyclerView() {
@@ -68,6 +83,9 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
     private fun setupListeners() {
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
+        }
+        binding.btnFollowArtist.setOnClickListener {
+            viewModel.toggleFollow()
         }
     }
 
@@ -110,7 +128,26 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
         viewModel.errorMessage.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 Toast.makeText(requireContext(), getString(it), Toast.LENGTH_SHORT).show()
+                viewModel.clearErrorMessage()
             }
+        }
+
+        viewModel.canFollow.observe(viewLifecycleOwner) { canFollow ->
+            binding.btnFollowArtist.isVisible = canFollow
+        }
+
+        viewModel.isFollowing.observe(viewLifecycleOwner) { isFollowing ->
+            binding.btnFollowArtist.setImageResource(
+                if (isFollowing) R.drawable.ic_followed else R.drawable.ic_follow
+            )
+            binding.btnFollowArtist.contentDescription = getString(
+                if (isFollowing) R.string.following else R.string.follow
+            )
+            binding.btnFollowArtist.alpha = if (isFollowing) 1f else 0.55f
+        }
+
+        PlayerInteractionState.artistFollowUpdates.observe(viewLifecycleOwner) { state ->
+            viewModel.applySharedFollowState(state)
         }
     }
 

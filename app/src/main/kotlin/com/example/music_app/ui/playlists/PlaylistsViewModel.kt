@@ -25,13 +25,20 @@ class PlaylistsViewModel : ViewModel() {
             try {
                 val myPlaylists = repository.getMyPlaylists()
                 val likedPlaylists = repository.getLikedPlaylists()
+                val currentUserId = repository.getCurrentUserId()
+                val ownPlaylistIds = myPlaylists.mapTo(mutableSetOf()) { playlist ->
+                    playlist.id
+                }
 
                 _playlists.value =
                     (myPlaylists + likedPlaylists)
                         .distinctBy { playlist -> playlist.id }
-                        .sortedByDescending { playlist ->
-                            playlist.updatedAt
-                        }
+                        .sortedWith(
+                            compareByDescending<Playlist> { playlist ->
+                                playlist.id in ownPlaylistIds ||
+                                    playlist.ownerId == currentUserId
+                            }.thenByDescending(Playlist::updatedAt)
+                        )
             } catch (e: AppException) {
                 _errorMessageResId.value = e.messageResId
             } catch (_: Exception) {

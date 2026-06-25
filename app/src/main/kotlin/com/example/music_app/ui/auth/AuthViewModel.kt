@@ -60,14 +60,33 @@ class AuthViewModel(
 
     fun register(
         displayName: String,
+        fullName: String,
+        username: String,
         email: String,
-        password: String
+        password: String,
+        phoneNumber: String,
+        gender: String,
+        country: String,
+        favoriteGenres: List<String>,
+        musicMoodTags: List<String>
     ) {
         val cleanDisplayName = displayName.trim()
+        val cleanFullName = fullName.trim()
+        val cleanUsername = username.trim()
         val cleanEmail = email.trim()
 
         if (cleanDisplayName.isBlank()) {
             _errorMessageResId.value = R.string.empty_display_name
+            return
+        }
+
+        if (cleanFullName.isBlank()) {
+            _errorMessageResId.value = R.string.empty_full_name
+            return
+        }
+
+        if (cleanUsername.isBlank()) {
+            _errorMessageResId.value = R.string.empty_username
             return
         }
 
@@ -90,8 +109,15 @@ class AuthViewModel(
 
         repository.register(
             displayName = cleanDisplayName,
+            fullName = cleanFullName,
+            username = cleanUsername,
             email = cleanEmail,
-            password = password
+            password = password,
+            phoneNumber = phoneNumber.trim(),
+            gender = gender.trim(),
+            country = country.trim(),
+            favoriteGenres = favoriteGenres,
+            musicMoodTags = musicMoodTags
         ).addOnSuccessListener {
             _authSuccess.value = true
             _currentUser.value = repository.getCurrentUser()

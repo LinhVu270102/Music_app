@@ -15,6 +15,8 @@ import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.example.music_app.R
 import com.example.music_app.data.local.SearchHistoryStore
 import com.example.music_app.data.model.Playlist
@@ -26,7 +28,7 @@ import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.playlists.PlaylistDetailFragment
 import com.example.music_app.ui.player.PlaybackLauncher
-import com.example.music_app.ui.profile.ProfileFragment
+import com.example.music_app.ui.profile.ArtistProfileFragment
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -52,6 +54,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     private var searchJob: Job? = null
     private var isRestoringLatestSearch = false
     private var isApplyingRecentQuery = false
+    private var isKeyboardVisible = false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -62,6 +65,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         setupSearchBox()
         setupTabs()
         observeViewModel()
+        observeKeyboardVisibility()
 
         selectTab(SearchTab.ALL)
         viewModel.loadSongs()
@@ -92,6 +96,8 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         binding.rvSearchSongs.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = searchAdapter
+            itemAnimator = null
+            setHasFixedSize(true)
         }
     }
 
@@ -101,18 +107,6 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         binding.tvSearchSectionTitle.text = getString(R.string.recently_searched)
 
         showRecentSearches()
-
-        binding.edtSearch.setOnFocusChangeListener { _, hasFocus ->
-            val mainActivity = activity as? MainActivity
-
-            if (hasFocus) {
-                mainActivity?.setFooterVisible(false)
-                mainActivity?.setMiniPlayerVisible(false)
-            } else {
-                mainActivity?.setFooterVisible(true)
-                mainActivity?.setMiniPlayerVisible(true)
-            }
-        }
 
         binding.edtSearch.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
@@ -251,11 +245,23 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             }
         }
 
-        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
-            binding.edtSearch.isEnabled = !isLoading
-            binding.btnCancel.isEnabled = !isLoading
-        }
+    }
 
+    private fun observeKeyboardVisibility() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val keyboardVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+
+            if (keyboardVisible != isKeyboardVisible) {
+                isKeyboardVisible = keyboardVisible
+                (activity as? MainActivity)?.let { mainActivity ->
+                    mainActivity.setFooterVisible(!keyboardVisible)
+                    mainActivity.setMiniPlayerVisible(!keyboardVisible)
+                }
+            }
+
+            insets
+        }
+        ViewCompat.requestApplyInsets(binding.root)
     }
 
     private fun restoreLatestSearchInSession() {
@@ -412,10 +418,16 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         hideKeyboard()
         binding.edtSearch.clearFocus()
 
+        val artistFragment = if (user.uid.startsWith(ARTIST_PROFILE_PREFIX)) {
+            ArtistProfileFragment.newArtistInstance(user.displayName)
+        } else {
+            ArtistProfileFragment.newInstance(user.uid)
+        }
+
         parentFragmentManager.commit {
             replace(
                 R.id.fragmentContainer,
-                ProfileFragment.newInstance(user.uid)
+                artistFragment
             )
             addToBackStack(null)
         }
@@ -471,6 +483,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     }
 
     companion object {
+        private const val ARTIST_PROFILE_PREFIX = "artist:"
         private var sessionLatestQuery: String = ""
     }
 }

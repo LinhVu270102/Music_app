@@ -12,6 +12,8 @@ import com.example.music_app.data.repository.PlaylistRepository
 import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.data.repository.SocialRepository
 import com.example.music_app.data.repository.UserRepository
+import com.example.music_app.player.state.ArtistFollowState
+import com.example.music_app.player.state.PlayerInteractionState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -93,7 +95,14 @@ class ProfileViewModel : ViewModel() {
                         false
                     }
 
-                _user.value = userProfile
+                val userWithLiveFollowerCount = userProfile?.let { profile ->
+                    val followerCount = runCatching {
+                        socialRepository.getFollowerCount(targetUserId)
+                    }.getOrDefault(profile.followersCount)
+                    profile.copy(followersCount = followerCount)
+                }
+
+                _user.value = userWithLiveFollowerCount
                 _mySongs.value = uploadedSongs
                 _myPlaylists.value = playlists
                 _isFollowing.value = following
@@ -112,8 +121,21 @@ class ProfileViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val following = socialRepository.toggleFollow(userId)
+                val followerCount = runCatching {
+                    socialRepository.getFollowerCount(userId)
+                }.getOrNull()
+
+                PlayerInteractionState.publishArtistFollow(
+                    ArtistFollowState(
+                        userId = userId,
+                        followed = following,
+                        followerCount = followerCount
+                    )
+                )
                 _isFollowing.value = following
-                loadProfile(userId)
+                followerCount?.let { count ->
+                    _user.value = _user.value?.copy(followersCount = count)
+                }
             } catch (e: AppException) {
                 _errorMessage.value = e.messageResId
             } catch (_: Exception) {
