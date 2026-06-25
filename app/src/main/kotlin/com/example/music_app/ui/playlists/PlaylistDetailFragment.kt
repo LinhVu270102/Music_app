@@ -145,6 +145,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         viewModel.songs.observe(viewLifecycleOwner) { songs ->
             currentSongs = songs
             adapter.setData(songs)
+            adapter.setLikedSongIds(viewModel.likedSongIds)
             viewModel.loadSongLikeStates(songs)
 
             binding.tvEmpty.isVisible = songs.isEmpty()
@@ -183,7 +184,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         }
 
         viewModel.songLikeStates.observe(viewLifecycleOwner) {
-            adapter.setData(currentSongs)
+            adapter.setLikedSongIds(viewModel.likedSongIds)
         }
 
         PlayerInteractionState.songLikeUpdates.observe(viewLifecycleOwner) { state ->
