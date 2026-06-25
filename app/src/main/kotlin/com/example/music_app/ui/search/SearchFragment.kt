@@ -15,8 +15,6 @@ import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import com.example.music_app.R
 import com.example.music_app.data.local.SearchHistoryStore
 import com.example.music_app.data.model.Playlist
@@ -24,7 +22,6 @@ import com.example.music_app.data.model.SearchResultBundle
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.User
 import com.example.music_app.databinding.FragmentSearchBinding
-import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.playlists.PlaylistDetailFragment
 import com.example.music_app.ui.player.PlaybackLauncher
@@ -54,7 +51,6 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     private var searchJob: Job? = null
     private var isRestoringLatestSearch = false
     private var isApplyingRecentQuery = false
-    private var isKeyboardVisible = false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -65,7 +61,6 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         setupSearchBox()
         setupTabs()
         observeViewModel()
-        observeKeyboardVisibility()
 
         selectTab(SearchTab.ALL)
         viewModel.loadSongs()
@@ -245,23 +240,6 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             }
         }
 
-    }
-
-    private fun observeKeyboardVisibility() {
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
-            val keyboardVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
-
-            if (keyboardVisible != isKeyboardVisible) {
-                isKeyboardVisible = keyboardVisible
-                (activity as? MainActivity)?.let { mainActivity ->
-                    mainActivity.setFooterVisible(!keyboardVisible)
-                    mainActivity.setMiniPlayerVisible(!keyboardVisible)
-                }
-            }
-
-            insets
-        }
-        ViewCompat.requestApplyInsets(binding.root)
     }
 
     private fun restoreLatestSearchInSession() {
