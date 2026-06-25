@@ -106,6 +106,16 @@ class ProfileViewModel : ViewModel() {
                 _mySongs.value = uploadedSongs
                 _myPlaylists.value = playlists
                 _isFollowing.value = following
+
+                if (!isOwn && targetUserId.isNotBlank()) {
+                    PlayerInteractionState.publishArtistFollow(
+                        ArtistFollowState(
+                            userId = targetUserId,
+                            followed = following,
+                            followerCount = userWithLiveFollowerCount?.followersCount
+                        )
+                    )
+                }
             } catch (_: Exception) {
                 _errorMessage.value = R.string.load_profile_failed
             } finally {
@@ -141,6 +151,15 @@ class ProfileViewModel : ViewModel() {
             } catch (_: Exception) {
                 _errorMessage.value = R.string.follow_user_failed
             }
+        }
+    }
+
+    fun applySharedFollowState(state: ArtistFollowState) {
+        if (state.userId != targetUserId) return
+
+        _isFollowing.value = state.followed
+        state.followerCount?.let { count ->
+            _user.value = _user.value?.copy(followersCount = count)
         }
     }
 
