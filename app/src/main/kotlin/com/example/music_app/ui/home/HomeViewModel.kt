@@ -17,9 +17,8 @@ class HomeViewModel : ViewModel() {
 
     companion object {
         private const val TAG = "HomeViewModel"
-        private const val YOUR_LIKES_LIMIT = 4
-        private const val MORE_LIKE_LIMIT = 6
-        private const val MORE_LIKE_ARTIST_LIMIT = 3
+        private const val YOUR_LIKES_LIMIT = 20
+        private const val MORE_LIKE_LIMIT = 20
     }
 
     private val songRepository = SongRepository()
@@ -89,30 +88,12 @@ class HomeViewModel : ViewModel() {
                             .thenBy { recentlyPlayedRanks[it.id] ?: Int.MAX_VALUE }
                             .thenByDescending(Song::updatedAt)
                     )
-                val likedSongIds = rankedLikedSongs.mapTo(mutableSetOf(), Song::id)
-                val selectedArtists = rankedLikedSongs
-                    .map(Song::artist)
-                    .map(String::trim)
-                    .filter(String::isNotBlank)
-                    .distinctBy(String::lowercase)
-                    .shuffled()
-                    .take(MORE_LIKE_ARTIST_LIMIT)
-                    .map(String::lowercase)
-                    .toSet()
-                val moreFromLikedArtists = if (selectedArtists.isEmpty()) {
-                    emptyList()
-                } else {
-                    catalogSongs
-                        .filterNot { song -> song.id in likedSongIds }
-                        .filter { song -> song.artist.trim().lowercase() in selectedArtists }
-                        .shuffled()
-                        .take(MORE_LIKE_LIMIT)
-                        .toList()
-                }
+                val yourLikeSongs = rankedLikedSongs.take(YOUR_LIKES_LIMIT)
+                val moreFromLikedUsers = buildMoreFromLikedUsers(yourLikeSongs)
 
                 val homeData = HomeData(
-                    relatedTracks = rankedLikedSongs.take(YOUR_LIKES_LIMIT),
-                    moreLike = moreFromLikedArtists,
+                    relatedTracks = yourLikeSongs,
+                    moreLike = moreFromLikedUsers,
                     hotForYou = catalogSongs
                         .sortedWith(compareByDescending<Song> { it.plays + it.likes }
                             .thenByDescending(Song::createdAt))
@@ -162,6 +143,40 @@ class HomeViewModel : ViewModel() {
             .distinctBy(Song::id)
             .sortedWith(compareByDescending<Song> { it.plays + it.likes }
                 .thenByDescending(Song::createdAt))
+    }
+
+    private fun buildMoreFromLikedUsers(yourLikeSongs: List<Song>): List<Song> {
+        if (yourLikeSongs.isEmpty()) return emptyList()
+
+        val sourceSongIds = yourLikeSongs.mapTo(mutableSetOf(), Song::id)
+        val sourceUploaderIds = yourLikeSongs
+            .map(Song::uploaderId)
+            .map(::normalizeRecommendationKey)
+            .filter(String::isNotBlank)
+            .toSet()
+        val sourceArtists = yourLikeSongs
+            .map(Song::artist)
+            .map(::normalizeRecommendationKey)
+            .filter(String::isNotBlank)
+            .toSet()
+
+        if (sourceUploaderIds.isEmpty() && sourceArtists.isEmpty()) return emptyList()
+
+        return catalogSongs
+            .filterNot { song -> song.id in sourceSongIds }
+            .filter { song ->
+                val uploaderId = normalizeRecommendationKey(song.uploaderId)
+                val artist = normalizeRecommendationKey(song.artist)
+
+                uploaderId in sourceUploaderIds || artist in sourceArtists
+            }
+            .distinctBy(Song::id)
+            .shuffled()
+            .take(MORE_LIKE_LIMIT)
+    }
+
+    private fun normalizeRecommendationKey(value: String): String {
+        return value.trim().lowercase()
     }
 
     fun clearErrorMessage() {
