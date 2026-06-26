@@ -1,0 +1,266 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isSongOwner(songId) {
+      return signedIn() &&
+        get(/databases/$(database)/documents/songs/$(songId)).data.uploaderId == request.auth.uid;
+    }
+
+    function canReadSong(songId) {
+      return signedIn() && (
+        isAdmin() ||
+        isSongOwner(songId) ||
+        (
+          (
+            get(/databases/$(database)/documents/songs/$(songId)).data.status == 'approved' ||
+            get(/databases/$(database)/documents/songs/$(songId)).data.status == 'APPROVED'
+          ) &&
+          get(/databases/$(database)/documents/songs/$(songId)).data.isDeleted == false
+        )
+      );
+    }
+
+    function isSongCounterChange() {
+      return (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']) &&
+        (
+          request.resource.data.likes == resource.data.likes + 1 ||
+          request.resource.data.likes == resource.data.likes - 1
+        )
+      ) || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentsCount']) &&
+        (
+          request.resource.data.commentsCount == resource.data.commentsCount + 1 ||
+          request.resource.data.commentsCount == resource.data.commentsCount - 1
+        )
+      ) || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportsCount']) &&
+        request.resource.data.reportsCount == resource.data.reportsCount + 1
+      );
+    }
+
+    function isOwnerSongMaintenance() {
+      return request.resource.data.uploaderId == resource.data.uploaderId && (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+          ['allowComments', 'updatedAt']
+        ) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+          ['isDeleted', 'deletedAt', 'deletedBy', 'updatedAt']
+        ) ||
+        (
+          resource.data.status == 'rejected' &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+            ['status', 'rejectReason', 'reviewedBy', 'reviewedAt', 'updatedAt']
+          )
+        )
+      );
+    }
+
+    // Music uploaded by users. Public listeners can only read approved songs;
+    // the uploader and administrators may also read moderation states.
+    match /songs/{songId} {
+      // Use resource.data here so collection queries can prove the same
+      // constraints as the app's status + isDeleted query. The helper that
+      // reads a parent song remains in use for comment subcollections below.
+      allow read: if signedIn() && (
+        isAdmin() ||
+        resource.data.uploaderId == request.auth.uid ||
+        (
+          (
+            resource.data.status == 'approved' ||
+            resource.data.status == 'APPROVED'
+          ) &&
+          resource.data.isDeleted == false
+        )
+      );
+
+      allow create: if signedIn() && (
+        request.resource.data.uploaderId == request.auth.uid &&
+        request.resource.data.status == 'pending'
+      );
+
+      allow update: if isAdmin() ||
+        (isSongOwner(songId) && isOwnerSongMaintenance()) ||
+        isSongCounterChange();
+
+      allow delete: if isAdmin() || isSongOwner(songId);
+
+      match /comments/{commentId} {
+        allow read: if canReadSong(songId);
+
+        allow create: if signedIn() &&
+          request.resource.data.userId == request.auth.uid &&
+          get(/databases/$(database)/documents/songs/$(songId)).data.allowComments == true;
+
+        allow update: if isAdmin() ||
+          (
+            signedIn() &&
+            (resource.data.userId == request.auth.uid || isSongOwner(songId)) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+              ['isDeleted', 'deletedAt', 'deletedBy', 'updatedAt']
+            )
+          ) || (
+            signedIn() &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount']) &&
+            (
+              (
+                request.resource.data.likesCount == resource.data.get('likesCount', 0) + 1 &&
+                existsAfter(/databases/$(database)/documents/songs/$(songId)/comments/$(commentId)/likes/$(request.auth.uid))
+              ) || (
+                request.resource.data.likesCount == resource.data.get('likesCount', 0) - 1 &&
+                !existsAfter(/databases/$(database)/documents/songs/$(songId)/comments/$(commentId)/likes/$(request.auth.uid))
+              )
+            )
+          ) || (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reportsCount']) &&
+            request.resource.data.reportsCount == resource.data.reportsCount + 1
+          );
+
+        allow delete: if isAdmin();
+
+        match /likes/{userId} {
+          allow read: if signedIn();
+          allow create, delete: if signedIn() && request.auth.uid == userId;
+          allow update: if false;
+        }
+      }
+    }
+
+    // Public playlist mirror used by search. It is kept in sync by the owner.
+    match /playlists/{playlistId} {
+      allow read: if signedIn() && resource.data.isPublic == true;
+      allow create: if signedIn() &&
+        request.resource.data.ownerId == request.auth.uid;
+      allow update: if signedIn() &&
+        resource.data.ownerId == request.auth.uid &&
+        request.resource.data.ownerId == resource.data.ownerId;
+      allow delete: if signedIn() &&
+        resource.data.ownerId == request.auth.uid;
+
+      match /songs/{songId} {
+        allow read: if signedIn() &&
+          get(/databases/$(database)/documents/playlists/$(playlistId)).data.isPublic == true;
+        allow create, delete: if signedIn() &&
+          get(/databases/$(database)/documents/playlists/$(playlistId)).data.ownerId == request.auth.uid;
+        allow update: if false;
+      }
+    }
+
+    match /users/{userId} {
+      // The current search/profile UI reads public profile data from this document.
+      allow read: if signedIn();
+
+      allow create: if isOwner(userId) &&
+        request.resource.data.uid == userId &&
+        request.resource.data.role == 'user' &&
+        request.resource.data.accountStatus == 'active';
+
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.accountStatus == resource.data.accountStatus &&
+        request.resource.data.likedSongsCount == resource.data.likedSongsCount &&
+        request.resource.data.playlistsCount == resource.data.playlistsCount &&
+        request.resource.data.followersCount == resource.data.followersCount &&
+        request.resource.data.followingCount == resource.data.followingCount &&
+        request.resource.data.uploadedSongsCount == resource.data.uploadedSongsCount
+      );
+
+      allow delete: if isAdmin();
+
+      match /notifications/{notificationId} {
+        allow read, delete: if isOwner(userId);
+        allow create: if signedIn() &&
+          request.resource.data.receiverId == userId &&
+          request.resource.data.actorId == request.auth.uid;
+        allow update: if isOwner(userId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']) &&
+          request.resource.data.isRead == true;
+      }
+
+      match /recentlyPlayed/{songId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /recentlyPlayedPlaylists/{playlistId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /likedSongs/{songId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // A saved public playlist is private to the user who liked it.
+      match /likedPlaylists/{playlistId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      match /playlists/{playlistId} {
+        allow read: if signedIn() && (
+          isOwner(userId) || resource.data.isPublic == true
+        );
+        allow create: if isOwner(userId) &&
+          request.resource.data.ownerId == userId;
+        allow update: if isOwner(userId) &&
+          request.resource.data.ownerId == resource.data.ownerId;
+        allow delete: if isOwner(userId);
+
+        match /songs/{songId} {
+          allow read: if signedIn() && (
+            isOwner(userId) ||
+            get(/databases/$(database)/documents/users/$(userId)/playlists/$(playlistId)).data.isPublic == true
+          );
+          allow write: if isOwner(userId);
+        }
+      }
+
+      // A user may only write their own following record.
+      match /following/{targetUserId} {
+        allow read: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+          targetUserId != userId &&
+          request.resource.data.userId == targetUserId;
+        allow delete: if isOwner(userId);
+        allow update: if false;
+      }
+
+      // Read access is needed for follower counts in PlayerFragment.
+      match /followers/{followerUserId} {
+        allow read: if signedIn();
+        allow create: if signedIn() &&
+          request.auth.uid == followerUserId &&
+          followerUserId != userId &&
+          request.resource.data.userId == followerUserId;
+        allow delete: if signedIn() && request.auth.uid == followerUserId;
+        allow update: if false;
+      }
+    }
+
+    match /reports/{reportId} {
+      allow create: if signedIn() &&
+        request.resource.data.reporterId == request.auth.uid &&
+        request.resource.data.status == 'pending';
+      allow read: if isAdmin() || (
+        signedIn() && resource.data.reporterId == request.auth.uid
+      );
+      allow update, delete: if isAdmin();
+    }
+  }
+}
