@@ -1,15 +1,48 @@
+# =====================
+# Android Studio / IntelliJ
+# =====================
+.idea/
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+
+# =====================
+# Gradle / Kotlin build cache
+# =====================
+.gradle/
+.kotlin/
+build/
+app/build/
+
+# =====================
+# Local machine config
+# =====================
 local.properties
+
+# =====================
+# Android build outputs
+# =====================
+captures/
+.externalNativeBuild/
+.cxx/
+
+# =====================
+# OS files
+# =====================
+.DS_Store
+Thumbs.db
+
+# =====================
+# Node.js
+# =====================
+node_modules/
+soundcloud-server/node_modules/
+
+# =====================
+# Environment / Secrets
+# =====================
+.env
+*.env
+soundcloud-server/.env
+serviceAccountKey.json
+*.jks
+*.keystore
+*.log
