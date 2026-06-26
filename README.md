@@ -143,7 +143,9 @@ soundcloud-server/package-lock.json
 - The SoundCloud server must be running when testing SoundCloud-based playback locally.
 - Firebase rules must be configured correctly before production use.
 
-## Author
+## Documentation
 
-**Vũ Ngọc Hoài Linh**  
-Software Engineering Graduation Project
+- [Code Structure](CODE_STRUCTURE.md)
+- [Contributing Guide](CONTRIBUTING.md)
+- [Security Policy](SECURITY.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
