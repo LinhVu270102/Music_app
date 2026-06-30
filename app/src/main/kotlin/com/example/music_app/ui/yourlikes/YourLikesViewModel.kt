@@ -12,9 +12,9 @@ import com.example.music_app.player.state.SongLikeState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
-class YourLikesViewModel : ViewModel() {
-
-    private val repository = SocialRepository()
+class YourLikesViewModel(
+    private val repository: SocialRepository = SocialRepository()
+) : ViewModel() {
 
     private val _likedSongs = MutableLiveData<List<Song>>()
     val likedSongs: LiveData<List<Song>> = _likedSongs
@@ -33,11 +33,11 @@ class YourLikesViewModel : ViewModel() {
     fun loadLikedSongs() {
         viewModelScope.launch {
             try {
-                _likedSongs.value = repository.getLikedSongs()
+                publishLikedSongs(repository.getLikedSongs())
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (e: Exception) {
-                _errorMessageResId.value = R.string.load_liked_songs_failed
+                publishError(R.string.load_liked_songs_failed)
             }
         }
     }
@@ -49,5 +49,13 @@ class YourLikesViewModel : ViewModel() {
     override fun onCleared() {
         PlayerInteractionState.songLikeUpdates.removeObserver(likeObserver)
         super.onCleared()
+    }
+
+    private fun publishLikedSongs(songs: List<Song>) {
+        _likedSongs.value = songs
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessageResId.value = messageResId
     }
 }

@@ -50,7 +50,7 @@ class AdminReportAdapter(
             binding.txtReportTarget.text =
                 context.getString(
                     R.string.report_target_format,
-                    report.targetType,
+                    report.targetKind.value,
                     report.targetId
                 )
 

@@ -66,6 +66,7 @@ class HomeFragment : Fragment() {
             viewModel.refreshHomeDataByUser()
         }
 
+        setupNavigationButtons()
         setupRecyclerViews()
         setupGenreChips()
         setupListeners()
@@ -76,7 +77,7 @@ class HomeFragment : Fragment() {
         viewModel.loadHomeDataFast()
     }
 
-    private fun setupRecyclerViews() {
+    private fun setupNavigationButtons() {
         binding.btnNotification.setOnClickListener {
             parentFragmentManager.commit {
                 replace(R.id.fragmentContainer, NotificationFragment())
@@ -90,7 +91,9 @@ class HomeFragment : Fragment() {
                 addToBackStack(null)
             }
         }
+    }
 
+    private fun setupRecyclerViews() {
         relatedAdapter = SongAdapter(
             onItemClick = { song ->
                 openPlayer(song, relatedSongs)
@@ -115,55 +118,10 @@ class HomeFragment : Fragment() {
             }
         )
 
-        binding.rvRelatedTracks.apply {
-            layoutManager = GridLayoutManager(
-                requireContext(),
-                homeRowCount,
-                RecyclerView.HORIZONTAL,
-                false
-            )
-            adapter = relatedAdapter
-            isNestedScrollingEnabled = false
-            setHasFixedSize(true)
-            itemAnimator = null
-        }
-
-        binding.rvMoreLike.apply {
-            layoutManager = GridLayoutManager(
-                requireContext(),
-                homeRowCount,
-                RecyclerView.HORIZONTAL,
-                false
-            )
-            adapter = moreLikeAdapter
-            isNestedScrollingEnabled = false
-            setHasFixedSize(true)
-            itemAnimator = null
-        }
-
-        binding.rvHotForYou.apply {
-            layoutManager = GridLayoutManager(
-                requireContext(),
-                homeRowCount,
-                RecyclerView.HORIZONTAL,
-                false
-            )
-            adapter = hotForYouAdapter
-            isNestedScrollingEnabled = false
-            setHasFixedSize(true)
-            itemAnimator = null
-        }
-
-        binding.rvTrendingByGenre.apply {
-            layoutManager = GridLayoutManager(
-                requireContext(),
-                2
-            )
-            adapter = trendingAdapter
-            isNestedScrollingEnabled = false
-            setHasFixedSize(true)
-            itemAnimator = null
-        }
+        setupHorizontalSongList(binding.rvRelatedTracks, relatedAdapter)
+        setupHorizontalSongList(binding.rvMoreLike, moreLikeAdapter)
+        setupHorizontalSongList(binding.rvHotForYou, hotForYouAdapter)
+        setupTrendingSongList()
     }
 
     private fun setupGenreChips() {
@@ -254,6 +212,34 @@ class HomeFragment : Fragment() {
             song = song,
             playlist = playlist
         )
+    }
+
+    private fun setupHorizontalSongList(
+        recyclerView: RecyclerView,
+        songAdapter: SongAdapter
+    ) {
+        recyclerView.apply {
+            layoutManager = GridLayoutManager(
+                requireContext(),
+                homeRowCount,
+                RecyclerView.HORIZONTAL,
+                false
+            )
+            adapter = songAdapter
+            isNestedScrollingEnabled = false
+            setHasFixedSize(true)
+            itemAnimator = null
+        }
+    }
+
+    private fun setupTrendingSongList() {
+        binding.rvTrendingByGenre.apply {
+            layoutManager = GridLayoutManager(requireContext(), homeRowCount)
+            adapter = trendingAdapter
+            isNestedScrollingEnabled = false
+            setHasFixedSize(true)
+            itemAnimator = null
+        }
     }
 
     private fun selectGenreChip(selectedChip: TextView) {

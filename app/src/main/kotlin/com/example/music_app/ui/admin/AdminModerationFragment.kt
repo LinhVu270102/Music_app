@@ -10,8 +10,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentAdminModerationBinding
-import android.graphics.Color
-import androidx.core.graphics.drawable.toDrawable
 import com.example.music_app.databinding.DialogInputActionBinding
 import com.example.music_app.ui.common.showCustomDialog
 

@@ -4,18 +4,17 @@ import android.app.AlertDialog
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.model.SongStatus
+import com.example.music_app.data.model.enums.SongStatus
 import com.example.music_app.databinding.FragmentYourUploadBinding
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
-import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import com.example.music_app.databinding.DialogConfirmActionBinding
 import com.example.music_app.ui.common.showCustomDialog
 
@@ -75,18 +74,14 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
 
     private fun observeViewModel() {
         viewModel.songs.observe(viewLifecycleOwner) { songs ->
-            currentSongs = songs
-            adapter.setData(songs)
-
-            binding.tvEmpty.isVisible = songs.isEmpty()
-            binding.swipeRefreshYourUpload.isRefreshing = false
+            renderSongs(songs)
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearErrorMessage()
-                binding.swipeRefreshYourUpload.isRefreshing = false
+                stopRefreshing()
             }
         }
 
@@ -94,47 +89,15 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearSuccessMessage()
-                binding.swipeRefreshYourUpload.isRefreshing = false
-            }
-        }
-        viewModel.actionMessageResId.observe(viewLifecycleOwner) { messageResId ->
-            messageResId?.let {
-                showToast(getString(it))
-                viewModel.clearActionMessage()
-                binding.swipeRefreshYourUpload.isRefreshing = false
+                stopRefreshing()
             }
         }
     }
 
     private fun showSongOptions(song: Song, anchor: View) {
-        val popup = androidx.appcompat.widget.PopupMenu(requireContext(), anchor)
+        val popup = PopupMenu(requireContext(), anchor)
 
-        popup.menu.add(
-            0,
-            MENU_DELETE,
-            0,
-            getString(R.string.delete_song)
-        )
-
-        popup.menu.add(
-            0,
-            MENU_TOGGLE_COMMENTS,
-            1,
-            if (song.allowComments) {
-                getString(R.string.lock_comments)
-            } else {
-                getString(R.string.unlock_comments)
-            }
-        )
-
-        if (song.status == SongStatus.REJECTED) {
-            popup.menu.add(
-                0,
-                MENU_RESUBMIT,
-                2,
-                getString(R.string.resubmit_song)
-            )
-        }
+        addSongOptionMenuItems(popup, song)
 
         popup.setOnMenuItemClickListener { item ->
             when (item.itemId) {
@@ -159,6 +122,27 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
 
         popup.show()
     }
+
+    private fun addSongOptionMenuItems(
+        popup: PopupMenu,
+        song: Song
+    ) {
+        popup.menu.add(0, MENU_DELETE, 0, getString(R.string.delete_song))
+        popup.menu.add(0, MENU_TOGGLE_COMMENTS, 1, commentMenuTitle(song))
+
+        if (song.statusType == SongStatus.REJECTED) {
+            popup.menu.add(0, MENU_RESUBMIT, 2, getString(R.string.resubmit_song))
+        }
+    }
+
+    private fun commentMenuTitle(song: Song): String {
+        return if (song.allowComments) {
+            getString(R.string.lock_comments)
+        } else {
+            getString(R.string.unlock_comments)
+        }
+    }
+
     private fun confirmDeleteSong(song: Song) {
         val dialogBinding = DialogConfirmActionBinding.inflate(layoutInflater)
 
@@ -183,6 +167,12 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
         dialog.showCustomDialog()
     }
 
+    private fun renderSongs(songs: List<Song>) {
+        currentSongs = songs
+        adapter.setData(songs)
+        binding.tvEmpty.isVisible = songs.isEmpty()
+        stopRefreshing()
+    }
 
     private fun openPlayer(song: Song) {
         PlaybackLauncher.openPlayer(
@@ -198,6 +188,10 @@ class YourUploadFragment : Fragment(R.layout.fragment_your_upload) {
             message,
             Toast.LENGTH_SHORT
         ).show()
+    }
+
+    private fun stopRefreshing() {
+        binding.swipeRefreshYourUpload.isRefreshing = false
     }
 
     override fun onDestroyView() {

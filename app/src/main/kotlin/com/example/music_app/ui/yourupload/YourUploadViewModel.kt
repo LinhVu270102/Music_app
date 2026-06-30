@@ -10,9 +10,9 @@ import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
-class YourUploadViewModel : ViewModel() {
-
-    private val repository = SongRepository()
+class YourUploadViewModel(
+    private val repository: SongRepository = SongRepository()
+) : ViewModel() {
 
     private val _songs = MutableLiveData<List<Song>>()
     val songs: LiveData<List<Song>> = _songs
@@ -26,11 +26,11 @@ class YourUploadViewModel : ViewModel() {
     fun loadMyUploadedSongs() {
         viewModelScope.launch {
             try {
-                _songs.value = repository.getMyUploadedSongs()
+                publishSongs(repository.getMyUploadedSongs())
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.load_uploaded_songs_failed
+                publishError(R.string.load_uploaded_songs_failed)
             }
         }
     }
@@ -39,12 +39,12 @@ class YourUploadViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 repository.softDeleteMySong(song.id)
-                _successMessageResId.value = R.string.delete_song_success
+                publishSuccess(R.string.delete_song_success)
                 loadMyUploadedSongs()
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.delete_song_failed
+                publishError(R.string.delete_song_failed)
             }
         }
     }
@@ -59,18 +59,19 @@ class YourUploadViewModel : ViewModel() {
                     allowComments = newAllowComments
                 )
 
-                _successMessageResId.value =
+                publishSuccess(
                     if (newAllowComments) {
                         R.string.comments_unlocked_success
                     } else {
                         R.string.comments_locked_success
                     }
+                )
 
                 loadMyUploadedSongs()
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.update_comment_permission_failed
+                publishError(R.string.update_comment_permission_failed)
             }
         }
     }
@@ -80,7 +81,7 @@ class YourUploadViewModel : ViewModel() {
         reason: String
     ) {
         if (reason.isBlank()) {
-            _errorMessageResId.value = R.string.report_reason_empty
+            publishError(R.string.report_reason_empty)
             return
         }
 
@@ -91,48 +92,27 @@ class YourUploadViewModel : ViewModel() {
                     reason = reason.trim()
                 )
 
-                _successMessageResId.value = R.string.report_success
+                publishSuccess(R.string.report_success)
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.report_failed
+                publishError(R.string.report_failed)
             }
         }
     }
-    private val _actionMessageResId = MutableLiveData<Int?>()
-    val actionMessageResId: LiveData<Int?> = _actionMessageResId
-
-    fun deleteMySong(song: Song) {
-        viewModelScope.launch {
-            try {
-                repository.softDeleteMySong(song.id)
-                _successMessageResId.value = R.string.delete_song_success
-                loadMyUploadedSongs()
-            } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
-            } catch (_: Exception) {
-                _errorMessageResId.value = R.string.delete_song_failed
-            }
-        }
-    }
-
 
     fun resubmitSong(song: Song) {
         viewModelScope.launch {
             try {
                 repository.resubmitMyRejectedSong(song.id)
-                _successMessageResId.value = R.string.resubmit_song_success
+                publishSuccess(R.string.resubmit_song_success)
                 loadMyUploadedSongs()
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.resubmit_song_failed
+                publishError(R.string.resubmit_song_failed)
             }
         }
-    }
-
-    fun clearActionMessage() {
-        _successMessageResId.value = null
     }
 
     fun clearErrorMessage() {
@@ -141,5 +121,17 @@ class YourUploadViewModel : ViewModel() {
 
     fun clearSuccessMessage() {
         _successMessageResId.value = null
+    }
+
+    private fun publishSongs(songs: List<Song>) {
+        _songs.value = songs
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessageResId.value = messageResId
+    }
+
+    private fun publishSuccess(messageResId: Int) {
+        _successMessageResId.value = messageResId
     }
 }

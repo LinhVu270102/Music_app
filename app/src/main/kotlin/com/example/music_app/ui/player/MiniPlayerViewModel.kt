@@ -15,10 +15,10 @@ import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
 /** Social state for the mini player. The Activity only renders shared player state. */
-class MiniPlayerViewModel : ViewModel() {
-
-    private val authRepository = AuthRepository()
-    private val socialRepository = SocialRepository()
+class MiniPlayerViewModel(
+    private val authRepository: AuthRepository = AuthRepository(),
+    private val socialRepository: SocialRepository = SocialRepository()
+) : ViewModel() {
 
     private val _errorMessageResId = MutableLiveData<Int?>()
     val errorMessageResId: LiveData<Int?> = _errorMessageResId
@@ -58,15 +58,15 @@ class MiniPlayerViewModel : ViewModel() {
                 )
 
                 PlayerInteractionState.publishSongLike(state)
-                _successMessageResId.value = if (state.liked) {
+                publishSuccess(if (state.liked) {
                     R.string.added_to_your_likes
                 } else {
                     R.string.removed_from_your_likes
-                }
+                })
             } catch (error: AppException) {
-                _errorMessageResId.value = error.messageResId
+                publishError(error.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.update_like_failed
+                publishError(R.string.update_like_failed)
             }
         }
     }
@@ -101,12 +101,12 @@ class MiniPlayerViewModel : ViewModel() {
 
         when {
             uploaderId.isBlank() -> {
-                _errorMessageResId.value = R.string.target_user_not_found
+                publishError(R.string.target_user_not_found)
                 return
             }
 
             currentUserId == uploaderId -> {
-                _errorMessageResId.value = R.string.cannot_follow_yourself
+                publishError(R.string.cannot_follow_yourself)
                 return
             }
         }
@@ -124,15 +124,15 @@ class MiniPlayerViewModel : ViewModel() {
                         followerCount = followerCount
                     )
                 )
-                _successMessageResId.value = if (followed) {
+                publishSuccess(if (followed) {
                     R.string.followed_successfully
                 } else {
                     R.string.unfollowed_successfully
-                }
+                })
             } catch (error: AppException) {
-                _errorMessageResId.value = error.messageResId
+                publishError(error.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.follow_failed
+                publishError(R.string.follow_failed)
             }
         }
     }
@@ -143,5 +143,13 @@ class MiniPlayerViewModel : ViewModel() {
 
     fun clearSuccessMessage() {
         _successMessageResId.value = null
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessageResId.value = messageResId
+    }
+
+    private fun publishSuccess(messageResId: Int) {
+        _successMessageResId.value = messageResId
     }
 }

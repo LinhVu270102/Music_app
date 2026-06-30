@@ -1,10 +1,8 @@
 package com.example.music_app.data.remote
 
 import android.util.Log
-import com.example.music_app.R
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
-import com.example.music_app.utils.AppException
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -17,9 +15,6 @@ class PlaylistRemoteDataSource(
 ) {
 
     suspend fun create(userId: String, name: String, description: String = ""): Playlist {
-        if (userId.isBlank()) throw AppException(R.string.invalid_user)
-        if (name.isBlank()) throw AppException(R.string.playlist_name_empty)
-
         val playlistRef = firestore.collection("users")
             .document(userId)
             .collection("playlists")
@@ -168,41 +163,24 @@ class PlaylistRemoteDataSource(
         deletePublicMirrorSafely(playlistId)
     }
 
-    suspend fun addSong(userId: String, playlistId: String, song: Song) {
-        if (userId.isBlank() || playlistId.isBlank() || song.id.isBlank()) return
+    suspend fun addUserSong(userId: String, playlistId: String, song: Song): Boolean {
+        if (userId.isBlank() || playlistId.isBlank() || song.id.isBlank()) return false
 
-        val firstSongCoverUrl = firstSongCoverUrlIfPlaylistNeedsCover(
-            userId = userId,
-            playlistId = playlistId,
-            song = song
-        )
         val songRef = playlistSongs(userId, playlistId).document(song.id)
-        if (songRef.get().await().exists()) return
+        if (songRef.get().await().exists()) return false
 
         songRef.set(song.toPlaylistSongData()).await()
-        updateUserSongCountSafely(
-            userId = userId,
-            playlistId = playlistId,
-            delta = 1,
-            coverUrl = firstSongCoverUrl
-        )
-        syncAddedSongToPublicMirrorSafely(
-            userId = userId,
-            playlistId = playlistId,
-            song = song,
-            coverUrl = firstSongCoverUrl
-        )
+        return true
     }
 
-    suspend fun removeSong(userId: String, playlistId: String, songId: String) {
-        if (userId.isBlank() || playlistId.isBlank() || songId.isBlank()) return
+    suspend fun removeUserSong(userId: String, playlistId: String, songId: String): Boolean {
+        if (userId.isBlank() || playlistId.isBlank() || songId.isBlank()) return false
 
         val songRef = playlistSongs(userId, playlistId).document(songId)
-        if (!songRef.get().await().exists()) return
+        if (!songRef.get().await().exists()) return false
 
         songRef.delete().await()
-        updateUserSongCountSafely(userId, playlistId, -1)
-        syncRemovedSongFromPublicMirrorSafely(userId, playlistId, songId)
+        return true
     }
 
     suspend fun getSongs(userId: String, playlistId: String): List<Song> {
@@ -218,7 +196,20 @@ class PlaylistRemoteDataSource(
             }
     }
 
-    private suspend fun updateUserSongCountSafely(
+    suspend fun getRootSongs(playlistId: String): List<Song> {
+        if (playlistId.isBlank()) return emptyList()
+
+        return rootPlaylist(playlistId)
+            .collection("songs")
+            .get()
+            .await()
+            .documents
+            .mapNotNull { document ->
+                document.toObject(Song::class.java)?.copy(id = document.id)
+            }
+    }
+
+    suspend fun updateUserSongCountSafely(
         userId: String,
         playlistId: String,
         delta: Long,
@@ -248,7 +239,7 @@ class PlaylistRemoteDataSource(
         }
     }
 
-    private suspend fun syncAddedSongToPublicMirrorSafely(
+    suspend fun syncAddedSongToPublicMirrorSafely(
         userId: String,
         playlistId: String,
         song: Song,
@@ -287,7 +278,7 @@ class PlaylistRemoteDataSource(
         }
     }
 
-    private suspend fun syncRemovedSongFromPublicMirrorSafely(
+    suspend fun syncRemovedSongFromPublicMirrorSafely(
         userId: String,
         playlistId: String,
         songId: String
@@ -334,7 +325,7 @@ class PlaylistRemoteDataSource(
         }
     }
 
-    private suspend fun firstSongCoverUrlIfPlaylistNeedsCover(
+    suspend fun firstSongCoverUrlIfPlaylistNeedsCover(
         userId: String,
         playlistId: String,
         song: Song

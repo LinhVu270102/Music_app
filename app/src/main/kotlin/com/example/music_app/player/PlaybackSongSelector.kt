@@ -1,7 +1,7 @@
 package com.example.music_app.player
 
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.model.SongStatus
+import com.example.music_app.data.model.enums.SongStatus
 import kotlin.random.Random
 
 /** Pure rules for selecting eligible songs for fallback and random queue extensions. */
@@ -46,7 +46,7 @@ object PlaybackSongSelector {
 
     private fun isEligibleFallbackSong(song: Song): Boolean {
         return !song.isDeleted &&
-                song.status == SongStatus.APPROVED &&
+                song.statusType == SongStatus.APPROVED &&
                 song.songUrl.isNotBlank()
     }
 }

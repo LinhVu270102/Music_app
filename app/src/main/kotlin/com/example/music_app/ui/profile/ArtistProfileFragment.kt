@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.bumptech.glide.Glide
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.model.User
 import com.example.music_app.databinding.FragmentArtistProfileBinding
 import com.example.music_app.player.state.PlayerInteractionState
 import com.example.music_app.ui.player.PlaybackLauncher
@@ -102,39 +103,11 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
         viewModel.artist.observe(viewLifecycleOwner) { user ->
             if (user == null) return@observe
 
-            binding.tvHeaderTitle.text =
-                user.displayName.ifBlank { getString(R.string.artist) }
-
-            binding.tvArtistName.text =
-                user.displayName.ifBlank { user.email }
-
-            binding.tvArtistUsername.text =
-                if (user.username.isNotBlank()) {
-                    "@${user.username}"
-                } else {
-                    user.email
-                }
-
-            binding.tvArtistBio.text =
-                user.bio.ifBlank { getString(R.string.no_bio) }
-
-            Glide.with(this)
-                .load(user.avatarUrl.ifBlank { R.drawable.music_orange })
-                .placeholder(R.drawable.music_orange)
-                .error(R.drawable.music_orange)
-                .circleCrop()
-                .into(binding.imgArtistAvatar)
-            binding.swipeRefreshArtistProfile.isRefreshing = false
+            renderArtist(user)
         }
 
         viewModel.songs.observe(viewLifecycleOwner) { songs ->
-            currentSongs = songs
-
-            adapter.setData(songs)
-            adapter.setLikedSongIds(viewModel.likedSongIds)
-
-            binding.tvEmpty.isVisible = songs.isEmpty()
-            binding.swipeRefreshArtistProfile.isRefreshing = false
+            renderSongs(songs)
         }
 
         viewModel.songLikeStates.observe(viewLifecycleOwner) {
@@ -143,9 +116,9 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
 
         viewModel.errorMessage.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
-                Toast.makeText(requireContext(), getString(it), Toast.LENGTH_SHORT).show()
+                showToast(getString(it))
                 viewModel.clearErrorMessage()
-                binding.swipeRefreshArtistProfile.isRefreshing = false
+                stopRefreshing()
             }
         }
 
@@ -154,13 +127,7 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
         }
 
         viewModel.isFollowing.observe(viewLifecycleOwner) { isFollowing ->
-            binding.btnFollowArtist.setImageResource(
-                if (isFollowing) R.drawable.ic_followed else R.drawable.ic_follow
-            )
-            binding.btnFollowArtist.contentDescription = getString(
-                if (isFollowing) R.string.following else R.string.follow
-            )
-            binding.btnFollowArtist.alpha = if (isFollowing) 1f else 0.55f
+            renderFollowButton(isFollowing)
         }
 
         PlayerInteractionState.artistFollowUpdates.observe(viewLifecycleOwner) { state ->
@@ -178,6 +145,52 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
             song = song,
             playlist = currentSongs
         )
+    }
+
+    private fun renderArtist(user: User) {
+        binding.tvHeaderTitle.text = user.displayName.ifBlank { getString(R.string.artist) }
+        binding.tvArtistName.text = user.displayName.ifBlank { user.email }
+        binding.tvArtistUsername.text = if (user.username.isNotBlank()) {
+            "@${user.username}"
+        } else {
+            user.email
+        }
+        binding.tvArtistBio.text = user.bio.ifBlank { getString(R.string.no_bio) }
+
+        Glide.with(this)
+            .load(user.avatarUrl.ifBlank { R.drawable.music_orange })
+            .placeholder(R.drawable.music_orange)
+            .error(R.drawable.music_orange)
+            .circleCrop()
+            .into(binding.imgArtistAvatar)
+
+        stopRefreshing()
+    }
+
+    private fun renderSongs(songs: List<Song>) {
+        currentSongs = songs
+        adapter.setData(songs)
+        adapter.setLikedSongIds(viewModel.likedSongIds)
+        binding.tvEmpty.isVisible = songs.isEmpty()
+        stopRefreshing()
+    }
+
+    private fun renderFollowButton(isFollowing: Boolean) {
+        binding.btnFollowArtist.setImageResource(
+            if (isFollowing) R.drawable.ic_followed else R.drawable.ic_follow
+        )
+        binding.btnFollowArtist.contentDescription = getString(
+            if (isFollowing) R.string.following else R.string.follow
+        )
+        binding.btnFollowArtist.alpha = if (isFollowing) 1f else 0.55f
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun stopRefreshing() {
+        binding.swipeRefreshArtistProfile.isRefreshing = false
     }
 
     override fun onDestroyView() {

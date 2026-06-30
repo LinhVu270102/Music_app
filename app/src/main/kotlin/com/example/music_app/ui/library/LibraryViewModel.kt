@@ -12,15 +12,15 @@ import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.player.PlaybackContext
 import kotlinx.coroutines.launch
 
-class LibraryViewModel : ViewModel() {
+class LibraryViewModel(
+    private val repository: SongRepository = SongRepository(),
+    private val playlistRepository: PlaylistRepository = PlaylistRepository()
+) : ViewModel() {
 
     companion object {
         private const val TAG = "LibraryViewModel"
         private const val RECENTLY_PLAYED_LIMIT = 20
     }
-
-    private val repository = SongRepository()
-    private val playlistRepository = PlaylistRepository()
 
     private val _recentlyPlayed = MutableLiveData<List<Song>>()
     val recentlyPlayed: LiveData<List<Song>> = _recentlyPlayed
@@ -43,10 +43,7 @@ class LibraryViewModel : ViewModel() {
 
             try {
                 val remoteSongs = repository.getRecentlyPlayedSongs()
-                _recentlyPlayed.value = mergeRecentSongs(
-                    remoteSongs = remoteSongs,
-                    localSongs = _recentlyPlayed.value.orEmpty()
-                )
+                publishRecentlyPlayed(remoteSongs)
 
                 Log.d(
                     TAG,
@@ -54,7 +51,7 @@ class LibraryViewModel : ViewModel() {
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Recently failed", e)
-                _recentlyPlayed.value = emptyList()
+                clearRecentlyPlayed()
             }
         }
     }
@@ -65,7 +62,7 @@ class LibraryViewModel : ViewModel() {
 
             try {
                 val result = playlistRepository.getRecentlyPlayedPlaylists()
-                _playlists.value = result
+                publishRecentlyPlayedPlaylists(result)
 
                 Log.d(
                     TAG,
@@ -73,7 +70,7 @@ class LibraryViewModel : ViewModel() {
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Recently played playlists failed", e)
-                _playlists.value = emptyList()
+                clearRecentlyPlayedPlaylists()
             }
         }
     }
@@ -83,9 +80,7 @@ class LibraryViewModel : ViewModel() {
     }
 
     fun recordJustPlayed(song: Song) {
-        _recentlyPlayed.value = (listOf(song) + _recentlyPlayed.value.orEmpty()
-            .filter { item -> item.id != song.id })
-            .take(RECENTLY_PLAYED_LIMIT)
+        _recentlyPlayed.value = moveSongToTop(song)
     }
 
     fun recordJustPlayedPlaylist(context: PlaybackContext?) {
@@ -98,7 +93,36 @@ class LibraryViewModel : ViewModel() {
             updatedAt = System.currentTimeMillis()
         )
 
-        _playlists.value = (listOf(playlist) + _playlists.value.orEmpty()
+        _playlists.value = movePlaylistToTop(playlist)
+    }
+
+    private fun publishRecentlyPlayed(remoteSongs: List<Song>) {
+        _recentlyPlayed.value = mergeRecentSongs(
+            remoteSongs = remoteSongs,
+            localSongs = _recentlyPlayed.value.orEmpty()
+        )
+    }
+
+    private fun publishRecentlyPlayedPlaylists(playlists: List<Playlist>) {
+        _playlists.value = playlists
+    }
+
+    private fun clearRecentlyPlayed() {
+        _recentlyPlayed.value = emptyList()
+    }
+
+    private fun clearRecentlyPlayedPlaylists() {
+        _playlists.value = emptyList()
+    }
+
+    private fun moveSongToTop(song: Song): List<Song> {
+        return (listOf(song) + _recentlyPlayed.value.orEmpty()
+            .filter { item -> item.id != song.id })
+            .take(RECENTLY_PLAYED_LIMIT)
+    }
+
+    private fun movePlaylistToTop(playlist: Playlist): List<Playlist> {
+        return (listOf(playlist) + _playlists.value.orEmpty()
             .filter { item -> item.id != playlist.id })
             .take(RECENTLY_PLAYED_LIMIT)
     }

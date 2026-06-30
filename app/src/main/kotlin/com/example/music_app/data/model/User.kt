@@ -1,5 +1,9 @@
 package com.example.music_app.data.model
 
+import com.example.music_app.data.model.enums.AccountStatus
+import com.example.music_app.data.model.enums.UserRole
+import com.google.firebase.firestore.Exclude
+
 data class User(
     val uid: String = "",
     val email: String = "",
@@ -20,8 +24,8 @@ data class User(
     val musicMoodTags: List<String> = emptyList(),
 
     // Role
-    val role: String = UserRole.USER,
-    val accountStatus: String = AccountStatus.ACTIVE,
+    val role: String = UserRole.USER.value,
+    val accountStatus: String = AccountStatus.ACTIVE.value,
 
     // Time
     val createdAt: Long = 0L,
@@ -34,4 +38,12 @@ data class User(
     val followersCount: Long = 0L,
     val followingCount: Long = 0L,
     val uploadedSongsCount: Long = 0L
-)
+) {
+    @get:Exclude
+    val roleType: UserRole
+        get() = UserRole.from(role)
+
+    @get:Exclude
+    val accountStatusType: AccountStatus
+        get() = AccountStatus.from(accountStatus)
+}

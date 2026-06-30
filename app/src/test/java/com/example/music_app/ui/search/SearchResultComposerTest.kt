@@ -4,6 +4,7 @@ import com.example.music_app.data.model.SearchResultBundle
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.User
+import com.example.music_app.data.model.enums.SearchTab
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

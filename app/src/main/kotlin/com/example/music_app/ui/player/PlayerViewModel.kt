@@ -18,12 +18,11 @@ import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
 /** Full-player state and interactions. The Fragment only observes this ViewModel. */
-class PlayerViewModel : ViewModel() {
-
-    // Dependencies
-    private val repository = SongRepository()
-    private val playlistRepository = PlaylistRepository()
-    private val socialRepository = SocialRepository()
+class PlayerViewModel(
+    private val repository: SongRepository = SongRepository(),
+    private val playlistRepository: PlaylistRepository = PlaylistRepository(),
+    private val socialRepository: SocialRepository = SocialRepository()
+) : ViewModel() {
 
     // Screen state
     private val _song = MutableLiveData<Song?>()
@@ -56,10 +55,10 @@ class PlayerViewModel : ViewModel() {
             try {
                 _song.value = repository.getSong(songId)
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
                 Log.e("PlayerViewModel", "Error loading song", e)
             } catch (e: Exception) {
-                _errorMessageResId.value = R.string.load_song_failed
+                publishError(R.string.load_song_failed)
                 Log.e("PlayerViewModel", "Error loading song", e)
             }
         }
@@ -94,15 +93,15 @@ class PlayerViewModel : ViewModel() {
                 )
 
                 PlayerInteractionState.publishSongLike(state)
-                _successMessageResId.value = if (state.liked) {
+                publishSuccess(if (state.liked) {
                     R.string.added_to_your_likes
                 } else {
                     R.string.removed_from_your_likes
-                }
+                })
             } catch (error: AppException) {
-                _errorMessageResId.value = error.messageResId
+                publishError(error.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.update_like_failed
+                publishError(R.string.update_like_failed)
             }
         }
     }
@@ -126,7 +125,7 @@ class PlayerViewModel : ViewModel() {
 
     fun toggleFollow(userId: String) {
         if (userId.isBlank()) {
-            _errorMessageResId.value = R.string.invalid_user
+            publishError(R.string.invalid_user)
             return
         }
 
@@ -143,22 +142,22 @@ class PlayerViewModel : ViewModel() {
                         followerCount = followerCount
                     )
                 )
-                _successMessageResId.value = if (followed) {
+                publishSuccess(if (followed) {
                     R.string.follow_artist_success
                 } else {
                     R.string.unfollow_artist_success
-                }
+                })
             } catch (error: AppException) {
-                _errorMessageResId.value = error.messageResId
+                publishError(error.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.follow_failed
+                publishError(R.string.follow_failed)
             }
         }
     }
 
     fun deleteSong(songId: String) {
         if (songId.isBlank()) {
-            _errorMessageResId.value = R.string.invalid_song
+            publishError(R.string.invalid_song)
             return
         }
 
@@ -167,16 +166,16 @@ class PlayerViewModel : ViewModel() {
                 repository.softDeleteMySong(songId)
                 _songDeleted.value = true
             } catch (error: AppException) {
-                _errorMessageResId.value = error.messageResId
+                publishError(error.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.delete_song_failed
+                publishError(R.string.delete_song_failed)
             }
         }
     }
 
     fun toggleSongComments(song: Song) {
         if (song.id.isBlank()) {
-            _errorMessageResId.value = R.string.invalid_song
+            publishError(R.string.invalid_song)
             return
         }
 
@@ -186,34 +185,34 @@ class PlayerViewModel : ViewModel() {
                     songId = song.id,
                     allowComments = !song.allowComments
                 )
-                _successMessageResId.value = if (song.allowComments) {
+                publishSuccess(if (song.allowComments) {
                     R.string.comments_locked_success
                 } else {
                     R.string.comments_unlocked_success
-                }
+                })
                 _song.value = repository.getSong(song.id)
             } catch (error: AppException) {
-                _errorMessageResId.value = error.messageResId
+                publishError(error.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.update_comment_permission_failed
+                publishError(R.string.update_comment_permission_failed)
             }
         }
     }
 
     fun reportSong(songId: String, reason: String, description: String = "") {
         if (reason.isBlank()) {
-            _errorMessageResId.value = R.string.report_reason_empty
+            publishError(R.string.report_reason_empty)
             return
         }
 
         viewModelScope.launch {
             try {
                 repository.reportSong(songId, reason, description)
-                _successMessageResId.value = R.string.report_song_success
+                publishSuccess(R.string.report_song_success)
             } catch (error: AppException) {
-                _errorMessageResId.value = error.messageResId
+                publishError(error.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.report_song_failed
+                publishError(R.string.report_song_failed)
             }
         }
     }
@@ -234,9 +233,9 @@ class PlayerViewModel : ViewModel() {
 
                 _playlistPickerState.value = PlayerPlaylistPickerState(song, options)
             } catch (error: AppException) {
-                _errorMessageResId.value = error.messageResId
+                publishError(error.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.load_playlists_failed
+                publishError(R.string.load_playlists_failed)
             }
         }
     }
@@ -246,7 +245,7 @@ class PlayerViewModel : ViewModel() {
         song: Song
     ) {
         if (name.isBlank()) {
-            _errorMessageResId.value = R.string.playlist_name_empty
+            publishError(R.string.playlist_name_empty)
             return
         }
 
@@ -254,11 +253,11 @@ class PlayerViewModel : ViewModel() {
             try {
                 val playlist = playlistRepository.createPlaylist(name)
                 playlistRepository.addSongToPlaylist(playlist.id, song)
-                _successMessageResId.value = R.string.added_to_playlist_success
+                publishSuccess(R.string.added_to_playlist_success)
             } catch (error: AppException) {
-                _errorMessageResId.value = error.messageResId
+                publishError(error.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.add_to_playlist_failed
+                publishError(R.string.add_to_playlist_failed)
             }
         }
     }
@@ -268,22 +267,22 @@ class PlayerViewModel : ViewModel() {
         song: Song
     ) {
         if (playlistId.isBlank()) {
-            _errorMessageResId.value = R.string.playlist_not_found
+            publishError(R.string.playlist_not_found)
             return
         }
         if (playlistId == PlayerManager.playbackContext.value?.playlistId) {
-            _errorMessageResId.value = R.string.song_already_in_current_playlist
+            publishError(R.string.song_already_in_current_playlist)
             return
         }
 
         viewModelScope.launch {
             try {
                 playlistRepository.addSongToPlaylist(playlistId, song)
-                _successMessageResId.value = R.string.added_to_playlist_success
+                publishSuccess(R.string.added_to_playlist_success)
             } catch (error: AppException) {
-                _errorMessageResId.value = error.messageResId
+                publishError(error.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.add_song_to_playlist_failed
+                publishError(R.string.add_song_to_playlist_failed)
             }
         }
     }
@@ -302,5 +301,13 @@ class PlayerViewModel : ViewModel() {
 
     fun clearSuccessMessage() {
         _successMessageResId.value = null
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessageResId.value = messageResId
+    }
+
+    private fun publishSuccess(messageResId: Int) {
+        _successMessageResId.value = messageResId
     }
 }

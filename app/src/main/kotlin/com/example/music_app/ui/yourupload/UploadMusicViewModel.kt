@@ -6,16 +6,15 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
-import com.example.music_app.data.repository.UploadMusicRequest
+import com.example.music_app.data.model.UploadMusicRequest
 import com.example.music_app.domain.usecase.UploadMusicUseCase
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
 /** Owns upload state so the Fragment does not call Firebase directly. */
-class UploadMusicViewModel : ViewModel() {
-
-    // Dependencies
-    private val uploadMusicUseCase = UploadMusicUseCase()
+class UploadMusicViewModel(
+    private val uploadMusicUseCase: UploadMusicUseCase = UploadMusicUseCase()
+) : ViewModel() {
 
     // Screen state
     private val _uploadState = MutableLiveData<UploadMusicUiState>(UploadMusicUiState.Idle)
@@ -83,14 +82,4 @@ class UploadMusicViewModel : ViewModel() {
     fun consumeUploadState() {
         _uploadState.value = UploadMusicUiState.Idle
     }
-}
-
-sealed interface UploadMusicUiState {
-    data object Idle : UploadMusicUiState
-    data object Loading : UploadMusicUiState
-    data object Success : UploadMusicUiState
-    data class Error(
-        val messageResId: Int? = null,
-        val message: String? = null
-    ) : UploadMusicUiState
 }

@@ -15,11 +15,11 @@ import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
 /** State and actions for a single playlist screen. */
-class PlaylistDetailViewModel : ViewModel() {
+class PlaylistDetailViewModel(
+    private val playlistUseCase: PlaylistUseCase = PlaylistUseCase(),
+    private val socialRepository: SocialRepository = SocialRepository()
+) : ViewModel() {
 
-    // Dependencies
-    private val playlistUseCase = PlaylistUseCase()
-    private val socialRepository = SocialRepository()
     private val pendingSongLikeIds = mutableSetOf<String>()
 
     // Screen state
@@ -56,11 +56,11 @@ class PlaylistDetailViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                _songs.value = playlistUseCase.getPlaylistSongs(playlistId, ownerId)
+                refreshPlaylistSongs(playlistId, ownerId)
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.load_playlist_songs_failed
+                publishError(R.string.load_playlist_songs_failed)
             }
         }
     }
@@ -73,15 +73,11 @@ class PlaylistDetailViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 playlistUseCase.removeSong(playlistId, songId, ownerId)
-
-                loadPlaylistSongs(
-                    playlistId = playlistId,
-                    ownerId = ownerId
-                )
+                refreshPlaylistSongs(playlistId, ownerId)
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.remove_song_from_playlist_failed
+                publishError(R.string.remove_song_from_playlist_failed)
             }
         }
     }
@@ -103,15 +99,13 @@ class PlaylistDetailViewModel : ViewModel() {
             try {
                 val isLiked = playlistUseCase.togglePlaylistLike(playlist)
                 _isPlaylistLiked.value = isLiked
-                _successMessageResId.value = if (isLiked) {
-                    R.string.playlist_liked
-                } else {
-                    R.string.playlist_unliked
-                }
+                publishSuccess(
+                    if (isLiked) R.string.playlist_liked else R.string.playlist_unliked
+                )
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.update_playlist_like_failed
+                publishError(R.string.update_playlist_like_failed)
             }
         }
     }
@@ -125,15 +119,12 @@ class PlaylistDetailViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 playlistUseCase.addSong(playlistId, song)
-                loadPlaylistSongs(
-                    playlistId = playlistId,
-                    ownerId = ownerId
-                )
-                _successMessageResId.value = R.string.song_added_to_playlist
+                refreshPlaylistSongs(playlistId, ownerId)
+                publishSuccess(R.string.song_added_to_playlist)
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.add_to_playlist_failed
+                publishError(R.string.add_to_playlist_failed)
             }
         }
     }
@@ -206,10 +197,10 @@ class PlaylistDetailViewModel : ViewModel() {
                 applySharedSongLikeState(state)
             } catch (e: AppException) {
                 revertSongLike(song, wasLiked, baseLikes, previousState)
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
                 revertSongLike(song, wasLiked, baseLikes, previousState)
-                _errorMessageResId.value = R.string.update_like_failed
+                publishError(R.string.update_like_failed)
             } finally {
                 pendingSongLikeIds -= song.id
             }
@@ -253,5 +244,20 @@ class PlaylistDetailViewModel : ViewModel() {
 
     fun clearSuccessMessage() {
         _successMessageResId.value = null
+    }
+
+    private suspend fun refreshPlaylistSongs(
+        playlistId: String,
+        ownerId: String
+    ) {
+        _songs.value = playlistUseCase.getPlaylistSongs(playlistId, ownerId)
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessageResId.value = messageResId
+    }
+
+    private fun publishSuccess(messageResId: Int) {
+        _successMessageResId.value = messageResId
     }
 }

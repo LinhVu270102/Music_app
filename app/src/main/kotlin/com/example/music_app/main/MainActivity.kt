@@ -16,7 +16,8 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import com.example.music_app.base.BaseActivity
-import com.example.music_app.data.model.UserRole
+import com.example.music_app.data.model.enums.FooterTab
+import com.example.music_app.data.model.enums.UserRole
 import com.example.music_app.data.repository.AuthRepository
 import com.example.music_app.data.repository.UserRepository
 import com.example.music_app.player.state.PlayerInteractionState
@@ -106,7 +107,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                 val user = userRepository.getUserProfile(currentUser.uid).getOrNull()
 
                 withContext(Dispatchers.Main) {
-                    if (user?.role == UserRole.ADMIN) {
+                    if (user?.roleType == UserRole.ADMIN) {
                         openAdminDashboardFragment()
                     } else {
                         openHomeFragment()

@@ -13,7 +13,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /** Builds home rows from the Firestore music catalog, grouped by genre. */
-class HomeViewModel : ViewModel() {
+class HomeViewModel(
+    private val songRepository: SongRepository = SongRepository(),
+    private val socialRepository: SocialRepository = SocialRepository()
+) : ViewModel() {
 
     companion object {
         private const val TAG = "HomeViewModel"
@@ -21,8 +24,6 @@ class HomeViewModel : ViewModel() {
         private const val MORE_LIKE_LIMIT = 20
     }
 
-    private val songRepository = SongRepository()
-    private val socialRepository = SocialRepository()
     private var isLoadingHome = false
     private var catalogSongs: List<Song> = emptyList()
 
@@ -101,14 +102,10 @@ class HomeViewModel : ViewModel() {
                     trendingByGenre = songsForGenre("hip hop", "rap", "hiphop").take(8)
                 )
 
-                HomeMemoryCache.save(homeData)
-                _relatedTracks.postValue(homeData.relatedTracks)
-                _moreLike.postValue(homeData.moreLike)
-                _hotForYou.postValue(homeData.hotForYou)
-                _trendingByGenre.postValue(homeData.trendingByGenre)
+                publishHomeData(homeData)
             } catch (error: Exception) {
                 Log.e(TAG, "Unable to load Firebase catalog", error)
-                _errorMessageResId.postValue(R.string.load_song_failed)
+                publishError(R.string.load_song_failed)
             } finally {
                 isLoadingHome = false
                 _isLoading.postValue(false)
@@ -177,6 +174,18 @@ class HomeViewModel : ViewModel() {
 
     private fun normalizeRecommendationKey(value: String): String {
         return value.trim().lowercase()
+    }
+
+    private fun publishHomeData(homeData: HomeData) {
+        HomeMemoryCache.save(homeData)
+        _relatedTracks.postValue(homeData.relatedTracks)
+        _moreLike.postValue(homeData.moreLike)
+        _hotForYou.postValue(homeData.hotForYou)
+        _trendingByGenre.postValue(homeData.trendingByGenre)
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessageResId.postValue(messageResId)
     }
 
     fun clearErrorMessage() {

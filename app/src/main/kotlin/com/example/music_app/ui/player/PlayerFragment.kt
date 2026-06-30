@@ -90,8 +90,7 @@ class PlayerFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        (requireActivity() as? MainActivity)?.setMiniPlayerVisible(false)
-        (requireActivity() as? MainActivity)?.setFooterVisible(false)
+        hideMainChrome()
 
         setupActions()
         initObservers()
@@ -112,7 +111,6 @@ class PlayerFragment : Fragment() {
     }
 
     private fun setupActions() {
-
         binding.btnPlayPause.setOnClickListener {
             PlayerManager.toggle()
             updatePlayPauseIcon()
@@ -149,41 +147,14 @@ class PlayerFragment : Fragment() {
         }
 
         binding.btnComment.setOnClickListener {
-            val song = PlayerManager.currentSong.value
-
-            if (song == null) {
-                showToast(getString(R.string.no_current_song))
-            } else {
-                parentFragmentManager.beginTransaction()
-                    .replace(R.id.fragmentContainer, CommentFragment.newInstance(song.id))
-                    .addToBackStack(null)
-                    .commit()
-
-                (requireActivity() as? MainActivity)?.updateMainChromeVisibility()
-            }
+            openCommentForCurrentSong()
         }
 
         binding.btnCurrentPlaylist.setOnClickListener {
             playlistDialogs.showCurrentPlaylist()
         }
 
-        binding.playerSeekBar.setOnSeekBarChangeListener(
-            object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(
-                    seekBar: SeekBar?,
-                    progress: Int,
-                    fromUser: Boolean
-                ) {
-                    if (fromUser) {
-                        PlayerManager.seekTo(progress.toLong())
-                    }
-                }
-
-                override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-
-                override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-            }
-        )
+        setupSeekBar()
         binding.btnSongOptions.setOnClickListener {
             PlayerManager.currentSong.value?.let(songOptionsDialogs::show)
         }
@@ -224,9 +195,7 @@ class PlayerFragment : Fragment() {
         }
 
         PlayerManager.playbackContext.observe(viewLifecycleOwner) { context ->
-            binding.playerPlaylistName.visibility =
-                if (context?.isPlaylist == true) View.VISIBLE else View.GONE
-            binding.playerPlaylistName.text = context?.playlistName.orEmpty()
+            renderPlaybackContext(context?.isPlaylist == true, context?.playlistName.orEmpty())
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
@@ -259,9 +228,7 @@ class PlayerFragment : Fragment() {
         }
 
         PlayerInteractionState.songLikeUpdates.observe(viewLifecycleOwner) { state ->
-            val displayedSong = PlayerManager.currentSong.value ?: viewModel.song.value
-
-            if (displayedSong?.id != state.songId) return@observe
+            if (displayedSong()?.id != state.songId) return@observe
 
             isCurrentSongLiked = state.liked
             state.likesCount?.let { binding.tvLikeCount.text = formatCount(it) }
@@ -270,17 +237,13 @@ class PlayerFragment : Fragment() {
         }
 
         PlayerInteractionState.songCommentUpdates.observe(viewLifecycleOwner) { state ->
-            val displayedSong = PlayerManager.currentSong.value ?: viewModel.song.value
-
-            if (displayedSong?.id != state.songId) return@observe
+            if (displayedSong()?.id != state.songId) return@observe
 
             binding.tvCommentCount.text = formatCount(state.commentsCount)
         }
 
         PlayerInteractionState.artistFollowUpdates.observe(viewLifecycleOwner) { state ->
-            val displayedSong = PlayerManager.currentSong.value ?: viewModel.song.value
-
-            if (displayedSong?.uploaderId != state.userId) return@observe
+            if (displayedSong()?.uploaderId != state.userId) return@observe
 
             isCurrentArtistFollowed = state.followed
             state.followerCount?.let { binding.tvFollowCount.text = formatCount(it) }
@@ -289,9 +252,20 @@ class PlayerFragment : Fragment() {
     }
 
     private fun updateUI(song: Song) {
+        bindSongInfo(song)
+        bindSongSocialState(song)
+        loadLikeState(song)
+        loadFollowState(song)
+        loadCover(song)
+        updatePlayPauseIcon()
+    }
+
+    private fun bindSongInfo(song: Song) {
         binding.playerSongTitle.text = song.title
         binding.playerArtist.text = song.artist
+    }
 
+    private fun bindSongSocialState(song: Song) {
         val cachedLikeState = PlayerInteractionState.songState(song.id)
         isCurrentSongLiked = cachedLikeState?.liked ?: false
         binding.tvLikeCount.text = formatCount(cachedLikeState?.likesCount ?: song.likes)
@@ -301,10 +275,9 @@ class PlayerFragment : Fragment() {
                 ?: song.commentsCount
         )
         updateLikeIcon()
+    }
 
-        loadLikeState(song)
-        loadFollowState(song)
-
+    private fun loadCover(song: Song) {
         Glide.with(this)
             .asBitmap()
             .load(song.coverUrl)
@@ -326,13 +299,8 @@ class PlayerFragment : Fragment() {
                     }
                 }
 
-                override fun onLoadCleared(
-                    placeholder: android.graphics.drawable.Drawable?
-                ) {
-                }
+                override fun onLoadCleared(placeholder: android.graphics.drawable.Drawable?) = Unit
             })
-
-        updatePlayPauseIcon()
     }
 
     private fun loadLikeState(song: Song) {
@@ -355,20 +323,12 @@ class PlayerFragment : Fragment() {
         val targetUserId = song.uploaderId
 
         if (targetUserId.isBlank()) {
-            isCurrentArtistFollowed = false
-            binding.btnFollow.isEnabled = false
-            binding.btnFollow.alpha = 0.4f
-            binding.tvFollowCount.text = "0"
-            updateFollowIcon()
+            showDisabledFollowState("0")
             return
         }
 
         if (viewModel.isCurrentUser(targetUserId)) {
-            isCurrentArtistFollowed = false
-            binding.btnFollow.isEnabled = false
-            binding.btnFollow.alpha = 0.4f
-            binding.tvFollowCount.text = getString(R.string.cannot_follow_yourself)
-            updateFollowIcon()
+            showDisabledFollowState(getString(R.string.cannot_follow_yourself))
             return
         }
 
@@ -384,6 +344,14 @@ class PlayerFragment : Fragment() {
         }
 
         viewModel.loadFollowState(targetUserId)
+    }
+
+    private fun showDisabledFollowState(label: String) {
+        isCurrentArtistFollowed = false
+        binding.btnFollow.isEnabled = false
+        binding.btnFollow.alpha = 0.4f
+        binding.tvFollowCount.text = label
+        updateFollowIcon()
     }
 
     private fun toggleFollowCurrentArtist() {
@@ -418,6 +386,59 @@ class PlayerFragment : Fragment() {
 
         gradient.cornerRadius = 0f
         binding.playerRoot.background = gradient
+    }
+
+    private fun hideMainChrome() {
+        (requireActivity() as? MainActivity)?.setMiniPlayerVisible(false)
+        (requireActivity() as? MainActivity)?.setFooterVisible(false)
+    }
+
+    private fun openCommentForCurrentSong() {
+        val song = PlayerManager.currentSong.value
+
+        if (song == null) {
+            showToast(getString(R.string.no_current_song))
+            return
+        }
+
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, CommentFragment.newInstance(song.id))
+            .addToBackStack(null)
+            .commit()
+
+        (requireActivity() as? MainActivity)?.updateMainChromeVisibility()
+    }
+
+    private fun setupSeekBar() {
+        binding.playerSeekBar.setOnSeekBarChangeListener(
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(
+                    seekBar: SeekBar?,
+                    progress: Int,
+                    fromUser: Boolean
+                ) {
+                    if (fromUser) {
+                        PlayerManager.seekTo(progress.toLong())
+                    }
+                }
+
+                override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+
+                override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+            }
+        )
+    }
+
+    private fun renderPlaybackContext(
+        isPlaylist: Boolean,
+        playlistName: String
+    ) {
+        binding.playerPlaylistName.visibility = if (isPlaylist) View.VISIBLE else View.GONE
+        binding.playerPlaylistName.text = playlistName
+    }
+
+    private fun displayedSong(): Song? {
+        return PlayerManager.currentSong.value ?: viewModel.song.value
     }
 
     private fun updatePlayPauseIcon() {

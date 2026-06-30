@@ -8,12 +8,12 @@ import com.example.music_app.R
 import com.example.music_app.data.model.SearchResultBundle
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SearchRepository
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
-class SearchViewModel : ViewModel() {
-
-    private val searchRepository = SearchRepository()
+class SearchViewModel(
+    private val searchRepository: SearchRepository = SearchRepository()
+) : ViewModel() {
 
     private val _searchResults = MutableLiveData(SearchResultBundle())
     val searchResults: LiveData<SearchResultBundle> = _searchResults
@@ -37,8 +37,7 @@ class SearchViewModel : ViewModel() {
     private var searchJob: Job? = null
 
     fun loadSongs() {
-        _searchResults.value = SearchResultBundle()
-        _songs.value = emptyList()
+        clearSearchResult()
     }
 
     fun searchTracks(query: String) {
@@ -53,20 +52,15 @@ class SearchViewModel : ViewModel() {
 
         searchJob = viewModelScope.launch {
             try {
-                _isLoading.value = true
+                setLoading(true)
 
-                val result = searchRepository.search(keyword)
-
-                val resultWithQuery = result.copy(
-                    query = keyword
+                publishSearchResult(
+                    searchRepository.search(keyword).copy(query = keyword)
                 )
-
-                _searchResults.value = resultWithQuery
-                _songs.value = resultWithQuery.tracks
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.search_failed
+                publishError(R.string.search_failed)
             } finally {
-                _isLoading.value = false
+                setLoading(false)
             }
         }
     }
@@ -77,25 +71,24 @@ class SearchViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 isPreparingSong = true
-                _isLoading.value = true
+                setLoading(true)
 
-                if (song.songUrl.isBlank()) {
-                    _errorMessageResId.value = R.string.song_url_empty
-                } else {
+                if (song.isPlayable()) {
                     _playSongEvent.value = song
+                } else {
+                    publishError(R.string.song_url_empty)
                 }
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.playback_failed
+                publishError(R.string.playback_failed)
             } finally {
-                _isLoading.value = false
+                setLoading(false)
                 isPreparingSong = false
             }
         }
     }
 
     fun clearSearchResult() {
-        _searchResults.value = SearchResultBundle()
-        _songs.value = emptyList()
+        publishSearchResult(SearchResultBundle())
     }
 
     fun donePlaySong() {
@@ -104,5 +97,22 @@ class SearchViewModel : ViewModel() {
 
     fun clearErrorMessage() {
         _errorMessageResId.value = null
+    }
+
+    private fun publishSearchResult(result: SearchResultBundle) {
+        _searchResults.value = result
+        _songs.value = result.tracks
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessageResId.value = messageResId
+    }
+
+    private fun setLoading(isLoading: Boolean) {
+        _isLoading.value = isLoading
+    }
+
+    private fun Song.isPlayable(): Boolean {
+        return songUrl.isNotBlank()
     }
 }

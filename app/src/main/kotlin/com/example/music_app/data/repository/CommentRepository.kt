@@ -1,12 +1,15 @@
 package com.example.music_app.data.repository
 
 import com.example.music_app.R
+import com.example.music_app.data.model.AppNotification
 import com.example.music_app.data.model.Comment
 import com.example.music_app.data.model.Report
-import com.example.music_app.data.model.ReportStatus
-import com.example.music_app.data.model.ReportTargetType
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.model.UserRole
+import com.example.music_app.data.model.enums.AppNotificationTargetType
+import com.example.music_app.data.model.enums.AppNotificationType
+import com.example.music_app.data.model.enums.ReportStatus
+import com.example.music_app.data.model.enums.ReportTargetType
+import com.example.music_app.data.model.enums.UserRole
 import com.example.music_app.data.remote.CommentRemoteDataSource
 import com.example.music_app.data.remote.NotificationRemoteDataSource
 import com.example.music_app.data.remote.ReportRemoteDataSource
@@ -94,11 +97,18 @@ private class FirestoreCommentRepository(
         content: String,
         timelinePositionMs: Long = 0L
     ): Comment {
+        val normalizedContent = content.trim()
+        val song = requireCommentableSong(songId, normalizedContent)
         val userId = requireCurrentUserId()
         val user = userRemoteDataSource.getById(userId)
             ?: throw AppException(R.string.user_not_found)
 
-        return remoteDataSource.add(songId, user, content, timelinePositionMs)
+        return remoteDataSource.add(
+            songId = song.id,
+            user = user,
+            content = normalizedContent,
+            timelinePositionMs = timelinePositionMs
+        )
     }
 
     suspend fun reportComment(
@@ -114,12 +124,12 @@ private class FirestoreCommentRepository(
         return reportRemoteDataSource.create(
             Report(
                 targetId = commentId,
-                targetType = ReportTargetType.COMMENT,
+                targetType = ReportTargetType.COMMENT.value,
                 reporterId = userId,
                 reporterName = user.displayName.ifBlank { user.email },
                 reason = reason,
                 description = "$songId|$description",
-                status = ReportStatus.PENDING
+                status = ReportStatus.PENDING.value
             )
         )
     }
@@ -139,7 +149,7 @@ private class FirestoreCommentRepository(
 
         val canHide = comment.userId == userId ||
             song.uploaderId == userId ||
-            currentUser.role == UserRole.ADMIN
+            currentUser.roleType == UserRole.ADMIN
 
         if (!canHide) {
             throw AppException(R.string.no_permission)
@@ -165,16 +175,16 @@ private class FirestoreCommentRepository(
             // successful like as a failed action or prevent a later unlike.
             runCatching {
                 notificationRemoteDataSource.create(
-                    com.example.music_app.data.model.AppNotification(
+                    AppNotification(
                         receiverId = comment.userId,
                         actorId = actorId,
                         actorName = actorName,
                         actorAvatarUrl = actor?.avatarUrl.orEmpty(),
-                        type = com.example.music_app.data.model.AppNotificationType.NEW_LIKE,
+                        type = AppNotificationType.NEW_LIKE.value,
                         title = "New comment like",
                         message = "$actorName liked your comment",
                         targetId = comment.id,
-                        targetType = "comment"
+                        targetType = AppNotificationTargetType.COMMENT.value
                     )
                 )
             }
@@ -187,5 +197,18 @@ private class FirestoreCommentRepository(
         return getCurrentUserId().ifBlank {
             throw AppException(R.string.not_logged_in)
         }
+    }
+
+    private suspend fun requireCommentableSong(songId: String, content: String): Song {
+        if (songId.isBlank()) throw AppException(R.string.invalid_song)
+        if (content.isBlank()) throw AppException(R.string.comment_content_empty)
+
+        val song = remoteDataSource.getSong(songId)
+            ?: throw AppException(R.string.invalid_song)
+
+        if (song.isDeleted) throw AppException(R.string.song_deleted)
+        if (!song.allowComments) throw AppException(R.string.comments_locked)
+
+        return song
     }
 }

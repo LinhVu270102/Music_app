@@ -1,9 +1,11 @@
 package com.example.music_app.data.repository
 
+import com.example.music_app.R
 import com.example.music_app.data.model.AppNotification
-import com.example.music_app.data.model.AppNotificationType
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.model.SongStatus
+import com.example.music_app.data.model.enums.AppNotificationTargetType
+import com.example.music_app.data.model.enums.AppNotificationType
+import com.example.music_app.data.model.enums.SongStatus
 import com.example.music_app.data.model.User
 import com.example.music_app.data.remote.NotificationRemoteDataSource
 import com.example.music_app.data.remote.SocialRemoteDataSource
@@ -30,15 +32,12 @@ class SocialRepository(
     suspend fun getLikedSongs(): List<Song> {
         val userId = auth.currentUser?.uid ?: return emptyList()
         return remoteDataSource.getLikedSongs(userId)
-            .filter { song ->
-                song.status.equals(SongStatus.APPROVED, ignoreCase = true) &&
-                    !song.isDeleted
-            }
+            .filter { song -> song.isVisibleLikedSong() }
     }
 
     suspend fun toggleSongLike(song: Song): Boolean {
         val userId = auth.currentUser?.uid ?: return false
-        if (song.id.isBlank() || song.isDeleted) return false
+        if (!song.canBeLiked()) return false
 
         if (remoteDataSource.isSongLiked(userId, song.id)) {
             remoteDataSource.unlikeSong(userId, song.id)
@@ -50,23 +49,25 @@ class SocialRepository(
         return true
     }
 
-    suspend fun isFollowing(userId: String): Boolean {
+    suspend fun isFollowing(targetUserId: String): Boolean {
         val currentUserId = auth.currentUser?.uid ?: return false
-        return remoteDataSource.isFollowing(currentUserId, userId)
+        return remoteDataSource.isFollowing(currentUserId, targetUserId)
     }
 
-    suspend fun toggleFollow(userId: String): Boolean {
-        val currentUser = auth.currentUser ?: throw AppException(com.example.music_app.R.string.login_required)
-        if (userId.isBlank()) throw AppException(com.example.music_app.R.string.invalid_user)
-        if (userId == currentUser.uid) throw AppException(com.example.music_app.R.string.cannot_follow_yourself)
+    suspend fun toggleFollow(targetUserId: String): Boolean {
+        val currentUser = auth.currentUser ?: throw AppException(R.string.login_required)
+        validateFollowTarget(
+            currentUserId = currentUser.uid,
+            targetUserId = targetUserId
+        )
 
-        if (remoteDataSource.isFollowing(currentUser.uid, userId)) {
-            remoteDataSource.unfollowUser(currentUser.uid, userId)
+        if (remoteDataSource.isFollowing(currentUser.uid, targetUserId)) {
+            remoteDataSource.unfollowUser(currentUser.uid, targetUserId)
             return false
         }
 
-        remoteDataSource.followUser(currentUser.uid, userId)
-        createFollowNotification(currentUser.uid, userId)
+        remoteDataSource.followUser(currentUser.uid, targetUserId)
+        createFollowNotification(currentUser.uid, targetUserId)
         return true
     }
 
@@ -77,6 +78,24 @@ class SocialRepository(
 
     suspend fun getFollowerCount(userId: String): Long {
         return remoteDataSource.getFollowerCount(userId)
+    }
+
+    private fun validateFollowTarget(currentUserId: String, targetUserId: String) {
+        if (targetUserId.isBlank()) {
+            throw AppException(R.string.invalid_user)
+        }
+
+        if (targetUserId == currentUserId) {
+            throw AppException(R.string.cannot_follow_yourself)
+        }
+    }
+
+    private fun Song.canBeLiked(): Boolean {
+        return id.isNotBlank() && isVisibleLikedSong()
+    }
+
+    private fun Song.isVisibleLikedSong(): Boolean {
+        return statusType == SongStatus.APPROVED && !isDeleted
     }
 
     private suspend fun createSongLikeNotification(actorId: String, song: Song) {
@@ -96,11 +115,11 @@ class SocialRepository(
                 actorId = actorId,
                 actorName = actorName,
                 actorAvatarUrl = actor?.avatarUrl.orEmpty(),
-                type = AppNotificationType.NEW_LIKE,
+                type = AppNotificationType.NEW_LIKE.value,
                 title = "New like",
                 message = "$actorName liked ${song.title}",
                 targetId = song.id,
-                targetType = "song"
+                targetType = AppNotificationTargetType.SONG.value
             )
         )
     }
@@ -118,11 +137,11 @@ class SocialRepository(
                 actorId = actorId,
                 actorName = actorName,
                 actorAvatarUrl = actor?.avatarUrl.orEmpty(),
-                type = AppNotificationType.NEW_FOLLOWER,
+                type = AppNotificationType.NEW_FOLLOWER.value,
                 title = "New follower",
                 message = "$actorName started following you",
                 targetId = actorId,
-                targetType = "user"
+                targetType = AppNotificationTargetType.USER.value
             )
         )
     }

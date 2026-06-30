@@ -74,29 +74,8 @@ class LibraryFragment : Fragment() {
             }
         )
 
-        binding.recyclerRecentlyPlayed.apply {
-            layoutManager = GridLayoutManager(
-                requireContext(),
-                2,
-                RecyclerView.HORIZONTAL,
-                false
-            )
-            adapter = recentlyAdapter
-            isNestedScrollingEnabled = false
-            setHasFixedSize(true)
-        }
-
-        binding.recyclerSavedPlaylists.apply {
-            layoutManager = GridLayoutManager(
-                requireContext(),
-                2,
-                RecyclerView.HORIZONTAL,
-                false
-            )
-            adapter = playlistAdapter
-            isNestedScrollingEnabled = false
-            setHasFixedSize(true)
-        }
+        setupHorizontalList(binding.recyclerRecentlyPlayed, recentlyAdapter)
+        setupHorizontalList(binding.recyclerSavedPlaylists, playlistAdapter)
     }
 
     private fun setupListeners() {
@@ -105,38 +84,23 @@ class LibraryFragment : Fragment() {
         }
 
         binding.btnSetting.setOnClickListener {
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, SettingFragment())
-                addToBackStack(null)
-            }
+            openFragment(SettingFragment())
         }
 
         binding.btnYourLikes.setOnClickListener {
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, YourLikesFragment())
-                addToBackStack(null)
-            }
+            openFragment(YourLikesFragment())
         }
 
         binding.btnPlaylists.setOnClickListener {
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, PlaylistsFragment())
-                addToBackStack(null)
-            }
+            openFragment(PlaylistsFragment())
         }
 
         binding.btnFollowing.setOnClickListener {
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, FollowingFragment())
-                addToBackStack(null)
-            }
+            openFragment(FollowingFragment())
         }
 
         binding.btnYourUpload.setOnClickListener {
-            parentFragmentManager.commit {
-                replace(R.id.fragmentContainer, YourUploadFragment())
-                addToBackStack(null)
-            }
+            openFragment(YourUploadFragment())
         }
 
     }
@@ -157,10 +121,7 @@ class LibraryFragment : Fragment() {
         }
 
         viewModel.playlists.observe(viewLifecycleOwner) { playlists ->
-            playlistAdapter.setData(playlists)
-            binding.tvEmptySavedPlaylists.visibility =
-                if (playlists.isEmpty()) View.VISIBLE else View.GONE
-            binding.swipeRefreshLibrary.isRefreshing = false
+            showRecentlyPlayedPlaylists(playlists)
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
@@ -175,9 +136,14 @@ class LibraryFragment : Fragment() {
     private fun showRecentlyPlayedSongs(songs: List<Song>) {
         currentRecentlySongs = songs
         recentlyAdapter.setData(songs)
-        binding.tvEmptyRecentlyPlayed.visibility =
-            if (songs.isEmpty()) View.VISIBLE else View.GONE
+        binding.tvEmptyRecentlyPlayed.visibility = emptyVisibility(songs)
         PlayerManager.setFallbackSongs(songs)
+    }
+
+    private fun showRecentlyPlayedPlaylists(playlists: List<Playlist>) {
+        playlistAdapter.setData(playlists)
+        binding.tvEmptySavedPlaylists.visibility = emptyVisibility(playlists)
+        binding.swipeRefreshLibrary.isRefreshing = false
     }
 
     private fun openPlayer(song: Song) {
@@ -201,6 +167,34 @@ class LibraryFragment : Fragment() {
             )
             addToBackStack(null)
         }
+    }
+
+    private fun setupHorizontalList(
+        recyclerView: RecyclerView,
+        listAdapter: RecyclerView.Adapter<*>
+    ) {
+        recyclerView.apply {
+            layoutManager = GridLayoutManager(
+                requireContext(),
+                2,
+                RecyclerView.HORIZONTAL,
+                false
+            )
+            adapter = listAdapter
+            isNestedScrollingEnabled = false
+            setHasFixedSize(true)
+        }
+    }
+
+    private fun openFragment(fragment: Fragment) {
+        parentFragmentManager.commit {
+            replace(R.id.fragmentContainer, fragment)
+            addToBackStack(null)
+        }
+    }
+
+    private fun emptyVisibility(items: List<*>): Int {
+        return if (items.isEmpty()) View.VISIBLE else View.GONE
     }
 
     private fun showToast(message: String) {

@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.music_app.R
 import com.example.music_app.data.model.AppNotification
-import com.example.music_app.data.model.AppNotificationType
+import com.example.music_app.data.model.enums.AppNotificationType
 import com.example.music_app.databinding.ItemNotificationBinding
 
 class NotificationAdapter(
@@ -29,7 +29,7 @@ class NotificationAdapter(
         fun bind(item: AppNotification) {
             val context = binding.root.context
 
-            binding.tvNotificationTitle.text = when (item.type) {
+            binding.tvNotificationTitle.text = when (item.notificationType) {
                 AppNotificationType.NEW_FOLLOWER ->
                     context.getString(R.string.notification_new_follower)
                 AppNotificationType.NEW_LIKE ->

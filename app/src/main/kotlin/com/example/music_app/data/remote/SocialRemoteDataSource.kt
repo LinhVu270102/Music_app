@@ -1,8 +1,8 @@
 package com.example.music_app.data.remote
 
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.model.SongStatus
 import com.example.music_app.data.model.User
+import com.example.music_app.data.model.enums.SongStatus
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -60,14 +60,8 @@ class SocialRemoteDataSource(
             .documents
             .mapNotNull { document -> document.getString("songId") }
 
-        // A user can retain an old liked-song reference after its song is
-        // deleted, hidden, or no longer readable. One inaccessible document
-        // must not make the entire Your Likes screen fail to load.
         return songIds.mapNotNull { songId ->
             runCatching { getSong(songId) }.getOrNull()
-        }.filter { song ->
-            song.status.equals(SongStatus.APPROVED, ignoreCase = true) &&
-                !song.isDeleted
         }
     }
 
@@ -159,7 +153,7 @@ class SocialRemoteDataSource(
     private suspend fun getApprovedSongsByUploaderId(userId: String): List<Song> {
         val normalizedSongs = firestore.collection("songs")
             .whereEqualTo("uploaderId", userId)
-            .whereEqualTo("status", SongStatus.APPROVED)
+            .whereEqualTo("status", SongStatus.APPROVED.value)
             .whereEqualTo("isDeleted", false)
             .get()
             .await()

@@ -1,6 +1,7 @@
 package com.example.music_app.data.remote
 
 import com.example.music_app.data.model.AppNotification
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
@@ -13,16 +14,9 @@ class NotificationRemoteDataSource(
     suspend fun create(notification: AppNotification): AppNotification {
         if (notification.receiverId.isBlank()) return notification
 
-        val reference = firestore.collection("users")
-            .document(notification.receiverId)
-            .collection("notifications")
-            .document()
+        val reference = notifications(notification.receiverId).document()
 
-        val notificationWithId = notification.copy(
-            id = reference.id,
-            createdAt = notification.createdAt.takeIf { it > 0 }
-                ?: System.currentTimeMillis()
-        )
+        val notificationWithId = notification.withGeneratedMetadata(reference.id)
 
         reference.set(notificationWithId).await()
         return notificationWithId
@@ -31,25 +25,19 @@ class NotificationRemoteDataSource(
     suspend fun getAllForUser(userId: String): List<AppNotification> {
         if (userId.isBlank()) return emptyList()
 
-        return firestore.collection("users")
-            .document(userId)
-            .collection("notifications")
+        return notifications(userId)
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .limit(MAX_NOTIFICATIONS)
             .get()
             .await()
             .documents
-            .mapNotNull { document ->
-                document.toObject(AppNotification::class.java)?.copy(id = document.id)
-            }
+            .mapNotNull { document -> document.toNotification() }
     }
 
     suspend fun markRead(userId: String, notificationId: String) {
         if (userId.isBlank() || notificationId.isBlank()) return
 
-        firestore.collection("users")
-            .document(userId)
-            .collection("notifications")
+        notifications(userId)
             .document(notificationId)
             .update("isRead", true)
             .await()
@@ -58,9 +46,7 @@ class NotificationRemoteDataSource(
     suspend fun markAllRead(userId: String) {
         if (userId.isBlank()) return
 
-        val unreadNotifications = firestore.collection("users")
-            .document(userId)
-            .collection("notifications")
+        val unreadNotifications = notifications(userId)
             .whereEqualTo("isRead", false)
             .get()
             .await()
@@ -72,6 +58,21 @@ class NotificationRemoteDataSource(
                 update(document.reference, "isRead", true)
             }
         }.commit().await()
+    }
+
+    private fun notifications(userId: String) = firestore.collection("users")
+        .document(userId)
+        .collection("notifications")
+
+    private fun AppNotification.withGeneratedMetadata(notificationId: String): AppNotification {
+        return copy(
+            id = notificationId,
+            createdAt = createdAt.takeIf { it > 0 } ?: System.currentTimeMillis()
+        )
+    }
+
+    private fun DocumentSnapshot.toNotification(): AppNotification? {
+        return toObject(AppNotification::class.java)?.copy(id = id)
     }
 
     private companion object {

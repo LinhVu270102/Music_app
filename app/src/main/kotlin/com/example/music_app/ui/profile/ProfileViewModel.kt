@@ -17,12 +17,12 @@ import com.example.music_app.player.state.PlayerInteractionState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
-class ProfileViewModel : ViewModel() {
-
-    private val songRepository = SongRepository()
-    private val playlistRepository = PlaylistRepository()
-    private val socialRepository = SocialRepository()
-    private val userRepository = UserRepository()
+class ProfileViewModel(
+    private val songRepository: SongRepository = SongRepository(),
+    private val playlistRepository: PlaylistRepository = PlaylistRepository(),
+    private val socialRepository: SocialRepository = SocialRepository(),
+    private val userRepository: UserRepository = UserRepository()
+) : ViewModel() {
 
     private var targetUserId: String = ""
 
@@ -56,11 +56,7 @@ class ProfileViewModel : ViewModel() {
                 targetUserId = userId.ifBlank { currentUserId }
 
                 if (targetUserId.isBlank()) {
-                    _user.value = null
-                    _mySongs.value = emptyList()
-                    _myPlaylists.value = emptyList()
-                    _isOwnProfile.value = true
-                    _isFollowing.value = false
+                    publishEmptyOwnProfile()
                     return@launch
                 }
 
@@ -102,10 +98,12 @@ class ProfileViewModel : ViewModel() {
                     profile.copy(followersCount = followerCount)
                 }
 
-                _user.value = userWithLiveFollowerCount
-                _mySongs.value = uploadedSongs
-                _myPlaylists.value = playlists
-                _isFollowing.value = following
+                publishProfile(
+                    user = userWithLiveFollowerCount,
+                    songs = uploadedSongs,
+                    playlists = playlists,
+                    following = following
+                )
 
                 if (!isOwn && targetUserId.isNotBlank()) {
                     PlayerInteractionState.publishArtistFollow(
@@ -117,7 +115,7 @@ class ProfileViewModel : ViewModel() {
                     )
                 }
             } catch (_: Exception) {
-                _errorMessage.value = R.string.load_profile_failed
+                publishError(R.string.load_profile_failed)
             } finally {
                 _isLoading.value = false
             }
@@ -147,9 +145,9 @@ class ProfileViewModel : ViewModel() {
                     _user.value = _user.value?.copy(followersCount = count)
                 }
             } catch (e: AppException) {
-                _errorMessage.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessage.value = R.string.follow_user_failed
+                publishError(R.string.follow_user_failed)
             }
         }
     }
@@ -165,5 +163,29 @@ class ProfileViewModel : ViewModel() {
 
     fun clearErrorMessage() {
         _errorMessage.value = null
+    }
+
+    private fun publishEmptyOwnProfile() {
+        _user.value = null
+        _mySongs.value = emptyList()
+        _myPlaylists.value = emptyList()
+        _isOwnProfile.value = true
+        _isFollowing.value = false
+    }
+
+    private fun publishProfile(
+        user: User?,
+        songs: List<Song>,
+        playlists: List<Playlist>,
+        following: Boolean
+    ) {
+        _user.value = user
+        _mySongs.value = songs
+        _myPlaylists.value = playlists
+        _isFollowing.value = following
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessage.value = messageResId
     }
 }

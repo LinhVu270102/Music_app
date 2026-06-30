@@ -1,11 +1,15 @@
 package com.example.music_app.data.model
 
+import com.example.music_app.data.model.enums.ReportStatus
+import com.example.music_app.data.model.enums.ReportTargetType
+import com.google.firebase.firestore.Exclude
+
 data class Report(
     val id: String = "",
 
     // Đối tượng bị report: song/comment/user
     val targetId: String = "",
-    val targetType: String = ReportTargetType.SONG,
+    val targetType: String = ReportTargetType.SONG.value,
 
     // Người report
     val reporterId: String = "",
@@ -16,7 +20,7 @@ data class Report(
     val description: String = "",
 
     // Trạng thái xử lý
-    val status: String = ReportStatus.PENDING,
+    val status: String = ReportStatus.PENDING.value,
     val reviewedBy: String = "",
     val reviewedAt: Long = 0L,
     val adminNote: String = "",
@@ -24,17 +28,12 @@ data class Report(
     // Time
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L
-)
+) {
+    @get:Exclude
+    val targetKind: ReportTargetType
+        get() = ReportTargetType.from(targetType)
 
-object ReportTargetType {
-    const val SONG = "song"
-    const val COMMENT = "comment"
-    const val USER = "user"
-}
-
-object ReportStatus {
-    const val PENDING = "pending"
-    const val REVIEWED = "reviewed"
-    const val REJECTED = "rejected"
-    const val RESOLVED = "resolved"
+    @get:Exclude
+    val statusType: ReportStatus
+        get() = ReportStatus.from(status)
 }

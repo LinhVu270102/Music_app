@@ -24,14 +24,6 @@ class CommentRemoteDataSource(
     }
 
     suspend fun add(songId: String, user: User, content: String, timelinePositionMs: Long): Comment {
-        if (songId.isBlank()) throw AppException(R.string.invalid_song)
-        if (user.uid.isBlank()) throw AppException(R.string.invalid_user)
-        if (content.isBlank()) throw AppException(R.string.comment_content_empty)
-
-        val song = getSong(songId) ?: throw AppException(R.string.invalid_song)
-        if (song.isDeleted) throw AppException(R.string.song_deleted)
-        if (!song.allowComments) throw AppException(R.string.comments_locked)
-
         val commentRef = comments(songId).document()
         val now = System.currentTimeMillis()
         val comment = Comment(
