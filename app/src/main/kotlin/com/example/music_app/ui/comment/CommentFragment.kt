@@ -57,17 +57,12 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         setupListeners()
         observeViewModel()
 
-        val fallbackSong =
-            PlayerManager.currentSong.value?.takeIf { song ->
-                song.id == songId
-            }
-
         // Clear comment cũ trước khi load lại
         adapter.setData(emptyList())
 
         viewModel.loadSong(
             songId = songId,
-            fallbackSong = fallbackSong
+            fallbackSong = currentFallbackSong()
         )
 
         viewModel.loadComments(songId)
@@ -120,56 +115,25 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
             parentFragmentManager.popBackStack()
         }
 
-        binding.btnSendComment.setOnClickListener {
-            val song = currentSong
-
-            if (song != null && !song.allowComments) {
-                showToast(getString(R.string.comments_locked))
-                return@setOnClickListener
-            }
-
-            val content = binding.edtComment.text.toString().trim()
-
-            if (content.isBlank()) {
-                showToast(getString(R.string.comment_input_empty))
-                return@setOnClickListener
-            }
-
-            val timelinePositionMs =
-                if (PlayerManager.currentSong.value?.id == songId) {
-                    PlayerManager.getCurrentPosition()
-                } else {
-                    0L
-                }
-
-            viewModel.addComment(
-                songId = songId,
-                content = content,
-                timelinePositionMs = timelinePositionMs
-            )
-
-            binding.edtComment.text?.clear()
-        }
+        binding.btnSendComment.setOnClickListener { submitComment() }
     }
 
     private fun observeViewModel() {
         viewModel.song.observe(viewLifecycleOwner) { song ->
             currentSong = song
             updateCommentInputState(song)
-            binding.swipeRefreshComments.isRefreshing = false
+            stopRefreshing()
         }
 
         viewModel.comments.observe(viewLifecycleOwner) { comments ->
-            adapter.updateCurrentUserId(viewModel.getCurrentUserId())
-            adapter.setData(comments)
-            binding.swipeRefreshComments.isRefreshing = false
+            renderComments(comments)
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearErrorMessage()
-                binding.swipeRefreshComments.isRefreshing = false
+                stopRefreshing()
             }
         }
 
@@ -177,20 +141,15 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearSuccessMessage()
-                binding.swipeRefreshComments.isRefreshing = false
+                stopRefreshing()
             }
         }
     }
 
     private fun refreshComments() {
-        val fallbackSong =
-            PlayerManager.currentSong.value?.takeIf { song ->
-                song.id == songId
-            }
-
         viewModel.loadSong(
             songId = songId,
-            fallbackSong = fallbackSong
+            fallbackSong = currentFallbackSong()
         )
         viewModel.loadComments(songId)
     }
@@ -202,6 +161,55 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         binding.btnSendComment.isEnabled = allowComments
         binding.tvCommentsLocked.isVisible = !allowComments
     }
+
+    private fun submitComment() {
+        val song = currentSong
+
+        if (song != null && !song.allowComments) {
+            showToast(getString(R.string.comments_locked))
+            return
+        }
+
+        val content = binding.edtComment.text.toString().trim()
+
+        if (content.isBlank()) {
+            showToast(getString(R.string.comment_input_empty))
+            return
+        }
+
+        viewModel.addComment(
+            songId = songId,
+            content = content,
+            timelinePositionMs = currentTimelinePosition()
+        )
+
+        binding.edtComment.text?.clear()
+    }
+
+    private fun currentTimelinePosition(): Long {
+        return if (PlayerManager.currentSong.value?.id == songId) {
+            PlayerManager.getCurrentPosition()
+        } else {
+            0L
+        }
+    }
+
+    private fun currentFallbackSong(): Song? {
+        return PlayerManager.currentSong.value?.takeIf { song ->
+            song.id == songId
+        }
+    }
+
+    private fun renderComments(comments: List<Comment>) {
+        adapter.updateCurrentUserId(viewModel.getCurrentUserId())
+        adapter.setData(comments)
+        stopRefreshing()
+    }
+
+    private fun stopRefreshing() {
+        binding.swipeRefreshComments.isRefreshing = false
+    }
+
     private fun seekToCommentTimeline(comment: Comment) {
         val positionMs = comment.timelinePositionMs.coerceAtLeast(0L)
         val song = currentSong

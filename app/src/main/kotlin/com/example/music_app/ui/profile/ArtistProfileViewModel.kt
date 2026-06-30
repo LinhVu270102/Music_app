@@ -15,10 +15,10 @@ import com.example.music_app.player.state.SongLikeState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
-class ArtistProfileViewModel : ViewModel() {
-
-    private val repository = SongRepository()
-    private val socialRepository = SocialRepository()
+class ArtistProfileViewModel(
+    private val repository: SongRepository = SongRepository(),
+    private val socialRepository: SocialRepository = SocialRepository()
+) : ViewModel() {
     private var artistId: String = ""
     private val pendingSongLikeIds = mutableSetOf<String>()
 
@@ -64,15 +64,17 @@ class ArtistProfileViewModel : ViewModel() {
 
                     artistId = resolvedArtistId
 
-                    _artist.value = User(
-                        uid = resolvedArtistId,
-                        displayName = artistName,
-                        username = artistName,
-                        avatarUrl = artistSongs.firstOrNull()?.coverUrl.orEmpty(),
-                        fullName = artistName,
-                        uploadedSongsCount = artistSongs.size.toLong()
+                    publishArtistProfile(
+                        artist = User(
+                            uid = resolvedArtistId,
+                            displayName = artistName,
+                            username = artistName,
+                            avatarUrl = artistSongs.firstOrNull()?.coverUrl.orEmpty(),
+                            fullName = artistName,
+                            uploadedSongsCount = artistSongs.size.toLong()
+                        ),
+                        songs = artistSongs
                     )
-                    _songs.value = artistSongs
                     loadSongLikeStates(artistSongs)
                     _canFollow.value = followable
                     _isFollowing.value = if (followable) {
@@ -100,8 +102,7 @@ class ArtistProfileViewModel : ViewModel() {
                     )
                 }
 
-                _artist.value = artist
-                _songs.value = artistSongs
+                publishArtistProfile(artist, artistSongs)
                 loadSongLikeStates(artistSongs)
 
                 val currentUserId = repository.getCurrentUserId()
@@ -118,8 +119,8 @@ class ArtistProfileViewModel : ViewModel() {
                 if (followable) {
                     publishCurrentFollowState(userId)
                 }
-            } catch (e: Exception) {
-                _errorMessage.value = R.string.load_artist_profile_failed
+            } catch (_: Exception) {
+                publishError(R.string.load_artist_profile_failed)
             }
         }
     }
@@ -195,10 +196,10 @@ class ArtistProfileViewModel : ViewModel() {
                 applySharedSongLikeState(state)
             } catch (error: AppException) {
                 revertSongLike(song, wasLiked, baseLikes, previousState)
-                _errorMessage.value = error.messageResId
+                publishError(error.messageResId)
             } catch (_: Exception) {
                 revertSongLike(song, wasLiked, baseLikes, previousState)
-                _errorMessage.value = R.string.update_like_failed
+                publishError(R.string.update_like_failed)
             } finally {
                 pendingSongLikeIds -= song.id
             }
@@ -230,9 +231,9 @@ class ArtistProfileViewModel : ViewModel() {
                     )
                 )
             } catch (error: AppException) {
-                _errorMessage.value = error.messageResId
+                publishError(error.messageResId)
             } catch (_: Exception) {
-                _errorMessage.value = R.string.follow_failed
+                publishError(R.string.follow_failed)
             }
         }
     }
@@ -281,6 +282,18 @@ class ArtistProfileViewModel : ViewModel() {
         liked: Boolean
     ): Long {
         return if (liked) baseLikes + 1 else (baseLikes - 1).coerceAtLeast(0)
+    }
+
+    private fun publishArtistProfile(
+        artist: User?,
+        songs: List<Song>
+    ) {
+        _artist.value = artist
+        _songs.value = songs
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessage.value = messageResId
     }
 
     fun clearErrorMessage() {

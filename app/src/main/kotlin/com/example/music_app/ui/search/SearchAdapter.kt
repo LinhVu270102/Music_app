@@ -2,6 +2,7 @@ package com.example.music_app.ui.search
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.ImageView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -75,6 +76,7 @@ class SearchAdapter(
             is SearchResultItem.PlaylistItem -> {
                 (holder as ResultViewHolder).bindPlaylist(item.playlist)
             }
+
             is SearchResultItem.RecentQuery -> {
                 (holder as ResultViewHolder).bindRecentQuery(item.query)
             }
@@ -99,92 +101,109 @@ class SearchAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bindTrack(song: Song) {
-            resetCoverImage()
-            binding.txtTitle.text = song.title
-            binding.txtArtist.text = song.artist
-
-            Glide.with(binding.root)
-                .load(song.coverUrl.ifBlank { R.drawable.music_orange })
-                .placeholder(R.drawable.music_orange)
-                .error(R.drawable.music_orange)
-                .centerCrop()
-                .into(binding.imgCover)
-
-            binding.root.setOnClickListener {
+            bindSearchResult(
+                title = song.title,
+                subtitle = song.artist,
+                coverUrl = song.coverUrl
+            ) {
                 onTrackClick(song)
             }
         }
 
         fun bindProfile(user: User) {
-            resetCoverImage()
             val displayName = user.displayName.ifBlank {
                 user.email
             }
 
-            binding.txtTitle.text = displayName
-            binding.txtArtist.text = binding.root.context.getString(
-                R.string.user_search_subtitle,
-                user.uploadedSongsCount
-            )
-
-            Glide.with(binding.root)
-                .load(user.avatarUrl.ifBlank { R.drawable.music_orange })
-                .placeholder(R.drawable.music_orange)
-                .error(R.drawable.music_orange)
-                .centerCrop()
-                .into(binding.imgCover)
-
-            binding.root.setOnClickListener {
+            bindSearchResult(
+                title = displayName,
+                subtitle = binding.root.context.getString(
+                    R.string.user_search_subtitle,
+                    user.uploadedSongsCount
+                ),
+                coverUrl = user.avatarUrl
+            ) {
                 onProfileClick(user)
             }
         }
 
         fun bindPlaylist(playlist: Playlist) {
-            resetCoverImage()
             val context = binding.root.context
 
-            binding.txtTitle.text = playlist.name
-            binding.txtArtist.text =
-                context.getString(R.string.playlist_songs_count, playlist.songsCount)
-
-            Glide.with(binding.root)
-                .load(playlist.coverUrl.ifBlank { R.drawable.music_orange })
-                .placeholder(R.drawable.music_orange)
-                .error(R.drawable.music_orange)
-                .centerCrop()
-                .into(binding.imgCover)
-
-            binding.root.setOnClickListener {
+            bindSearchResult(
+                title = playlist.name,
+                subtitle = context.getString(R.string.playlist_songs_count, playlist.songsCount),
+                coverUrl = playlist.coverUrl
+            ) {
                 onPlaylistClick(playlist)
             }
         }
+
         fun bindRecentQuery(query: String) {
             val context = binding.root.context
 
-            binding.txtTitle.text = query
-            binding.txtArtist.text = context.getString(R.string.tap_to_search_again)
+            bindTitleSubtitle(
+                title = query,
+                subtitle = context.getString(R.string.tap_to_search_again)
+            )
 
-            val padding = (18 * context.resources.displayMetrics.density).toInt()
+            val padding = RECENT_QUERY_ICON_PADDING_DP.toPx()
 
             binding.imgCover.setImageResource(R.drawable.ic_search)
-            binding.imgCover.scaleType = android.widget.ImageView.ScaleType.CENTER
+            binding.imgCover.scaleType = ImageView.ScaleType.CENTER
             binding.imgCover.setPadding(padding, padding, padding, padding)
 
-            binding.root.setOnClickListener {
+            bindClick {
                 onRecentQueryClick(query)
             }
         }
 
+        private fun bindSearchResult(
+            title: String,
+            subtitle: String,
+            coverUrl: String,
+            onClick: () -> Unit
+        ) {
+            resetCoverImage()
+            bindTitleSubtitle(title, subtitle)
+            loadCover(coverUrl)
+            bindClick(onClick)
+        }
+
+        private fun bindTitleSubtitle(title: String, subtitle: String) {
+            binding.txtTitle.text = title
+            binding.txtArtist.text = subtitle
+        }
+
+        private fun loadCover(coverUrl: String) {
+            Glide.with(binding.root)
+                .load(coverUrl.ifBlank { R.drawable.music_orange })
+                .placeholder(R.drawable.music_orange)
+                .error(R.drawable.music_orange)
+                .centerCrop()
+                .into(binding.imgCover)
+        }
+
+        private fun bindClick(onClick: () -> Unit) {
+            binding.root.setOnClickListener {
+                onClick()
+            }
+        }
+
         private fun resetCoverImage() {
-            binding.imgCover.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
+            binding.imgCover.scaleType = ImageView.ScaleType.CENTER_CROP
             binding.imgCover.setPadding(0, 0, 0, 0)
         }
 
+        private fun Int.toPx(): Int {
+            return (this * binding.root.context.resources.displayMetrics.density).toInt()
+        }
     }
 
     companion object {
         private const val VIEW_TYPE_HEADER = 1
         private const val VIEW_TYPE_RESULT = 2
+        private const val RECENT_QUERY_ICON_PADDING_DP = 18
 
         private val SearchResultDiffCallback = object : DiffUtil.ItemCallback<SearchResultItem>() {
             override fun areItemsTheSame(

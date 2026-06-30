@@ -1,21 +1,21 @@
 package com.example.music_app.utils
 
-import com.example.music_app.data.model.AccountStatus
+import com.example.music_app.data.model.enums.AccountStatus
 import com.example.music_app.data.model.User
-import com.example.music_app.data.model.UserRole
+import com.example.music_app.data.model.enums.UserRole
 
 object RoleUtils {
 
     fun isActive(user: User?): Boolean {
-        return user?.accountStatus == AccountStatus.ACTIVE
+        return user?.accountStatusType == AccountStatus.ACTIVE
     }
 
     fun isUser(user: User?): Boolean {
-        return user?.role == UserRole.USER
+        return user?.roleType == UserRole.USER
     }
 
     fun isAdmin(user: User?): Boolean {
-        return user?.role == UserRole.ADMIN
+        return user?.roleType == UserRole.ADMIN
     }
 
     fun canListen(user: User?): Boolean {

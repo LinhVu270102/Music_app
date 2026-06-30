@@ -9,9 +9,9 @@ import com.example.music_app.data.model.Comment
 import com.example.music_app.data.repository.AdminRepository
 import kotlinx.coroutines.launch
 
-class AdminCommentModerationViewModel : ViewModel() {
-
-    private val adminRepository = AdminRepository()
+class AdminCommentModerationViewModel(
+    private val adminRepository: AdminRepository = AdminRepository()
+) : ViewModel() {
 
     private val _comments = MutableLiveData<List<Comment>>(emptyList())
     val comments: LiveData<List<Comment>> = _comments
@@ -25,12 +25,12 @@ class AdminCommentModerationViewModel : ViewModel() {
     fun loadReportedComments() {
         viewModelScope.launch {
             try {
-                _isLoading.value = true
-                _comments.value = adminRepository.getReportedComments()
+                setLoading(true)
+                publishComments(adminRepository.getReportedComments())
             } catch (_: Exception) {
-                _messageResId.value = R.string.load_reported_comments_failed
+                publishMessage(R.string.load_reported_comments_failed)
             } finally {
-                _isLoading.value = false
+                setLoading(false)
             }
         }
     }
@@ -39,15 +39,27 @@ class AdminCommentModerationViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 adminRepository.hideComment(comment)
-                _messageResId.value = R.string.comment_hidden_success
+                publishMessage(R.string.comment_hidden_success)
                 loadReportedComments()
             } catch (_: Exception) {
-                _messageResId.value = R.string.comment_hidden_failed
+                publishMessage(R.string.comment_hidden_failed)
             }
         }
     }
 
     fun clearMessage() {
         _messageResId.value = null
+    }
+
+    private fun publishComments(comments: List<Comment>) {
+        _comments.value = comments
+    }
+
+    private fun publishMessage(messageResId: Int) {
+        _messageResId.value = messageResId
+    }
+
+    private fun setLoading(isLoading: Boolean) {
+        _isLoading.value = isLoading
     }
 }

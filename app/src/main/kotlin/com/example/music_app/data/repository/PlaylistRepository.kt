@@ -3,12 +3,11 @@ package com.example.music_app.data.repository
 import com.example.music_app.R
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.model.SongStatus
+import com.example.music_app.data.model.enums.SongStatus
 import com.example.music_app.data.remote.PlaylistRemoteDataSource
 import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.tasks.await
 
 /**
  * Owns Firestore-backed playlist data for the signed-in user.
@@ -26,7 +25,17 @@ class PlaylistRepository(
         description: String = ""
     ): Playlist {
         val userId = requireCurrentUserId()
-        return remoteDataSource.create(userId, name, description)
+        val normalizedName = name.trim()
+
+        if (normalizedName.isBlank()) {
+            throw AppException(R.string.playlist_name_empty)
+        }
+
+        return remoteDataSource.create(
+            userId = userId,
+            name = normalizedName,
+            description = description.trim()
+        )
     }
 
     suspend fun getMyPlaylists(): List<Playlist> {
@@ -84,18 +93,62 @@ class PlaylistRepository(
         playlistId: String,
         song: Song
     ) {
-        if (song.isDeleted) {
-            throw AppException(R.string.song_deleted)
-        }
+        val userId = requireCurrentUserId()
+        validatePlaylistSong(playlistId, song)
 
-        remoteDataSource.addSong(requireCurrentUserId(), playlistId, song)
+        val coverUrl = remoteDataSource.firstSongCoverUrlIfPlaylistNeedsCover(
+            userId = userId,
+            playlistId = playlistId,
+            song = song
+        )
+        val wasAdded = remoteDataSource.addUserSong(
+            userId = userId,
+            playlistId = playlistId,
+            song = song
+        )
+
+        if (!wasAdded) return
+
+        remoteDataSource.updateUserSongCountSafely(
+            userId = userId,
+            playlistId = playlistId,
+            delta = 1,
+            coverUrl = coverUrl
+        )
+        remoteDataSource.syncAddedSongToPublicMirrorSafely(
+            userId = userId,
+            playlistId = playlistId,
+            song = song,
+            coverUrl = coverUrl
+        )
     }
 
     suspend fun removeSongFromPlaylist(
         playlistId: String,
         songId: String
     ) {
-        remoteDataSource.removeSong(requireCurrentUserId(), playlistId, songId)
+        val userId = requireCurrentUserId()
+
+        if (playlistId.isBlank() || songId.isBlank()) return
+
+        val wasRemoved = remoteDataSource.removeUserSong(
+            userId = userId,
+            playlistId = playlistId,
+            songId = songId
+        )
+
+        if (!wasRemoved) return
+
+        remoteDataSource.updateUserSongCountSafely(
+            userId = userId,
+            playlistId = playlistId,
+            delta = -1
+        )
+        remoteDataSource.syncRemovedSongFromPublicMirrorSafely(
+            userId = userId,
+            playlistId = playlistId,
+            songId = songId
+        )
     }
 
     suspend fun getPlaylistSongs(playlistId: String): List<Song> {
@@ -120,17 +173,7 @@ class PlaylistRepository(
     suspend fun getRootPlaylistSongs(playlistId: String): List<Song> {
         if (playlistId.isBlank()) return emptyList()
 
-        return getVisibleSongs(
-            firestore.collection("playlists")
-                .document(playlistId)
-                .collection("songs")
-                .get()
-                .await()
-                .documents
-                .mapNotNull { document ->
-                    document.toObject(Song::class.java)?.copy(id = document.id)
-                }
-        )
+        return getVisibleSongs(remoteDataSource.getRootSongs(playlistId))
     }
 
     suspend fun isPlaylistLiked(playlistId: String): Boolean {
@@ -155,8 +198,20 @@ class PlaylistRepository(
 
     private fun getVisibleSongs(songs: List<Song>): List<Song> {
         return songs.filter { song ->
-            // Accept legacy uppercase seed data while new data uses SongStatus.APPROVED.
-            song.status.equals(SongStatus.APPROVED, ignoreCase = true) && !song.isDeleted
+            song.statusType == SongStatus.APPROVED && !song.isDeleted
+        }
+    }
+
+    private fun validatePlaylistSong(
+        playlistId: String,
+        song: Song
+    ) {
+        if (playlistId.isBlank() || song.id.isBlank()) {
+            throw AppException(R.string.invalid_song)
+        }
+
+        if (song.isDeleted) {
+            throw AppException(R.string.song_deleted)
         }
     }
 

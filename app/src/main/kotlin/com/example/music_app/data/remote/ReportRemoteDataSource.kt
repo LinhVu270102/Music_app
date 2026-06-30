@@ -2,8 +2,10 @@ package com.example.music_app.data.remote
 
 import com.example.music_app.R
 import com.example.music_app.data.model.Report
-import com.example.music_app.data.model.ReportStatus
+import com.example.music_app.data.model.enums.ReportStatus
+import com.example.music_app.data.model.enums.ReportTargetType
 import com.example.music_app.utils.AppException
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -18,13 +20,8 @@ class ReportRemoteDataSource(
     suspend fun create(report: Report): Report {
         validate(report)
 
-        val reportRef = firestore.collection("reports").document()
-        val now = System.currentTimeMillis()
-        val reportWithId = report.copy(
-            id = reportRef.id,
-            createdAt = now,
-            updatedAt = now
-        )
+        val reportRef = reports().document()
+        val reportWithId = report.withGeneratedMetadata(reportRef.id)
 
         reportRef.set(reportWithId).await()
         incrementTargetReportCount(reportWithId)
@@ -32,15 +29,13 @@ class ReportRemoteDataSource(
     }
 
     suspend fun getPending(): List<Report> {
-        return firestore.collection("reports")
-            .whereEqualTo("status", ReportStatus.PENDING)
+        return reports()
+            .whereEqualTo("status", ReportStatus.PENDING.value)
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .get()
             .await()
             .documents
-            .mapNotNull { document ->
-                document.toObject(Report::class.java)?.copy(id = document.id)
-            }
+            .mapNotNull { document -> document.toReport() }
     }
 
     suspend fun updateStatus(
@@ -51,19 +46,9 @@ class ReportRemoteDataSource(
     ) {
         if (reportId.isBlank()) return
 
-        val now = System.currentTimeMillis()
-        firestore.collection("reports")
+        reports()
             .document(reportId)
-            .set(
-                mapOf(
-                    "status" to status,
-                    "reviewedBy" to reviewedBy,
-                    "reviewedAt" to now,
-                    "adminNote" to adminNote,
-                    "updatedAt" to now
-                ),
-                SetOptions.merge()
-            )
+            .set(reviewStatusData(status, reviewedBy, adminNote), SetOptions.merge())
             .await()
     }
 
@@ -74,22 +59,64 @@ class ReportRemoteDataSource(
     }
 
     private suspend fun incrementTargetReportCount(report: Report) {
-        when (report.targetType) {
-            "song" -> firestore.collection("songs")
+        when (report.targetKind) {
+            ReportTargetType.SONG -> songs()
                 .document(report.targetId)
                 .update("reportsCount", FieldValue.increment(1))
                 .await()
 
-            "comment" -> {
-                val songId = report.description.substringBefore("|").takeIf(String::isNotBlank)
+            ReportTargetType.COMMENT -> {
+                val songId = report.commentSongId()
                     ?: return
-                firestore.collection("songs")
-                    .document(songId)
-                    .collection("comments")
+                comments(songId)
                     .document(report.targetId)
                     .update("reportsCount", FieldValue.increment(1))
                     .await()
             }
+
+            ReportTargetType.USER -> Unit
         }
+    }
+
+    private fun reports() = firestore.collection("reports")
+
+    private fun songs() = firestore.collection("songs")
+
+    private fun comments(songId: String) = songs()
+        .document(songId)
+        .collection("comments")
+
+    private fun reviewStatusData(
+        status: String,
+        reviewedBy: String,
+        adminNote: String
+    ): Map<String, Any> {
+        val now = System.currentTimeMillis()
+
+        return mapOf(
+            "status" to status,
+            "reviewedBy" to reviewedBy,
+            "reviewedAt" to now,
+            "adminNote" to adminNote,
+            "updatedAt" to now
+        )
+    }
+
+    private fun Report.withGeneratedMetadata(reportId: String): Report {
+        val now = System.currentTimeMillis()
+
+        return copy(
+            id = reportId,
+            createdAt = now,
+            updatedAt = now
+        )
+    }
+
+    private fun Report.commentSongId(): String? {
+        return description.substringBefore("|").takeIf(String::isNotBlank)
+    }
+
+    private fun DocumentSnapshot.toReport(): Report? {
+        return toObject(Report::class.java)?.copy(id = id)
     }
 }

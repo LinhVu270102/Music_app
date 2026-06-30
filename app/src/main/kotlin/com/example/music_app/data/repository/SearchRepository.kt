@@ -1,18 +1,19 @@
 package com.example.music_app.data.repository
 
+import android.util.Log
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.SearchResultBundle
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.model.SongStatus
 import com.example.music_app.data.model.User
+import com.example.music_app.data.model.enums.SongStatus
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
 
-class SearchRepository {
-
-    private val firestore = FirebaseFirestore.getInstance()
+class SearchRepository(
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+) {
 
     suspend fun search(keyword: String): SearchResultBundle {
         val query = keyword.trim()
@@ -30,65 +31,58 @@ class SearchRepository {
 
             SearchResultBundle(
                 tracks = tracks,
-                profiles = (
-                    persistedProfiles + createArtistProfiles(
-                        tracks = tracks,
-                        persistedProfiles = persistedProfiles
-                    )
-                ).distinctBy(User::uid),
+                profiles = mergePersistedAndArtistProfiles(
+                    tracks = tracks,
+                    persistedProfiles = persistedProfiles
+                ),
                 playlists = playlistsDeferred.await()
             )
         }
     }
 
     private suspend fun searchTracks(keyword: String): List<Song> {
-        val normalizedTracks = fetchTracksByStatus(SongStatus.APPROVED)
-        val legacyTracks = fetchTracksByStatus("APPROVED")
-
-        return (normalizedTracks + legacyTracks)
+        return fetchApprovedTracks()
             .filter { song -> song.matchesKeyword(keyword) }
-            .distinctBy { song -> song.id }
-            .sortedWith(
-                compareByDescending<Song> { song ->
-                    song.title.contains(keyword, ignoreCase = true)
-                }.thenByDescending { song ->
-                    song.likes + song.plays
-                }
-            )
+            .distinctBy(Song::id)
+            .rankTracks(keyword)
     }
 
-    private suspend fun fetchTracksByStatus(status: String): List<Song> {
-        return try {
-            firestore.collection("songs")
-                .whereEqualTo("status", status)
-                .whereEqualTo("isDeleted", false)
-                .get()
-                .await()
-                .documents
-                .mapNotNull { doc ->
-                    doc.toObject(Song::class.java)?.copy(id = doc.id)
-                }
-        } catch (_: Exception) {
-            emptyList()
+    private suspend fun fetchApprovedTracks(): List<Song> {
+        return APPROVED_SEARCH_STATUSES.flatMap { status ->
+            fetchTracksByStatus(status)
         }
+    }
+
+    private suspend fun fetchTracksByStatus(status: String): List<Song> = safeSearch(
+        label = "fetchTracksByStatus status=$status"
+    ) {
+        firestore.collection("songs")
+            .whereEqualTo("status", status)
+            .whereEqualTo("isDeleted", false)
+            .get()
+            .await()
+            .documents
+            .mapNotNull { doc ->
+                doc.toObject(Song::class.java)?.copy(id = doc.id)
+            }
     }
 
     private suspend fun searchProfiles(keyword: String): List<User> {
-        return try {
-            firestore.collection("users")
-                .get()
-                .await()
-                .documents
-                .mapNotNull { doc ->
-                    doc.toObject(User::class.java)?.copy(uid = doc.id)
-                }
-                .filter { user ->
-                    user.matchesKeyword(keyword)
-                }
-                .take(20)
-        } catch (_: Exception) {
-            emptyList()
-        }
+        return fetchProfiles()
+            .filter { user -> user.matchesKeyword(keyword) }
+            .take(RESULT_LIMIT)
+    }
+
+    private suspend fun fetchProfiles(): List<User> = safeSearch(
+        label = "fetchProfiles"
+    ) {
+        firestore.collection("users")
+            .get()
+            .await()
+            .documents
+            .mapNotNull { doc ->
+                doc.toObject(User::class.java)?.copy(uid = doc.id)
+            }
     }
 
     private suspend fun searchPlaylists(keyword: String): List<Playlist> {
@@ -96,49 +90,68 @@ class SearchRepository {
 
         if (query.isBlank()) return emptyList()
 
-        val firestorePlaylists = try {
-            // PlaylistRemoteDataSource keeps a public root mirror specifically for search.
-            // Querying that mirror avoids a collection-group index dependency and includes
-            // catalog playlists and public user playlists.
-            firestore.collection("playlists")
-                .whereEqualTo("isPublic", true)
-                .get()
-                .await()
-                .documents
-                .mapNotNull { doc ->
-                    doc.toObject(Playlist::class.java)?.copy(id = doc.id)
-                }
-                .filter { playlist ->
-                    playlist.matchesKeyword(query)
-                }
-        } catch (e: Exception) {
-            android.util.Log.e(
-                "SearchRepository",
-                "search firestore playlists failed: ${e.message}",
-                e
-            )
-            emptyList()
-        }
+        val firestorePlaylists = fetchPublicPlaylists()
+            .filter { playlist -> playlist.matchesKeyword(query) }
 
         val result = firestorePlaylists
-            .distinctBy { playlist ->
-                playlist.id
-            }
-            .sortedWith(
-                compareByDescending<Playlist> { playlist ->
-                    playlist.name.contains(query, ignoreCase = true)
-                }.thenByDescending { playlist ->
-                    playlist.songsCount
-                }
-            )
-            .take(20)
+            .distinctBy(Playlist::id)
+            .rankPlaylists(query)
+            .take(RESULT_LIMIT)
 
-        android.util.Log.d(
-            "SearchRepository",
+        Log.d(
+            TAG,
             "searchPlaylists query=$query firestore=${firestorePlaylists.size}, total=${result.size}"
         )
 
         return result
+    }
+
+    private suspend fun fetchPublicPlaylists(): List<Playlist> = safeSearch(
+        label = "fetchPublicPlaylists"
+    ) {
+        // PlaylistRemoteDataSource keeps a public root mirror specifically for search.
+        // Querying that mirror avoids a collection-group index dependency and includes
+        // catalog playlists and public user playlists.
+        firestore.collection("playlists")
+            .whereEqualTo("isPublic", true)
+            .get()
+            .await()
+            .documents
+            .mapNotNull { doc ->
+                doc.toObject(Playlist::class.java)?.copy(id = doc.id)
+            }
+    }
+
+    private suspend fun <T> safeSearch(
+        label: String,
+        block: suspend () -> List<T>
+    ): List<T> {
+        return try {
+            block()
+        } catch (error: Exception) {
+            Log.e(TAG, "$label failed: ${error.message}", error)
+            emptyList()
+        }
+    }
+
+    private fun List<Song>.rankTracks(keyword: String): List<Song> {
+        return sortedWith(
+            compareByDescending<Song> { song ->
+                song.title.contains(keyword, ignoreCase = true)
+            }.thenByDescending { song ->
+                song.likes + song.plays
+            }
+        )
+    }
+
+    private fun List<Playlist>.rankPlaylists(keyword: String): List<Playlist> {
+        return sortedWith(
+            compareByDescending<Playlist> { playlist ->
+                playlist.name.contains(keyword, ignoreCase = true)
+            }.thenByDescending { playlist ->
+                playlist.songsCount
+            }
+        )
     }
 
     private fun Song.matchesKeyword(keyword: String): Boolean {
@@ -187,6 +200,18 @@ class SearchRepository {
             }
     }
 
+    private fun mergePersistedAndArtistProfiles(
+        tracks: List<Song>,
+        persistedProfiles: List<User>
+    ): List<User> {
+        val artistProfiles = createArtistProfiles(
+            tracks = tracks,
+            persistedProfiles = persistedProfiles
+        )
+
+        return (persistedProfiles + artistProfiles).distinctBy(User::uid)
+    }
+
     private fun Playlist.matchesKeyword(keyword: String): Boolean {
         return name.contains(keyword, ignoreCase = true) ||
                 description.contains(keyword, ignoreCase = true)
@@ -202,5 +227,11 @@ class SearchRepository {
 
     companion object {
         const val SYNTHETIC_ARTIST_PREFIX = "artist:"
+        private const val TAG = "SearchRepository"
+        private const val RESULT_LIMIT = 20
+        private val APPROVED_SEARCH_STATUSES = listOf(
+            SongStatus.APPROVED.value,
+            "APPROVED"
+        )
     }
 }

@@ -2,14 +2,13 @@ package com.example.music_app.data.remote
 
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.model.enums.SongStatus
 import com.example.music_app.utils.AppException
-import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FieldPath
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
-import com.example.music_app.data.model.SongStatus
-import com.google.firebase.firestore.FieldPath
 
 /** Low-level Firestore access for songs, moderation fields, and listening history. */
 class SongRemoteDataSource(
@@ -42,8 +41,6 @@ class SongRemoteDataSource(
 
         return snapshot.documents.mapNotNull { doc ->
             doc.toObject(Song::class.java)?.copy(id = doc.id)
-        }.filter { song ->
-            !song.isDeleted
         }
     }
 
@@ -76,7 +73,7 @@ class SongRemoteDataSource(
 
         val snapshot = firestore.collection("songs")
             .whereEqualTo("uploaderId", userId)
-            .whereEqualTo("status", SongStatus.APPROVED)
+            .whereEqualTo("status", SongStatus.APPROVED.value)
             .whereEqualTo("isDeleted", false)
             .get()
             .await()
@@ -97,7 +94,7 @@ class SongRemoteDataSource(
 
     suspend fun getApprovedSongs(): List<Song> {
         val snapshot = firestore.collection("songs")
-            .whereEqualTo("status", SongStatus.APPROVED)
+            .whereEqualTo("status", SongStatus.APPROVED.value)
             .whereEqualTo("isDeleted", false)
             .get()
             .await()
@@ -269,9 +266,6 @@ class SongRemoteDataSource(
             .mapNotNull { songId ->
                 songMap[songId] ?: recentlyPlayedMap[songId]?.toRecentSong()
             }
-            .filter { song ->
-                song.status.equals(SongStatus.APPROVED, ignoreCase = true) && !song.isDeleted
-            }
     }
 
     private fun com.google.firebase.firestore.DocumentSnapshot.toRecentSong(): Song? {
@@ -289,7 +283,7 @@ class SongRemoteDataSource(
             duration = (getLong("duration") ?: 0L).toInt(),
             uploaderId = getString("uploaderId").orEmpty(),
             genre = getString("genre").orEmpty(),
-            status = getString("status") ?: SongStatus.APPROVED
+            status = getString("status") ?: SongStatus.APPROVED.value
         )
     }
 
@@ -301,7 +295,7 @@ class SongRemoteDataSource(
             .document(songId)
             .set(
                 mapOf(
-                    "status" to SongStatus.PENDING,
+                    "status" to SongStatus.PENDING.value,
                     "rejectReason" to "",
                     "reviewedBy" to "",
                     "reviewedAt" to 0L,

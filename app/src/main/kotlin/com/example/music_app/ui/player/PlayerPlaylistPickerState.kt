@@ -7,9 +7,3 @@ data class PlayerPlaylistPickerState(
     val song: Song,
     val options: List<PlayerPlaylistOption>
 )
-
-data class PlayerPlaylistOption(
-    val id: String,
-    val name: String,
-    val songsCount: Long
-)

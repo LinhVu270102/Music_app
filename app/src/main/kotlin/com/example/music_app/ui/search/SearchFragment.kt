@@ -21,6 +21,7 @@ import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.SearchResultBundle
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.User
+import com.example.music_app.data.model.enums.SearchTab
 import com.example.music_app.databinding.FragmentSearchBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.playlists.PlaylistDetailFragment
@@ -98,25 +99,12 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     }
 
     private fun setupSearchBox() {
-        binding.btnCancel.isVisible = false
-        binding.tabContainer.isVisible = false
-        binding.tvSearchSectionTitle.text = getString(R.string.recently_searched)
-
+        showRecentSearchMode()
         showRecentSearches()
 
         binding.edtSearch.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                val keyword = binding.edtSearch.text.toString().trim()
-
-                searchJob?.cancel()
-
-                if (keyword.isNotBlank()) {
-                    submitSearch(keyword)
-                }
-
-                binding.edtSearch.clearFocus()
-                hideKeyboard()
-                true
+                submitEditorSearch()
             } else {
                 false
             }
@@ -136,53 +124,14 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 before: Int,
                 count: Int
             ) {
-                val keyword = s.toString().trim()
-
-                if (isRestoringLatestSearch) return
-                if (isApplyingRecentQuery) return
-
-                searchJob?.cancel()
-
-                binding.btnCancel.isVisible = keyword.isNotEmpty()
-                binding.tabContainer.isVisible = keyword.isNotEmpty()
-
-                if (keyword.isBlank()) {
-                    sessionLatestQuery = ""
-
-                    binding.tvSearchSectionTitle.text =
-                        getString(R.string.recently_searched)
-
-                    clearSearchUi()
-                    showRecentSearches()
-                    return
-                }
-
-                binding.tvSearchSectionTitle.text = getTitleByTab(currentTab)
-
-                searchJob = viewLifecycleOwner.lifecycleScope.launch {
-                    delay(500)
-                    submitSearch(keyword)
-                }
+                handleSearchTextChanged(s.toString())
             }
 
             override fun afterTextChanged(s: Editable?) = Unit
         })
 
         binding.btnCancel.setOnClickListener {
-            searchJob?.cancel()
-
-            sessionLatestQuery = ""
-
-            binding.edtSearch.text.clear()
-            binding.edtSearch.clearFocus()
-            hideKeyboard()
-
-            binding.btnCancel.isVisible = false
-            binding.tabContainer.isVisible = false
-            binding.tvSearchSectionTitle.text = getString(R.string.recently_searched)
-
-            clearSearchUi()
-            showRecentSearches()
+            clearSearchInputAndShowRecent()
         }
     }
 
@@ -212,7 +161,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
     private fun observeViewModel() {
         viewModel.searchResults.observe(viewLifecycleOwner) { result ->
-            val keyword = binding.edtSearch.text.toString().trim()
+            val keyword = currentKeyword()
 
             if (
                 keyword.isNotBlank() &&
@@ -254,8 +203,46 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
     }
 
+    private fun submitEditorSearch(): Boolean {
+        val keyword = currentKeyword()
+
+        searchJob?.cancel()
+
+        if (keyword.isNotBlank()) {
+            submitSearch(keyword)
+        }
+
+        binding.edtSearch.clearFocus()
+        hideKeyboard()
+        return true
+    }
+
+    private fun handleSearchTextChanged(text: String) {
+        val keyword = text.trim()
+
+        if (isRestoringLatestSearch) return
+        if (isApplyingRecentQuery) return
+
+        searchJob?.cancel()
+
+        if (keyword.isBlank()) {
+            sessionLatestQuery = ""
+            showRecentSearchMode()
+            clearSearchUi()
+            showRecentSearches()
+            return
+        }
+
+        showActiveSearchMode()
+
+        searchJob = viewLifecycleOwner.lifecycleScope.launch {
+            delay(SEARCH_DEBOUNCE_MS)
+            submitSearch(keyword)
+        }
+    }
+
     private fun refreshSearchResults() {
-        val keyword = binding.edtSearch.text.toString().trim()
+        val keyword = currentKeyword()
 
         if (keyword.isBlank()) {
             viewModel.loadSongs()
@@ -271,21 +258,15 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         val latestQuery = sessionLatestQuery
 
         if (latestQuery.isBlank()) {
-            binding.btnCancel.isVisible = false
-            binding.tabContainer.isVisible = false
-            binding.tvSearchSectionTitle.text = getString(R.string.recently_searched)
+            showRecentSearchMode()
             showRecentSearches()
             return
         }
 
         isRestoringLatestSearch = true
 
-        binding.edtSearch.setText(latestQuery)
-        binding.edtSearch.setSelection(latestQuery.length)
-
-        binding.btnCancel.isVisible = true
-        binding.tabContainer.isVisible = true
-        binding.tvSearchSectionTitle.text = getTitleByTab(currentTab)
+        setSearchBoxText(latestQuery)
+        showActiveSearchMode()
 
         isRestoringLatestSearch = false
 
@@ -306,12 +287,8 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     private fun applyRecentQuery(query: String) {
         isApplyingRecentQuery = true
 
-        binding.edtSearch.setText(query)
-        binding.edtSearch.setSelection(query.length)
-
-        binding.btnCancel.isVisible = true
-        binding.tabContainer.isVisible = true
-        binding.tvSearchSectionTitle.text = getTitleByTab(currentTab)
+        setSearchBoxText(query)
+        showActiveSearchMode()
 
         isApplyingRecentQuery = false
 
@@ -319,6 +296,40 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
         binding.edtSearch.clearFocus()
         hideKeyboard()
+    }
+
+    private fun clearSearchInputAndShowRecent() {
+        searchJob?.cancel()
+        sessionLatestQuery = ""
+
+        binding.edtSearch.text.clear()
+        binding.edtSearch.clearFocus()
+        hideKeyboard()
+
+        showRecentSearchMode()
+        clearSearchUi()
+        showRecentSearches()
+    }
+
+    private fun setSearchBoxText(query: String) {
+        binding.edtSearch.setText(query)
+        binding.edtSearch.setSelection(query.length)
+    }
+
+    private fun showRecentSearchMode() {
+        binding.btnCancel.isVisible = false
+        binding.tabContainer.isVisible = false
+        binding.tvSearchSectionTitle.text = getString(R.string.recently_searched)
+    }
+
+    private fun showActiveSearchMode() {
+        binding.btnCancel.isVisible = true
+        binding.tabContainer.isVisible = true
+        binding.tvSearchSectionTitle.text = getTitleByTab(currentTab)
+    }
+
+    private fun currentKeyword(): String {
+        return binding.edtSearch.text.toString().trim()
     }
 
     private fun showRecentSearches() {
@@ -360,14 +371,9 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             }
         }
 
-        val keyword = binding.edtSearch.text.toString().trim()
+        val keyword = currentKeyword()
 
-        binding.tvSearchSectionTitle.text =
-            if (keyword.isNotEmpty()) {
-                getTitleByTab(tab)
-            } else {
-                getString(R.string.recently_searched)
-            }
+        binding.tvSearchSectionTitle.text = searchSectionTitle(tab, keyword)
 
         filterResultsByCurrentTab(keyword)
     }
@@ -395,6 +401,14 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         }
     }
 
+    private fun searchSectionTitle(tab: SearchTab, keyword: String): String {
+        return if (keyword.isNotEmpty()) {
+            getTitleByTab(tab)
+        } else {
+            getString(R.string.recently_searched)
+        }
+    }
+
     private fun filterResultsByCurrentTab(keyword: String) {
         if (keyword.isBlank()) {
             showRecentSearches()
@@ -412,6 +426,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         searchAdapter.setData(items)
         PlayerManager.setFallbackSongs(currentSearchSongs)
     }
+
     private fun openProfileResult(user: User) {
         if (user.uid.isBlank()) {
             showToast(getString(R.string.target_user_not_found))
@@ -487,6 +502,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
     companion object {
         private const val ARTIST_PROFILE_PREFIX = "artist:"
+        private const val SEARCH_DEBOUNCE_MS = 500L
         private var sessionLatestQuery: String = ""
     }
 }

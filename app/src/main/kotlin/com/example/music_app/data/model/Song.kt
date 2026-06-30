@@ -1,5 +1,7 @@
 package com.example.music_app.data.model
 
+import com.example.music_app.data.model.enums.SongStatus
+import com.google.firebase.firestore.Exclude
 import com.google.firebase.firestore.IgnoreExtraProperties
 
 @IgnoreExtraProperties
@@ -27,7 +29,7 @@ data class Song(
     val tags: List<String> = emptyList(),
 
     // Kiểm duyệt
-    val status: String = SongStatus.PENDING,
+    val status: String = SongStatus.PENDING.value,
     val rejectReason: String = "",
     val reviewedBy: String = "",
     val reviewedAt: Long = 0L,
@@ -45,4 +47,8 @@ data class Song(
     val updatedAt: Long = 0L,
 
     // songUrl is resolved from Firebase Storage or the temporary legacy streaming proxy.
-)
+) {
+    @get:Exclude
+    val statusType: SongStatus
+        get() = SongStatus.from(status)
+}

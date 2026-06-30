@@ -1,20 +1,19 @@
 package com.example.music_app.ui.playlists
 
+import android.app.Dialog
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.music_app.R
-import com.example.music_app.databinding.FragmentPlaylistsBinding
 import com.example.music_app.data.model.Playlist
-import android.app.Dialog
-import android.graphics.Color
-import androidx.core.graphics.drawable.toDrawable
 import com.example.music_app.databinding.DialogConfirmActionBinding
 import com.example.music_app.databinding.DialogInputActionBinding
+import com.example.music_app.databinding.FragmentPlaylistsBinding
 import com.example.music_app.ui.common.showCustomDialog
 
 class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
@@ -44,18 +43,7 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
     private fun setupRecyclerView() {
         adapter = PlaylistAdapter(
             onItemClick = { playlist ->
-                parentFragmentManager.beginTransaction()
-                    .replace(
-                        R.id.fragmentContainer,
-                        PlaylistDetailFragment.newInstance(
-                            playlistId = playlist.id,
-                            playlistName = playlist.name,
-                            ownerId = playlist.ownerId,
-                            coverUrl = playlist.coverUrl
-                        )
-                    )
-                    .addToBackStack(null)
-                    .commit()
+                openPlaylistDetail(playlist)
             },
             onDeleteClick = { playlist ->
                 if (viewModel.canDeletePlaylist(playlist)) {
@@ -87,23 +75,36 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
         viewModel.playlists.observe(viewLifecycleOwner) { playlists ->
             adapter.setData(playlists)
             binding.tvEmpty.isVisible = playlists.isEmpty()
-            binding.swipeRefreshPlaylists.isRefreshing = false
+            stopRefreshing()
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
-                Toast.makeText(requireContext(), getString(it), Toast.LENGTH_SHORT).show()
+                showToast(getString(it))
                 viewModel.clearErrorMessage()
-                binding.swipeRefreshPlaylists.isRefreshing = false
+                stopRefreshing()
             }
+        }
+    }
+
+    private fun openPlaylistDetail(playlist: Playlist) {
+        parentFragmentManager.commit {
+            replace(
+                R.id.fragmentContainer,
+                PlaylistDetailFragment.newInstance(
+                    playlistId = playlist.id,
+                    playlistName = playlist.name,
+                    ownerId = playlist.ownerId,
+                    coverUrl = playlist.coverUrl
+                )
+            )
+            addToBackStack(null)
         }
     }
 
     private fun showCreatePlaylistDialog() {
         val dialogBinding = DialogInputActionBinding.inflate(layoutInflater)
-        val dialog = Dialog(requireContext()).apply {
-            setContentView(dialogBinding.root)
-        }
+        val dialog = createDialog(dialogBinding.root)
 
         dialogBinding.txtDialogTitle.text = getString(R.string.create_playlist)
         dialogBinding.txtDialogMessage.text = getString(R.string.create_playlist_message)
@@ -126,9 +127,7 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
 
     private fun confirmDeletePlaylist(playlist: Playlist) {
         val dialogBinding = DialogConfirmActionBinding.inflate(layoutInflater)
-
-        val dialog = Dialog(requireContext())
-        dialog.setContentView(dialogBinding.root)
+        val dialog = createDialog(dialogBinding.root)
 
         dialogBinding.txtDialogTitle.text = getString(R.string.delete_playlist_title)
         dialogBinding.txtDialogMessage.text =
@@ -145,6 +144,16 @@ class PlaylistsFragment : Fragment(R.layout.fragment_playlists) {
         }
 
         dialog.showCustomDialog()
+    }
+
+    private fun createDialog(contentView: View): Dialog {
+        return Dialog(requireContext()).apply {
+            setContentView(contentView)
+        }
+    }
+
+    private fun stopRefreshing() {
+        binding.swipeRefreshPlaylists.isRefreshing = false
     }
 
     private fun showToast(message: String) {

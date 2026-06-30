@@ -1,11 +1,9 @@
 package com.example.music_app.ui.playlists
 
 import android.app.AlertDialog
-import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
-import androidx.core.graphics.drawable.toDrawable
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -147,33 +145,15 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
 
     private fun observeViewModel() {
         viewModel.songs.observe(viewLifecycleOwner) { songs ->
-            currentSongs = songs
-            adapter.setData(songs)
-            adapter.setLikedSongIds(viewModel.likedSongIds)
+            renderSongs(songs)
             viewModel.loadSongLikeStates(songs)
-            binding.swipeRefreshPlaylistDetail.isRefreshing = false
-
-            binding.tvEmpty.isVisible = songs.isEmpty()
-            binding.tvSongCount.text =
-                getString(R.string.playlist_song_count_format, songs.size)
-
-            val finalCoverUrl = coverUrl.ifBlank {
-                songs.firstOrNull()?.coverUrl.orEmpty()
-            }
-
-            Glide.with(this)
-                .load(finalCoverUrl.ifBlank { R.drawable.music_orange })
-                .placeholder(R.drawable.music_orange)
-                .error(R.drawable.music_orange)
-                .centerCrop()
-                .into(binding.imgPlaylistCover)
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearErrorMessage()
-                binding.swipeRefreshPlaylistDetail.isRefreshing = false
+                stopRefreshing()
             }
         }
 
@@ -181,7 +161,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             messageResId?.let {
                 showToast(getString(it))
                 viewModel.clearSuccessMessage()
-                binding.swipeRefreshPlaylistDetail.isRefreshing = false
+                stopRefreshing()
             }
         }
 
@@ -205,14 +185,31 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
 
     private fun updatePlaylistActions() {
         val isOwner = isOwnerPlaylist()
-        val isCurrentPlaybackPlaylist =
-            PlayerManager.playbackContext.value?.playlistId == playlistId
-        binding.btnAddCurrentSong.isVisible = isOwner && !isCurrentPlaybackPlaylist
+        binding.btnAddCurrentSong.isVisible = isOwner && !isCurrentPlaybackPlaylist()
         binding.btnTogglePlaylistLike.isVisible = !isOwner
 
         if (!isOwner) {
             viewModel.loadPlaylistLikeState(playlistId)
         }
+    }
+
+    private fun renderSongs(songs: List<Song>) {
+        currentSongs = songs
+        adapter.setData(songs)
+        adapter.setLikedSongIds(viewModel.likedSongIds)
+        binding.tvEmpty.isVisible = songs.isEmpty()
+        binding.tvSongCount.text = getString(R.string.playlist_song_count_format, songs.size)
+        loadPlaylistCover()
+        stopRefreshing()
+    }
+
+    private fun loadPlaylistCover() {
+        Glide.with(this)
+            .load(resolvedPlaylistCoverUrl().ifBlank { R.drawable.music_orange })
+            .placeholder(R.drawable.music_orange)
+            .error(R.drawable.music_orange)
+            .centerCrop()
+            .into(binding.imgPlaylistCover)
     }
 
     private fun refreshPlaylistDetail() {
@@ -242,16 +239,24 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         return Playlist(
             id = playlistId,
             name = playlistName,
-            coverUrl = coverUrl.ifBlank { currentSongs.firstOrNull()?.coverUrl.orEmpty() },
+            coverUrl = resolvedPlaylistCoverUrl(),
             ownerId = ownerId,
             isPublic = true,
             songsCount = currentSongs.size.toLong()
         )
     }
 
+    private fun resolvedPlaylistCoverUrl(): String {
+        return coverUrl.ifBlank { currentSongs.firstOrNull()?.coverUrl.orEmpty() }
+    }
+
+    private fun isCurrentPlaybackPlaylist(): Boolean {
+        return PlayerManager.playbackContext.value?.playlistId == playlistId
+    }
+
     private fun addCurrentSongToPlaylist() {
         if (!isOwnerPlaylist()) return
-        if (PlayerManager.playbackContext.value?.playlistId == playlistId) {
+        if (isCurrentPlaybackPlaylist()) {
             showToast(getString(R.string.song_already_in_current_playlist))
             return
         }
@@ -277,7 +282,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             playlistId = playlistId,
             playlistName = playlistName,
             playlistOwnerId = ownerId,
-            playlistCoverUrl = coverUrl.ifBlank { currentSongs.firstOrNull()?.coverUrl.orEmpty() }
+            playlistCoverUrl = resolvedPlaylistCoverUrl()
         )
     }
 
@@ -307,6 +312,10 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
         }
 
         dialog.showCustomDialog()
+    }
+
+    private fun stopRefreshing() {
+        binding.swipeRefreshPlaylistDetail.isRefreshing = false
     }
 
     private fun showToast(message: String) {

@@ -1,6 +1,7 @@
 package com.example.music_app.data.remote
 
 import com.example.music_app.data.model.User
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
@@ -13,16 +14,27 @@ class UserRemoteDataSource(
     suspend fun getById(userId: String): User? {
         if (userId.isBlank()) return null
 
-        val document = firestore.collection("users").document(userId).get().await()
-        return document.toObject(User::class.java)?.copy(uid = document.id)
+        val document = user(userId).get().await()
+        return document.toUser()
     }
 
     suspend fun updateRole(userId: String, role: String) {
         if (userId.isBlank()) return
 
-        firestore.collection("users")
-            .document(userId)
-            .set(mapOf("role" to role), SetOptions.merge())
+        user(userId)
+            .set(roleUpdateData(role), SetOptions.merge())
             .await()
+    }
+
+    private fun users() = firestore.collection("users")
+
+    private fun user(userId: String) = users().document(userId)
+
+    private fun roleUpdateData(role: String): Map<String, Any> {
+        return mapOf("role" to role)
+    }
+
+    private fun DocumentSnapshot.toUser(): User? {
+        return toObject(User::class.java)?.copy(uid = id)
     }
 }

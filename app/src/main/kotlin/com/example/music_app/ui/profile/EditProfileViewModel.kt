@@ -11,9 +11,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class EditProfileViewModel : ViewModel() {
-
-    private val userRepository = UserRepository()
+class EditProfileViewModel(
+    private val userRepository: UserRepository = UserRepository()
+) : ViewModel() {
 
     private val _user = MutableLiveData<User?>()
     val user: LiveData<User?> = _user
@@ -37,12 +37,8 @@ class EditProfileViewModel : ViewModel() {
                 _isLoading.value = false
 
                 result
-                    .onSuccess { currentUser ->
-                        _user.value = currentUser
-                    }
-                    .onFailure { error ->
-                        _errorMessage.value = error.message
-                    }
+                    .onSuccess(::publishUser)
+                    .onFailure(::publishError)
             }
         }
     }
@@ -78,12 +74,10 @@ class EditProfileViewModel : ViewModel() {
 
                 result
                     .onSuccess { updatedUser ->
-                        _user.value = updatedUser
+                        publishUser(updatedUser)
                         _updateSuccess.value = true
                     }
-                    .onFailure { error ->
-                        _errorMessage.value = error.message
-                    }
+                    .onFailure(::publishError)
             }
         }
     }
@@ -95,11 +89,8 @@ class EditProfileViewModel : ViewModel() {
 
             withContext(Dispatchers.Main) {
                 _isLoading.value = false
-                result.onSuccess { updatedUser ->
-                    _user.value = updatedUser
-                }.onFailure { error ->
-                    _errorMessage.value = error.message
-                }
+                result.onSuccess(::publishUser)
+                    .onFailure(::publishError)
             }
         }
     }
@@ -107,5 +98,13 @@ class EditProfileViewModel : ViewModel() {
     fun clearMessage() {
         _errorMessage.value = null
         _updateSuccess.value = false
+    }
+
+    private fun publishUser(user: User) {
+        _user.value = user
+    }
+
+    private fun publishError(error: Throwable) {
+        _errorMessage.value = error.message
     }
 }

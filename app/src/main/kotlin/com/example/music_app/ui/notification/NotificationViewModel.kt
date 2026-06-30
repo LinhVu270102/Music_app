@@ -9,8 +9,9 @@ import com.example.music_app.data.model.AppNotification
 import com.example.music_app.data.repository.NotificationRepository
 import kotlinx.coroutines.launch
 
-class NotificationViewModel : ViewModel() {
-    private val repository = NotificationRepository()
+class NotificationViewModel(
+    private val repository: NotificationRepository = NotificationRepository()
+) : ViewModel() {
 
     private val _notifications = MutableLiveData<List<AppNotification>>(emptyList())
     val notifications: LiveData<List<AppNotification>> = _notifications
@@ -23,14 +24,14 @@ class NotificationViewModel : ViewModel() {
 
     fun loadNotifications() {
         viewModelScope.launch {
-            _isLoading.value = true
+            setLoading(true)
 
             try {
-                _notifications.value = repository.getNotifications()
+                publishNotifications(repository.getNotifications())
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.load_notifications_failed
+                publishError(R.string.load_notifications_failed)
             } finally {
-                _isLoading.value = false
+                setLoading(false)
             }
         }
     }
@@ -41,11 +42,9 @@ class NotificationViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 repository.markRead(notification.id)
-                _notifications.value = _notifications.value.orEmpty().map { item ->
-                    if (item.id == notification.id) item.copy(isRead = true) else item
-                }
+                markNotificationReadLocally(notification.id)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.update_notification_failed
+                publishError(R.string.update_notification_failed)
             }
         }
     }
@@ -62,12 +61,30 @@ class NotificationViewModel : ViewModel() {
                     notification.copy(isRead = true)
                 }
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.update_notification_failed
+                publishError(R.string.update_notification_failed)
             }
         }
     }
 
     fun clearErrorMessage() {
         _errorMessageResId.value = null
+    }
+
+    private fun publishNotifications(notifications: List<AppNotification>) {
+        _notifications.value = notifications
+    }
+
+    private fun markNotificationReadLocally(notificationId: String) {
+        _notifications.value = _notifications.value.orEmpty().map { item ->
+            if (item.id == notificationId) item.copy(isRead = true) else item
+        }
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessageResId.value = messageResId
+    }
+
+    private fun setLoading(isLoading: Boolean) {
+        _isLoading.value = isLoading
     }
 }

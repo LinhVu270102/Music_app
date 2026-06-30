@@ -9,9 +9,9 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.AdminRepository
 import kotlinx.coroutines.launch
 
-class AdminModerationViewModel : ViewModel() {
-
-    private val adminRepository = AdminRepository()
+class AdminModerationViewModel(
+    private val adminRepository: AdminRepository = AdminRepository()
+) : ViewModel() {
 
     private val _pendingSongs = MutableLiveData<List<Song>>(emptyList())
     val pendingSongs: LiveData<List<Song>> = _pendingSongs
@@ -25,12 +25,12 @@ class AdminModerationViewModel : ViewModel() {
     fun loadPendingSongs() {
         viewModelScope.launch {
             try {
-                _isLoading.value = true
-                _pendingSongs.value = adminRepository.getPendingSongs()
+                setLoading(true)
+                publishPendingSongs(adminRepository.getPendingSongs())
             } catch (_: Exception) {
-                _messageResId.value = R.string.load_pending_songs_failed
+                publishMessage(R.string.load_pending_songs_failed)
             } finally {
-                _isLoading.value = false
+                setLoading(false)
             }
         }
     }
@@ -39,27 +39,27 @@ class AdminModerationViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 adminRepository.approveSong(song.id)
-                _messageResId.value = R.string.approved_successfully
+                publishMessage(R.string.approved_successfully)
                 loadPendingSongs()
             } catch (_: Exception) {
-                _messageResId.value = R.string.approve_song_failed
+                publishMessage(R.string.approve_song_failed)
             }
         }
     }
 
     fun rejectSong(song: Song, reason: String) {
         if (reason.isBlank()) {
-            _messageResId.value = R.string.enter_reject_reason
+            publishMessage(R.string.enter_reject_reason)
             return
         }
 
         viewModelScope.launch {
             try {
                 adminRepository.rejectSong(song.id, reason)
-                _messageResId.value = R.string.rejected_successfully
+                publishMessage(R.string.rejected_successfully)
                 loadPendingSongs()
             } catch (_: Exception) {
-                _messageResId.value = R.string.reject_song_failed
+                publishMessage(R.string.reject_song_failed)
             }
         }
     }
@@ -68,10 +68,10 @@ class AdminModerationViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 adminRepository.hideSong(song.id)
-                _messageResId.value = R.string.hide_song_success
+                publishMessage(R.string.hide_song_success)
                 loadPendingSongs()
             } catch (_: Exception) {
-                _messageResId.value = R.string.hide_song_failed
+                publishMessage(R.string.hide_song_failed)
             }
         }
     }
@@ -83,15 +83,27 @@ class AdminModerationViewModel : ViewModel() {
                     songId = song.id,
                     allowComments = !song.allowComments
                 )
-                _messageResId.value = R.string.update_comment_permission_success
+                publishMessage(R.string.update_comment_permission_success)
                 loadPendingSongs()
             } catch (_: Exception) {
-                _messageResId.value = R.string.update_comment_permission_failed
+                publishMessage(R.string.update_comment_permission_failed)
             }
         }
     }
 
     fun clearMessage() {
         _messageResId.value = null
+    }
+
+    private fun publishPendingSongs(songs: List<Song>) {
+        _pendingSongs.value = songs
+    }
+
+    private fun publishMessage(messageResId: Int) {
+        _messageResId.value = messageResId
+    }
+
+    private fun setLoading(isLoading: Boolean) {
+        _isLoading.value = isLoading
     }
 }

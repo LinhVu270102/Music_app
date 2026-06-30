@@ -10,10 +10,10 @@ import com.example.music_app.data.repository.AdminRepository
 import com.example.music_app.data.repository.AuthRepository
 import kotlinx.coroutines.launch
 
-class AdminDashboardViewModel : ViewModel() {
-
-    private val adminRepository = AdminRepository()
-    private val authRepository = AuthRepository()
+class AdminDashboardViewModel(
+    private val adminRepository: AdminRepository = AdminRepository(),
+    private val authRepository: AuthRepository = AuthRepository()
+) : ViewModel() {
 
     private val _stats = MutableLiveData<AdminDashboardStats>()
     val stats: LiveData<AdminDashboardStats> = _stats
@@ -28,16 +28,16 @@ class AdminDashboardViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val admin = adminRepository.isCurrentUserAdmin()
-                _isAdmin.value = admin
+                publishAdminState(admin)
 
                 if (!admin) {
-                    _errorMessageResId.value = R.string.no_admin_permission
+                    publishError(R.string.no_admin_permission)
                     return@launch
                 }
 
-                _stats.value = adminRepository.getDashboardStats()
+                publishStats(adminRepository.getDashboardStats())
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.load_admin_dashboard_failed
+                publishError(R.string.load_admin_dashboard_failed)
             }
         }
     }
@@ -48,5 +48,17 @@ class AdminDashboardViewModel : ViewModel() {
 
     fun logout() {
         authRepository.logout()
+    }
+
+    private fun publishStats(stats: AdminDashboardStats) {
+        _stats.value = stats
+    }
+
+    private fun publishAdminState(isAdmin: Boolean) {
+        _isAdmin.value = isAdmin
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessageResId.value = messageResId
     }
 }

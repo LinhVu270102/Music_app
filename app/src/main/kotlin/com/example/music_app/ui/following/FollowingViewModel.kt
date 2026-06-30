@@ -12,9 +12,9 @@ import com.example.music_app.player.state.PlayerInteractionState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
-class FollowingViewModel : ViewModel() {
-
-    private val repository = SocialRepository()
+class FollowingViewModel(
+    private val repository: SocialRepository = SocialRepository()
+) : ViewModel() {
 
     private val _followingUsers = MutableLiveData<List<User>>(emptyList())
     val followingUsers: LiveData<List<User>> = _followingUsers
@@ -33,13 +33,13 @@ class FollowingViewModel : ViewModel() {
     fun loadFollowingUsers() {
         viewModelScope.launch {
             try {
-                _followingUsers.value = repository.getFollowingUsers()
+                publishFollowingUsers(repository.getFollowingUsers())
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
-                _followingUsers.value = emptyList()
+                publishError(e.messageResId)
+                publishFollowingUsers(emptyList())
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.load_following_failed
-                _followingUsers.value = emptyList()
+                publishError(R.string.load_following_failed)
+                publishFollowingUsers(emptyList())
             }
         }
     }
@@ -51,5 +51,13 @@ class FollowingViewModel : ViewModel() {
     override fun onCleared() {
         PlayerInteractionState.artistFollowUpdates.removeObserver(followObserver)
         super.onCleared()
+    }
+
+    private fun publishFollowingUsers(users: List<User>) {
+        _followingUsers.value = users
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessageResId.value = messageResId
     }
 }

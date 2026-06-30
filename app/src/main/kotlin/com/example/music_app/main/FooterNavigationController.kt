@@ -1,13 +1,7 @@
 package com.example.music_app.main
 
 import android.view.View
-
-enum class FooterTab {
-    HOME,
-    SEARCH,
-    LIBRARY,
-    PROFILE
-}
+import com.example.music_app.data.model.enums.FooterTab
 
 /** Renders footer selection and forwards the selected tab to MainActivity. */
 class FooterNavigationController(

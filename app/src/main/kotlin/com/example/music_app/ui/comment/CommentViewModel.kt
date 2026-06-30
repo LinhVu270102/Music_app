@@ -13,9 +13,9 @@ import com.example.music_app.player.state.SongCommentState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
-class CommentViewModel : ViewModel() {
-
-    private val commentRepository = CommentRepository()
+class CommentViewModel(
+    private val commentRepository: CommentRepository = CommentRepository()
+) : ViewModel() {
 
     private val _song = MutableLiveData<Song?>()
     val song: LiveData<Song?> = _song
@@ -37,9 +37,9 @@ class CommentViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             try {
-                _song.value = commentRepository.getSong(songId, fallbackSong)
+                publishSong(commentRepository.getSong(songId, fallbackSong))
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.invalid_song
+                publishError(R.string.invalid_song)
             }
         }
     }
@@ -48,10 +48,10 @@ class CommentViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val comments = commentRepository.getComments(songId)
-                _comments.value = comments
+                publishComments(comments)
                 publishCommentCount(songId, comments)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.load_comments_failed
+                publishError(R.string.load_comments_failed)
             }
         }
     }
@@ -69,13 +69,13 @@ class CommentViewModel : ViewModel() {
                     timelinePositionMs = timelinePositionMs
                 )
 
-                _successMessageResId.value = R.string.comment_added_success
+                publishSuccess(R.string.comment_added_success)
                 loadComments(songId)
                 loadSong(songId)
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.add_comment_failed
+                publishError(R.string.add_comment_failed)
             }
         }
     }
@@ -87,7 +87,7 @@ class CommentViewModel : ViewModel() {
         description: String = ""
     ) {
         if (reason.isBlank()) {
-            _errorMessageResId.value = R.string.report_reason_empty
+            publishError(R.string.report_reason_empty)
             return
         }
 
@@ -100,11 +100,11 @@ class CommentViewModel : ViewModel() {
                     description = description
                 )
 
-                _successMessageResId.value = R.string.report_comment_success
+                publishSuccess(R.string.report_comment_success)
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.report_comment_failed
+                publishError(R.string.report_comment_failed)
             }
         }
     }
@@ -117,13 +117,13 @@ class CommentViewModel : ViewModel() {
             try {
                 commentRepository.hideComment(songId, comment)
 
-                _successMessageResId.value = R.string.comment_hidden_success
+                publishSuccess(R.string.comment_hidden_success)
                 loadComments(songId)
                 loadSong(songId)
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.comment_hidden_failed
+                publishError(R.string.comment_hidden_failed)
             }
         }
     }
@@ -134,9 +134,9 @@ class CommentViewModel : ViewModel() {
                 commentRepository.toggleCommentLike(songId, comment)
                 loadComments(songId)
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.update_like_failed
+                publishError(R.string.update_like_failed)
             }
         }
     }
@@ -156,5 +156,21 @@ class CommentViewModel : ViewModel() {
                 commentsCount = comments.size.toLong()
             )
         )
+    }
+
+    private fun publishSong(song: Song?) {
+        _song.value = song
+    }
+
+    private fun publishComments(comments: List<Comment>) {
+        _comments.value = comments
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessageResId.value = messageResId
+    }
+
+    private fun publishSuccess(messageResId: Int) {
+        _successMessageResId.value = messageResId
     }
 }

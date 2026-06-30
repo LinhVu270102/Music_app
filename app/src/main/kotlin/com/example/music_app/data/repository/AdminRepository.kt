@@ -4,11 +4,12 @@ import com.example.music_app.R
 import com.example.music_app.data.model.AdminDashboardStats
 import com.example.music_app.data.model.Comment
 import com.example.music_app.data.model.Report
-import com.example.music_app.data.model.ReportStatus
-import com.example.music_app.data.model.ReportTargetType
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.model.SongStatus
-import com.example.music_app.data.model.UserRole
+import com.example.music_app.data.model.User
+import com.example.music_app.data.model.enums.ReportStatus
+import com.example.music_app.data.model.enums.ReportTargetType
+import com.example.music_app.data.model.enums.SongStatus
+import com.example.music_app.data.model.enums.UserRole
 import com.example.music_app.data.remote.CommentRemoteDataSource
 import com.example.music_app.data.remote.ReportRemoteDataSource
 import com.example.music_app.data.remote.SongRemoteDataSource
@@ -17,34 +18,35 @@ import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 
-class AdminRepository {
-
-    private val firestore = FirebaseFirestore.getInstance()
-    private val songRemoteDataSource = SongRemoteDataSource(firestore)
-    private val commentRemoteDataSource = CommentRemoteDataSource(firestore)
-    private val userRemoteDataSource = UserRemoteDataSource(firestore)
-    private val reportRemoteDataSource = ReportRemoteDataSource(firestore)
-    private val auth = FirebaseAuth.getInstance()
+class AdminRepository(
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+    firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
+    private val songRemoteDataSource: SongRemoteDataSource = SongRemoteDataSource(firestore),
+    private val commentRemoteDataSource: CommentRemoteDataSource =
+        CommentRemoteDataSource(firestore),
+    private val userRemoteDataSource: UserRemoteDataSource = UserRemoteDataSource(firestore),
+    private val reportRemoteDataSource: ReportRemoteDataSource =
+        ReportRemoteDataSource(firestore)
+) {
 
     // =========================
     // ADMIN AUTH GUARD
     // =========================
     suspend fun isCurrentUserAdmin(): Boolean {
-        val userId = auth.currentUser?.uid ?: return false
+        val userId = currentUserIdOrNull() ?: return false
 
         val user = userRemoteDataSource.getById(userId) ?: return false
 
-        return user.role == UserRole.ADMIN
+        return user.isAdmin()
     }
 
     private suspend fun requireAdmin(): String {
-        val userId = auth.currentUser?.uid
-            ?: throw AppException(R.string.not_logged_in)
+        val userId = currentUserIdOrNull() ?: throw AppException(R.string.not_logged_in)
 
         val user = userRemoteDataSource.getById(userId)
             ?: throw AppException(R.string.account_not_found)
 
-        if (user.role != UserRole.ADMIN) {
+        if (!user.isAdmin()) {
             throw AppException(R.string.no_admin_permission)
         }
 
@@ -64,20 +66,20 @@ class AdminRepository {
 
         return AdminDashboardStats(
             pendingSongs = songs.count { song ->
-                song.status == SongStatus.PENDING && !song.isDeleted
+                song.hasVisibleStatus(SongStatus.PENDING)
             },
             approvedSongs = songs.count { song ->
-                song.status == SongStatus.APPROVED && !song.isDeleted
+                song.hasVisibleStatus(SongStatus.APPROVED)
             },
             rejectedSongs = songs.count { song ->
-                song.status == SongStatus.REJECTED && !song.isDeleted
+                song.hasVisibleStatus(SongStatus.REJECTED)
             },
             hiddenSongs = songs.count { song ->
                 song.isDeleted
             },
             pendingReports = reports.size,
             reportedSongs = songs.count { song ->
-                song.reportsCount > 0L && !song.isDeleted
+                song.isReportedVisible()
             },
             reportedComments = reportedComments.size
         )
@@ -90,19 +92,14 @@ class AdminRepository {
     suspend fun getPendingSongs(): List<Song> {
         requireAdmin()
 
-        return songRemoteDataSource.getSongsByStatus(SongStatus.PENDING)
-            .filter { song ->
-                !song.isDeleted
-            }
+        return songRemoteDataSource.getSongsByStatus(SongStatus.PENDING.value)
+            .filter { song -> song.isVisibleForAdmin() }
     }
 
     suspend fun approveSong(songId: String) {
-        val adminId = requireAdmin()
-
-        songRemoteDataSource.updateSongStatus(
+        updateSongStatus(
             songId = songId,
             status = SongStatus.APPROVED,
-            reviewedBy = adminId,
             rejectReason = ""
         )
     }
@@ -111,12 +108,9 @@ class AdminRepository {
         songId: String,
         reason: String
     ) {
-        val adminId = requireAdmin()
-
-        songRemoteDataSource.updateSongStatus(
+        updateSongStatus(
             songId = songId,
             status = SongStatus.REJECTED,
-            reviewedBy = adminId,
             rejectReason = reason
         )
     }
@@ -152,55 +146,33 @@ class AdminRepository {
     }
 
     suspend fun resolveReport(reportId: String) {
-        val adminId = requireAdmin()
-
-        reportRemoteDataSource.updateStatus(
+        updateReportStatus(
             reportId = reportId,
-            status = ReportStatus.RESOLVED,
-            reviewedBy = adminId
+            status = ReportStatus.RESOLVED
         )
     }
 
     suspend fun rejectReport(reportId: String) {
-        val adminId = requireAdmin()
-
-        reportRemoteDataSource.updateStatus(
+        updateReportStatus(
             reportId = reportId,
-            status = ReportStatus.REJECTED,
-            reviewedBy = adminId
+            status = ReportStatus.REJECTED
         )
     }
 
     suspend fun hideReportedTarget(report: Report) {
         val adminId = requireAdmin()
 
-        when (report.targetType) {
-            ReportTargetType.SONG -> {
-                songRemoteDataSource.softDeleteSong(
-                    songId = report.targetId,
-                    deletedBy = adminId
-                )
-            }
+        when (report.targetKind) {
+            ReportTargetType.SONG -> hideReportedSong(report, adminId)
 
-            ReportTargetType.COMMENT -> {
-                val songId = report.description
-                    .split("|")
-                    .getOrNull(0)
-                    .orEmpty()
+            ReportTargetType.COMMENT -> hideReportedComment(report, adminId)
 
-                if (songId.isNotBlank()) {
-                    commentRemoteDataSource.softDelete(
-                        songId = songId,
-                        commentId = report.targetId,
-                        deletedBy = adminId
-                    )
-                }
-            }
+            ReportTargetType.USER -> Unit
         }
 
         reportRemoteDataSource.updateStatus(
             reportId = report.id,
-            status = ReportStatus.RESOLVED,
+            status = ReportStatus.RESOLVED.value,
             reviewedBy = adminId
         )
     }
@@ -222,5 +194,78 @@ class AdminRepository {
             commentId = comment.id,
             deletedBy = adminId
         )
+    }
+
+    private fun currentUserIdOrNull(): String? {
+        return auth.currentUser?.uid?.takeIf(String::isNotBlank)
+    }
+
+    private suspend fun updateSongStatus(
+        songId: String,
+        status: SongStatus,
+        rejectReason: String = ""
+    ) {
+        val adminId = requireAdmin()
+
+        songRemoteDataSource.updateSongStatus(
+            songId = songId,
+            status = status.value,
+            reviewedBy = adminId,
+            rejectReason = rejectReason
+        )
+    }
+
+    private suspend fun updateReportStatus(
+        reportId: String,
+        status: ReportStatus
+    ) {
+        val adminId = requireAdmin()
+
+        reportRemoteDataSource.updateStatus(
+            reportId = reportId,
+            status = status.value,
+            reviewedBy = adminId
+        )
+    }
+
+    private suspend fun hideReportedSong(report: Report, adminId: String) {
+        songRemoteDataSource.softDeleteSong(
+            songId = report.targetId,
+            deletedBy = adminId
+        )
+    }
+
+    private suspend fun hideReportedComment(report: Report, adminId: String) {
+        val songId = report.commentSongId()
+        if (songId.isBlank()) return
+
+        commentRemoteDataSource.softDelete(
+            songId = songId,
+            commentId = report.targetId,
+            deletedBy = adminId
+        )
+    }
+
+    private fun Report.commentSongId(): String {
+        return description
+            .split("|")
+            .getOrNull(0)
+            .orEmpty()
+    }
+
+    private fun Song.hasVisibleStatus(status: SongStatus): Boolean {
+        return statusType == status && isVisibleForAdmin()
+    }
+
+    private fun Song.isReportedVisible(): Boolean {
+        return reportsCount > 0L && isVisibleForAdmin()
+    }
+
+    private fun Song.isVisibleForAdmin(): Boolean {
+        return !isDeleted
+    }
+
+    private fun User.isAdmin(): Boolean {
+        return roleType == UserRole.ADMIN
     }
 }

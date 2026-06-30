@@ -3,7 +3,8 @@ package com.example.music_app.data.repository
 import android.net.Uri
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.model.SongStatus
+import com.example.music_app.data.model.UploadMusicRequest
+import com.example.music_app.data.model.enums.SongStatus
 import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -46,7 +47,7 @@ class UploadMusicRepository(
             uploaderId = user.uid,
             genre = request.genre,
             tags = request.tags,
-            status = SongStatus.PENDING,
+            status = SongStatus.PENDING.value,
             createdAt = now,
             updatedAt = now
         )
@@ -68,15 +69,3 @@ class UploadMusicRepository(
         return reference.downloadUrl.await().toString()
     }
 }
-
-data class UploadMusicRequest(
-    val audioUri: Uri,
-    val coverUri: Uri?,
-    val audioExtension: String,
-    val coverExtension: String?,
-    val title: String,
-    val artist: String,
-    val genre: String,
-    val tags: List<String>,
-    val unknownArtist: String
-)

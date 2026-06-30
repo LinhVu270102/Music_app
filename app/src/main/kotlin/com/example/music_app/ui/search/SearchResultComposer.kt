@@ -4,6 +4,7 @@ import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.SearchResultBundle
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.User
+import com.example.music_app.data.model.enums.SearchTab
 
 /**
  * Pure search presentation rules: keyword matching, result grouping, and ranking.
@@ -21,32 +22,9 @@ class SearchResultComposer {
 
         return when (tab) {
             SearchTab.ALL -> composeAll(result, normalizedKeyword)
-            SearchTab.TRACKS -> {
-                val songs = result.tracks.filter { song -> matches(song, normalizedKeyword) }
-                SearchPresentation(
-                    items = songs
-                        .map(SearchResultItem::Track)
-                        .ranked(normalizedKeyword),
-                    playableSongs = songs
-                )
-            }
-
-            SearchTab.PROFILES -> {
-                val profiles = result.profiles
-                    .filter { user -> matches(user, normalizedKeyword) }
-                    .map(SearchResultItem::Profile)
-
-                SearchPresentation(
-                    items = profiles.ranked(normalizedKeyword)
-                )
-            }
-
-            SearchTab.PLAYLISTS -> SearchPresentation(
-                items = result.playlists
-                    .filter { playlist -> matches(playlist, normalizedKeyword) }
-                    .map(SearchResultItem::PlaylistItem)
-                    .ranked(normalizedKeyword)
-            )
+            SearchTab.TRACKS -> composeTracks(result.tracks, normalizedKeyword)
+            SearchTab.PROFILES -> composeProfiles(result.profiles, normalizedKeyword)
+            SearchTab.PLAYLISTS -> composePlaylists(result.playlists, normalizedKeyword)
         }
     }
 
@@ -67,6 +45,44 @@ class SearchResultComposer {
             items = items.ranked(normalizedKeyword),
             playableSongs = songs
         )
+    }
+
+    private fun composeTracks(
+        tracks: List<Song>,
+        normalizedKeyword: String
+    ): SearchPresentation {
+        val songs = tracks.filter { song -> matches(song, normalizedKeyword) }
+
+        return SearchPresentation(
+            items = songs
+                .map(SearchResultItem::Track)
+                .ranked(normalizedKeyword),
+            playableSongs = songs
+        )
+    }
+
+    private fun composeProfiles(
+        profiles: List<User>,
+        normalizedKeyword: String
+    ): SearchPresentation {
+        val items = profiles
+            .filter { user -> matches(user, normalizedKeyword) }
+            .map(SearchResultItem::Profile)
+            .ranked(normalizedKeyword)
+
+        return SearchPresentation(items = items)
+    }
+
+    private fun composePlaylists(
+        playlists: List<Playlist>,
+        normalizedKeyword: String
+    ): SearchPresentation {
+        val items = playlists
+            .filter { playlist -> matches(playlist, normalizedKeyword) }
+            .map(SearchResultItem::PlaylistItem)
+            .ranked(normalizedKeyword)
+
+        return SearchPresentation(items = items)
     }
 
     private fun matches(song: Song, keyword: String): Boolean {
@@ -159,9 +175,3 @@ class SearchResultComposer {
     }
 
 }
-
-/** Prepared list data for one selected search category. */
-data class SearchPresentation(
-    val items: List<SearchResultItem> = emptyList(),
-    val playableSongs: List<Song> = emptyList()
-)

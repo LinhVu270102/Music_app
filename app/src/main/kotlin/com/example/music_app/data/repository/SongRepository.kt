@@ -2,12 +2,12 @@ package com.example.music_app.data.repository
 
 import com.example.music_app.R
 import com.example.music_app.data.model.Report
-import com.example.music_app.data.model.ReportStatus
-import com.example.music_app.data.model.ReportTargetType
 import com.example.music_app.data.model.Song
-import com.example.music_app.data.model.SongStatus
+import com.example.music_app.data.model.enums.ReportStatus
+import com.example.music_app.data.model.enums.ReportTargetType
 import com.example.music_app.data.model.User
-import com.example.music_app.data.model.UserRole
+import com.example.music_app.data.model.enums.SongStatus
+import com.example.music_app.data.model.enums.UserRole
 import com.example.music_app.data.remote.ReportRemoteDataSource
 import com.example.music_app.data.remote.SongRemoteDataSource
 import com.example.music_app.data.remote.UserRemoteDataSource
@@ -46,7 +46,7 @@ class SongRepository {
 
         return (approvedSongs + legacySongs)
             .distinctBy(Song::id)
-            .filter { song -> !song.isDeleted }
+            .filter { song -> song.isApprovedVisible() }
     }
 
     suspend fun upsertSong(song: Song) {
@@ -57,9 +57,7 @@ class SongRepository {
         val userId = auth.currentUser?.uid ?: return emptyList()
 
         return songRemoteDataSource.getRecentlyPlayedSongs(userId)
-            .filter { song ->
-                song.status.equals(SongStatus.APPROVED, ignoreCase = true) && !song.isDeleted
-            }
+            .filter { song -> song.isApprovedVisible() }
     }
 
     // =========================
@@ -89,7 +87,7 @@ class SongRepository {
             ?: throw AppException(R.string.user_not_found)
 
         val isOwner = song.uploaderId == userId
-        val isAdmin = currentUser.role == UserRole.ADMIN
+        val isAdmin = currentUser.roleType == UserRole.ADMIN
 
         if (!isOwner && !isAdmin) {
             throw AppException(R.string.no_permission)
@@ -115,7 +113,7 @@ class SongRepository {
             ?: throw AppException(R.string.user_not_found)
 
         val isOwner = song.uploaderId == userId
-        val isAdmin = currentUser.role == UserRole.ADMIN
+        val isAdmin = currentUser.roleType == UserRole.ADMIN
 
         if (!isOwner && !isAdmin) {
             throw AppException(R.string.no_permission)
@@ -153,7 +151,7 @@ class SongRepository {
             throw AppException(R.string.no_permission)
         }
 
-        if (song.status != SongStatus.REJECTED) {
+        if (song.statusType != SongStatus.REJECTED) {
             throw AppException(R.string.only_rejected_song_can_resubmit)
         }
 
@@ -185,12 +183,12 @@ class SongRepository {
 
         val report = Report(
             targetId = songId,
-            targetType = ReportTargetType.SONG,
+            targetType = ReportTargetType.SONG.value,
             reporterId = userId,
             reporterName = user.displayName.ifBlank { user.email },
             reason = reason,
             description = description,
-            status = ReportStatus.PENDING
+            status = ReportStatus.PENDING.value
         )
 
         return reportRemoteDataSource.create(report)
@@ -202,6 +200,10 @@ class SongRepository {
             .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
             .trim()
             .lowercase()
+    }
+
+    private fun Song.isApprovedVisible(): Boolean {
+        return statusType == SongStatus.APPROVED && !isDeleted
     }
 
 }

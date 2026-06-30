@@ -76,10 +76,7 @@ class ProfileFragment : Fragment() {
         }
 
         binding.btnEditProfile.setOnClickListener {
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragmentContainer, EditProfileFragment())
-                .addToBackStack(null)
-                .commit()
+            openEditProfile()
         }
         binding.btnFollowProfile.setOnClickListener {
             viewModel.toggleFollow()
@@ -103,22 +100,11 @@ class ProfileFragment : Fragment() {
         }
 
         viewModel.mySongs.observe(viewLifecycleOwner) { songs ->
-            currentSongs = songs
-            adapter.setData(songs)
-
-            binding.songCount.text =
-                getString(R.string.song_count_format, songs.size)
-
-            binding.myMusicLabel.text =
-                getString(R.string.my_uploaded_music_count, songs.size)
-
-            binding.profileMusicList.isVisible = songs.isNotEmpty()
-            binding.tvNoUploadedSongs.isVisible = songs.isEmpty()
+            renderSongs(songs)
         }
 
         viewModel.myPlaylists.observe(viewLifecycleOwner) { playlists ->
-            binding.playlistCount.text =
-                getString(R.string.playlist_count_format, playlists.size)
+            renderPlaylistCount(playlists.size)
         }
 
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
@@ -128,12 +114,7 @@ class ProfileFragment : Fragment() {
 
         viewModel.errorMessage.observe(viewLifecycleOwner) { messageResId ->
             messageResId?.let {
-                Toast.makeText(
-                    requireContext(),
-                    getString(it),
-                    Toast.LENGTH_SHORT
-                ).show()
-
+                showToast(getString(it))
                 viewModel.clearErrorMessage()
                 binding.swipeRefreshProfile.isRefreshing = false
             }
@@ -144,13 +125,7 @@ class ProfileFragment : Fragment() {
         }
 
         viewModel.isFollowing.observe(viewLifecycleOwner) { isFollowing ->
-            binding.btnFollowProfile.setImageResource(
-                if (isFollowing) R.drawable.ic_followed else R.drawable.ic_follow
-            )
-            binding.btnFollowProfile.contentDescription = getString(
-                if (isFollowing) R.string.following else R.string.follow
-            )
-            binding.btnFollowProfile.alpha = if (isFollowing) 1f else 0.55f
+            renderFollowButton(isFollowing)
         }
 
         PlayerInteractionState.artistFollowUpdates.observe(viewLifecycleOwner) { state ->
@@ -260,6 +235,41 @@ class ProfileFragment : Fragment() {
             song = song,
             playlist = currentSongs
         )
+    }
+
+    private fun openEditProfile() {
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.fragmentContainer, EditProfileFragment())
+            .addToBackStack(null)
+            .commit()
+    }
+
+    private fun renderSongs(songs: List<Song>) {
+        currentSongs = songs
+        adapter.setData(songs)
+
+        binding.songCount.text = getString(R.string.song_count_format, songs.size)
+        binding.myMusicLabel.text = getString(R.string.my_uploaded_music_count, songs.size)
+        binding.profileMusicList.isVisible = songs.isNotEmpty()
+        binding.tvNoUploadedSongs.isVisible = songs.isEmpty()
+    }
+
+    private fun renderPlaylistCount(count: Int) {
+        binding.playlistCount.text = getString(R.string.playlist_count_format, count)
+    }
+
+    private fun renderFollowButton(isFollowing: Boolean) {
+        binding.btnFollowProfile.setImageResource(
+            if (isFollowing) R.drawable.ic_followed else R.drawable.ic_follow
+        )
+        binding.btnFollowProfile.contentDescription = getString(
+            if (isFollowing) R.string.following else R.string.follow
+        )
+        binding.btnFollowProfile.alpha = if (isFollowing) 1f else 0.55f
+    }
+
+    private fun showToast(message: String) {
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroyView() {

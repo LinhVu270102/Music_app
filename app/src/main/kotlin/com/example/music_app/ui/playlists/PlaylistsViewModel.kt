@@ -10,9 +10,9 @@ import com.example.music_app.data.repository.PlaylistRepository
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
-class PlaylistsViewModel : ViewModel() {
-
-    private val repository = PlaylistRepository()
+class PlaylistsViewModel(
+    private val repository: PlaylistRepository = PlaylistRepository()
+) : ViewModel() {
 
     private val _playlists = MutableLiveData<List<Playlist>>()
     val playlists: LiveData<List<Playlist>> = _playlists
@@ -23,11 +23,11 @@ class PlaylistsViewModel : ViewModel() {
     fun loadPlaylists() {
         viewModelScope.launch {
             try {
-                _playlists.value = repository.getLibraryPlaylists()
+                refreshPlaylists()
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (_: Exception) {
-                _errorMessageResId.value = R.string.load_playlists_failed
+                publishError(R.string.load_playlists_failed)
             }
         }
     }
@@ -36,11 +36,11 @@ class PlaylistsViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 repository.createPlaylist(name)
-                loadPlaylists()
+                refreshPlaylists()
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (e: Exception) {
-                _errorMessageResId.value = R.string.create_playlist_failed
+                publishError(R.string.create_playlist_failed)
             }
         }
     }
@@ -49,11 +49,11 @@ class PlaylistsViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 repository.deletePlaylist(playlistId)
-                loadPlaylists()
+                refreshPlaylists()
             } catch (e: AppException) {
-                _errorMessageResId.value = e.messageResId
+                publishError(e.messageResId)
             } catch (e: Exception) {
-                _errorMessageResId.value = R.string.delete_playlist_failed
+                publishError(R.string.delete_playlist_failed)
             }
         }
     }
@@ -65,5 +65,13 @@ class PlaylistsViewModel : ViewModel() {
 
     fun clearErrorMessage() {
         _errorMessageResId.value = null
+    }
+
+    private suspend fun refreshPlaylists() {
+        _playlists.value = repository.getLibraryPlaylists()
+    }
+
+    private fun publishError(messageResId: Int) {
+        _errorMessageResId.value = messageResId
     }
 }

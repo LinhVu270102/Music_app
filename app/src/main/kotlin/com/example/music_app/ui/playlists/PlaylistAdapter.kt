@@ -26,24 +26,30 @@ class PlaylistAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(playlist: Playlist) {
-            val context = binding.root.context
+            bindPlaylistInfo(playlist)
+            loadCover(playlist.coverUrl)
+            binding.btnDeletePlaylist.isVisible = canDelete(playlist)
+            bindClickListeners(playlist)
+        }
+
+        private fun bindPlaylistInfo(playlist: Playlist) {
             binding.txtPlaylistName.text = playlist.name
+            binding.txtPlaylistInfo.text = binding.root.context.getString(
+                R.string.playlist_songs_count,
+                playlist.songsCount
+            )
+        }
 
-            binding.txtPlaylistInfo.text =
-                context.getString(
-                    R.string.playlist_songs_count,
-                    playlist.songsCount
-                )
-
+        private fun loadCover(coverUrl: String) {
             Glide.with(binding.root)
-                .load(playlist.coverUrl.ifBlank { R.drawable.music_orange })
+                .load(coverUrl.ifBlank { R.drawable.music_orange })
                 .placeholder(R.drawable.music_orange)
                 .error(R.drawable.music_orange)
                 .centerCrop()
                 .into(binding.imgPlaylistCover)
+        }
 
-            binding.btnDeletePlaylist.isVisible = canDelete(playlist)
-
+        private fun bindClickListeners(playlist: Playlist) {
             binding.root.setOnClickListener {
                 onItemClick(playlist)
             }
