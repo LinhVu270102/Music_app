@@ -1,4 +1,4 @@
-package com.example.music_app.ui.admin
+package com.example.music_app.ui.admin.adminReport
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData

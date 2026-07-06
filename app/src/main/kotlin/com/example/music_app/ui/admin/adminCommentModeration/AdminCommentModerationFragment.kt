@@ -1,4 +1,4 @@
-package com.example.music_app.ui.admin
+package com.example.music_app.ui.admin.adminCommentModeration
 
 import android.os.Bundle
 import android.view.View
@@ -50,9 +50,6 @@ class AdminCommentModerationFragment : Fragment(R.layout.fragment_admin_comment_
             parentFragmentManager.popBackStack()
         }
 
-        binding.btnReload.setOnClickListener {
-            viewModel.loadReportedComments()
-        }
     }
 
     private fun observeViewModel() {

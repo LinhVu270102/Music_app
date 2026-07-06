@@ -1,4 +1,4 @@
-package com.example.music_app.ui.admin
+package com.example.music_app.ui.admin.adminCommentModeration
 
 import android.view.LayoutInflater
 import android.view.ViewGroup

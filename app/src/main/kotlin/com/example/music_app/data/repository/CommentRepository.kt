@@ -9,7 +9,6 @@ import com.example.music_app.data.model.enums.AppNotificationTargetType
 import com.example.music_app.data.model.enums.AppNotificationType
 import com.example.music_app.data.model.enums.ReportStatus
 import com.example.music_app.data.model.enums.ReportTargetType
-import com.example.music_app.data.model.enums.UserRole
 import com.example.music_app.data.firebase.firestore.CommentFirestoreDataSource
 import com.example.music_app.data.firebase.firestore.NotificationFirestoreDataSource
 import com.example.music_app.data.firebase.firestore.ReportFirestoreDataSource
@@ -55,7 +54,7 @@ class CommentRepository private constructor(
     ) {
         firebaseComments.reportComment(
             songId = songId,
-            commentId = comment.id,
+            comment = comment,
             reason = reason,
             description = description.ifBlank { comment.content }
         )
@@ -113,20 +112,32 @@ private class FirestoreCommentRepository(
 
     suspend fun reportComment(
         songId: String,
-        commentId: String,
+        comment: Comment,
         reason: String,
         description: String = ""
     ): Report {
         val userId = requireCurrentUserId()
         val user = userFirestoreDataSource.getById(userId)
-            ?: throw AppException(R.string.user_not_found)
+        val reporterName = user?.displayName
+            ?.takeIf(String::isNotBlank)
+            ?: user?.email?.takeIf(String::isNotBlank)
+            ?: auth.currentUser?.displayName?.takeIf(String::isNotBlank)
+            ?: auth.currentUser?.email?.takeIf(String::isNotBlank)
+            ?: DEFAULT_REPORTER_NAME
+        val song = firestoreDataSource.getSong(songId)
 
         return reportFirestoreDataSource.create(
             Report(
-                targetId = commentId,
+                targetId = comment.id,
                 targetType = ReportTargetType.COMMENT.value,
+                targetOwnerId = comment.userId,
+                songId = songId,
+                songOwnerId = song?.uploaderId.orEmpty(),
+                targetTitle = comment.displayName.ifBlank { comment.userId },
+                targetSubtitle = song?.title.orEmpty(),
+                targetPreview = comment.content,
                 reporterId = userId,
-                reporterName = user.displayName.ifBlank { user.email },
+                reporterName = reporterName,
                 reason = reason,
                 description = "$songId|$description",
                 status = ReportStatus.PENDING.value
@@ -149,7 +160,7 @@ private class FirestoreCommentRepository(
 
         val canHide = comment.userId == userId ||
             song.uploaderId == userId ||
-            currentUser.roleType == UserRole.ADMIN
+            currentUser.roleType.canModerateContent
 
         if (!canHide) {
             throw AppException(R.string.no_permission)
@@ -210,5 +221,9 @@ private class FirestoreCommentRepository(
         if (!song.allowComments) throw AppException(R.string.comments_locked)
 
         return song
+    }
+
+    private companion object {
+        private const val DEFAULT_REPORTER_NAME = "Orange Music user"
     }
 }

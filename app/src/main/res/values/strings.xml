@@ -254,7 +254,7 @@
 
     <!-- ================= ROLE / PERMISSION ================= -->
     <string name="account_not_found">Account information not found</string>
-    <string name="no_admin_permission">You do not have admin permission</string>
+    <string name="no_admin_permission">You do not have moderation permission</string>
     <string name="no_upload_permission">You do not have permission to upload songs</string>
     <string name="user_not_found">User information not found</string>
     <string name="target_user_not_found">Target user not found</string>
@@ -262,9 +262,11 @@
 
     <string name="current_role_user">Current role: User</string>
     <string name="current_role_admin">Current role: Admin</string>
+    <string name="current_role_moderator">Current role: Moderator</string>
     <string name="load_role_failed">Could not load user role</string>
     <string name="update_role_failed">Could not update role</string>
     <string name="role_changed_to_admin">Switched to admin role</string>
+    <string name="role_changed_to_moderator">Switched to moderator role</string>
     <string name="role_changed_to_user">Switched to user role</string>
 
     <!-- ================= ADMIN MODERATION ================= -->
@@ -327,8 +329,8 @@
     <string name="comment_content_empty">Comment content cannot be empty</string>
 
     <!-- ================= ADMIN DASHBOARD ================= -->
-    <string name="admin_dashboard">Admin Dashboard</string>
-    <string name="admin_dashboard_subtitle">Manage moderation and community standards</string>
+    <string name="admin_dashboard">Moderator Dashboard</string>
+    <string name="admin_dashboard_subtitle">Review content, reports, and community standards</string>
 
     <string name="community_standards">Community standards</string>
     <string name="community_standards_description">Protect a healthy music environment by reviewing user-uploaded content before it is publicly displayed.</string>
@@ -422,10 +424,13 @@
     <string name="report">Report</string>
     <string name="enter_report_reason">Enter report reason</string>
     <string name="report_failed">Report failed</string>
-    <string name="admin_notifications">Admin notifications</string>
+    <string name="admin_notifications">Moderator notifications</string>
     <string name="no_admin_notifications">No urgent moderation notifications.</string>
     <string name="admin_notification_summary">%1$d songs are waiting for review, %2$d reports are pending, and %3$d songs have been reported.</string>
-    <string name="load_admin_dashboard_failed">Could not load admin dashboard.</string>
+    <string name="latest_reports">Latest reports</string>
+    <string name="latest_reports_empty">No pending reports to review.</string>
+    <string name="latest_report_item_format">%1$s • %2$s\n%3$s\nReason: %4$s\nReporter: %5$s</string>
+    <string name="load_admin_dashboard_failed">Could not load moderator dashboard.</string>
     <string name="reload">Reload</string>
     <string name="no_pending_songs">No pending songs.</string>
     <string name="unknown_genre">Unknown genre</string>
@@ -449,7 +454,9 @@
     <string name="report_target_hidden_failed">Could not hide reported target.</string>
     <string name="no_report_description">No description.</string>
     <string name="report_target_format">%1$s: %2$s</string>
+    <string name="report_target_detail_format">%1$s: %2$s\n%3$s\nID: %4$s</string>
     <string name="reporter_format">Reporter: %1$s</string>
+    <string name="reporter_and_owner_format">Reporter: %1$s\nSong owner: %2$s</string>
     <string name="report_target_placeholder">Target</string>
     <string name="reporter_placeholder">Reporter</string>
     <string name="resolve_report">Resolve report</string>
@@ -497,7 +504,7 @@
     <string name="comment_icon">💬</string>
     <string name="delete_icon">🗑</string>
 
-    <string name="report_song_subtitle">Tell us why this song should be reviewed by admin.</string>
+    <string name="report_song_subtitle">Tell us why this song should be reviewed by a moderator.</string>
     <string name="report_song_name_format">%1$s - %2$s</string>
     <string name="report_reason_spam">Spam or misleading content</string>
     <string name="report_reason_offensive">Offensive or inappropriate content</string>
@@ -505,7 +512,7 @@
     <string name="report_reason_other">Other reason</string>
     <string name="report_description_optional">Add more details, optional</string>
     <string name="comment_options">Comment options</string>
-    <string name="report_comment_subtitle">Tell us why this comment should be reviewed by admin.</string>
+    <string name="report_comment_subtitle">Tell us why this comment should be reviewed by a moderator.</string>
     <string name="report_comment_content_format">%1$s: %2$s</string>
     <string name="report_reason_harassment">Harassment or bullying</string>
     <string name="time_now">now</string>

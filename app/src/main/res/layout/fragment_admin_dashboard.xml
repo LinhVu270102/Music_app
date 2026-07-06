@@ -161,6 +161,25 @@
                 android:textColor="#D0D0D0"
                 android:textSize="14sp" />
 
+            <TextView
+                android:id="@+id/txtLatestReportsTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="@string/latest_reports"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/txtLatestReports"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/latest_reports_empty"
+                android:textColor="#D0D0D0"
+                android:textSize="13sp" />
+
         </LinearLayout>
 
         <!-- STATS -->

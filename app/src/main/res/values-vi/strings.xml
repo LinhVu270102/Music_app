@@ -254,7 +254,7 @@
 
     <!-- ================= ROLE / PERMISSION ================= -->
     <string name="account_not_found">Không tìm thấy thông tin tài khoản</string>
-    <string name="no_admin_permission">Bạn không có quyền quản trị</string>
+    <string name="no_admin_permission">Bạn không có quyền kiểm duyệt</string>
     <string name="no_upload_permission">Bạn không có quyền tải bài hát lên</string>
     <string name="user_not_found">Không tìm thấy thông tin người dùng</string>
     <string name="target_user_not_found">Không tìm thấy người dùng cần theo dõi</string>
@@ -262,9 +262,11 @@
 
     <string name="current_role_user">Vai trò hiện tại: Người dùng</string>
     <string name="current_role_admin">Vai trò hiện tại: Quản trị viên</string>
+    <string name="current_role_moderator">Vai trò hiện tại: Kiểm duyệt viên</string>
     <string name="load_role_failed">Không tải được vai trò người dùng</string>
     <string name="update_role_failed">Không cập nhật được vai trò</string>
     <string name="role_changed_to_admin">Đã chuyển sang vai trò quản trị viên</string>
+    <string name="role_changed_to_moderator">Đã chuyển sang vai trò kiểm duyệt viên</string>
     <string name="role_changed_to_user">Đã chuyển sang vai trò người dùng</string>
 
     <!-- ================= ADMIN MODERATION ================= -->
@@ -327,8 +329,8 @@
     <string name="comment_content_empty">Nội dung bình luận không được để trống</string>
 
     <!-- ================= ADMIN DASHBOARD ================= -->
-    <string name="admin_dashboard">Quản trị</string>
-    <string name="admin_dashboard_subtitle">Quản lý kiểm duyệt và tiêu chuẩn cộng đồng</string>
+    <string name="admin_dashboard">Kiểm duyệt viên</string>
+    <string name="admin_dashboard_subtitle">Duyệt nội dung, báo cáo và tiêu chuẩn cộng đồng</string>
 
     <string name="community_standards">Tiêu chuẩn cộng đồng</string>
     <string name="community_standards_description">Bảo vệ môi trường âm nhạc lành mạnh bằng cách kiểm duyệt nội dung do người dùng upload trước khi hiển thị công khai.</string>
@@ -422,10 +424,13 @@
     <string name="report">Báo cáo</string>
     <string name="enter_report_reason">Nhập lý do báo cáo</string>
     <string name="report_failed">Báo cáo thất bại</string>
-    <string name="admin_notifications">Thông báo quản trị</string>
+    <string name="admin_notifications">Thông báo kiểm duyệt</string>
     <string name="no_admin_notifications">Không có thông báo kiểm duyệt khẩn cấp.</string>
     <string name="admin_notification_summary">Có %1$d bài hát đang chờ duyệt, %2$d báo cáo đang chờ xử lý và %3$d bài hát đã bị báo cáo.</string>
-    <string name="load_admin_dashboard_failed">Không thể tải bảng quản trị.</string>
+    <string name="latest_reports">Báo cáo gần nhất</string>
+    <string name="latest_reports_empty">Không có báo cáo đang chờ xử lý.</string>
+    <string name="latest_report_item_format">%1$s • %2$s\n%3$s\nLý do: %4$s\nNgười báo cáo: %5$s</string>
+    <string name="load_admin_dashboard_failed">Không thể tải bảng kiểm duyệt.</string>
     <string name="reload">Tải lại</string>
     <string name="no_pending_songs">Không có bài hát đang chờ duyệt.</string>
     <string name="unknown_genre">Chưa rõ thể loại</string>
@@ -449,7 +454,9 @@
     <string name="report_target_hidden_failed">Không thể ẩn nội dung bị báo cáo.</string>
     <string name="no_report_description">Không có mô tả.</string>
     <string name="report_target_format">%1$s: %2$s</string>
+    <string name="report_target_detail_format">%1$s: %2$s\n%3$s\nID: %4$s</string>
     <string name="reporter_format">Người báo cáo: %1$s</string>
+    <string name="reporter_and_owner_format">Người báo cáo: %1$s\nChủ bài hát: %2$s</string>
     <string name="report_target_placeholder">Đối tượng</string>
     <string name="reporter_placeholder">Người báo cáo</string>
     <string name="resolve_report">Xử lý báo cáo</string>
@@ -497,7 +504,7 @@
     <string name="comment_icon">💬</string>
     <string name="delete_icon">🗑</string>
 
-    <string name="report_song_subtitle">Cho quản trị viên biết lý do bài hát này cần được xem xét.</string>
+    <string name="report_song_subtitle">Cho kiểm duyệt viên biết lý do bài hát này cần được xem xét.</string>
     <string name="report_song_name_format">%1$s - %2$s</string>
     <string name="report_reason_spam">Spam hoặc nội dung gây hiểu nhầm</string>
     <string name="report_reason_offensive">Nội dung phản cảm hoặc không phù hợp</string>
@@ -505,7 +512,7 @@
     <string name="report_reason_other">Lý do khác</string>
     <string name="report_description_optional">Nhập thêm mô tả nếu cần</string>
     <string name="comment_options">Tùy chọn bình luận</string>
-    <string name="report_comment_subtitle">Cho quản trị viên biết lý do bình luận này cần được xem xét.</string>
+    <string name="report_comment_subtitle">Cho kiểm duyệt viên biết lý do bình luận này cần được xem xét.</string>
     <string name="report_comment_content_format">%1$s: %2$s</string>
     <string name="report_reason_harassment">Quấy rối hoặc bắt nạt</string>
     <string name="time_now">vừa xong</string>

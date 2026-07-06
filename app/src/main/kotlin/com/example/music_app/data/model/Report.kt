@@ -10,6 +10,18 @@ data class Report(
     // Đối tượng bị report: song/comment/user
     val targetId: String = "",
     val targetType: String = ReportTargetType.SONG.value,
+    val targetOwnerId: String = "",
+
+    // Bài hát chứa nội dung bị report.
+    // Với report bài hát: songId == targetId, songOwnerId là uploaderId.
+    // Với report bình luận: songId là bài hát chứa bình luận đó.
+    val songId: String = "",
+    val songOwnerId: String = "",
+
+    // Thông tin hiển thị nhanh cho kiểm duyệt viên.
+    val targetTitle: String = "",
+    val targetSubtitle: String = "",
+    val targetPreview: String = "",
 
     // Người report
     val reporterId: String = "",

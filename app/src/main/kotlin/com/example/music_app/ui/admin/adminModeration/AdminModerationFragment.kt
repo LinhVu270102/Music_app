@@ -1,4 +1,4 @@
-package com.example.music_app.ui.admin
+package com.example.music_app.ui.admin.adminModeration
 
 import android.os.Bundle
 import android.view.View
@@ -11,6 +11,7 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentAdminModerationBinding
 import com.example.music_app.databinding.DialogInputActionBinding
+import com.example.music_app.ui.admin.adminSongModeration.AdminSongModerationAdapter
 import com.example.music_app.ui.common.showCustomDialog
 
 class AdminModerationFragment : Fragment(R.layout.fragment_admin_moderation) {
@@ -63,9 +64,6 @@ class AdminModerationFragment : Fragment(R.layout.fragment_admin_moderation) {
             parentFragmentManager.popBackStack()
         }
 
-        binding.btnReload.setOnClickListener {
-            viewModel.loadPendingSongs()
-        }
     }
 
     private fun observeViewModel() {

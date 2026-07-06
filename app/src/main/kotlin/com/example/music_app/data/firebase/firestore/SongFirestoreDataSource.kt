@@ -128,13 +128,12 @@ class SongFirestoreDataSource(
 
         val snapshot = firestore.collection("songs")
             .whereEqualTo("status", status)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
             .get()
             .await()
 
         return snapshot.documents.mapNotNull { doc ->
             doc.toObject(Song::class.java)?.copy(id = doc.id)
-        }
+        }.sortedByDescending { song -> song.createdAt }
     }
 
     suspend fun updateSongStatus(

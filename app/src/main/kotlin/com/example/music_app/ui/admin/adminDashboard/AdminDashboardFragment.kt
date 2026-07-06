@@ -1,4 +1,4 @@
-package com.example.music_app.ui.admin
+package com.example.music_app.ui.admin.adminDashboard
 
 import android.content.Intent
 import android.os.Bundle
@@ -9,8 +9,12 @@ import androidx.fragment.app.commit
 import androidx.fragment.app.viewModels
 import com.example.music_app.R
 import com.example.music_app.data.model.AdminDashboardStats
+import com.example.music_app.data.model.Report
 import com.example.music_app.databinding.FragmentAdminDashboardBinding
 import com.example.music_app.main.MainActivity
+import com.example.music_app.ui.admin.adminModeration.AdminModerationFragment
+import com.example.music_app.ui.admin.adminReport.AdminReportFragment
+import com.example.music_app.ui.admin.adminCommentModeration.AdminCommentModerationFragment
 import com.example.music_app.ui.auth.LoginActivity
 import com.example.music_app.ui.home.HomeFragment
 
@@ -65,8 +69,8 @@ class AdminDashboardFragment : Fragment(R.layout.fragment_admin_dashboard) {
     }
 
     private fun observeViewModel() {
-        viewModel.isAdmin.observe(viewLifecycleOwner) { isAdmin ->
-            if (!isAdmin) {
+        viewModel.isModerationStaff.observe(viewLifecycleOwner) { isModerationStaff ->
+            if (!isModerationStaff) {
                 openHomeForNonAdmin()
             }
         }
@@ -75,6 +79,10 @@ class AdminDashboardFragment : Fragment(R.layout.fragment_admin_dashboard) {
             renderStats(stats)
             renderNotification(stats)
             binding.swipeRefreshAdminDashboard.isRefreshing = false
+        }
+
+        viewModel.latestReports.observe(viewLifecycleOwner) { reports ->
+            renderLatestReports(reports)
         }
 
         viewModel.errorMessageResId.observe(viewLifecycleOwner) { messageResId ->
@@ -110,6 +118,36 @@ class AdminDashboardFragment : Fragment(R.layout.fragment_admin_dashboard) {
             } else {
                 getString(R.string.no_admin_notifications)
             }
+    }
+
+    private fun renderLatestReports(reports: List<Report>) {
+        binding.txtLatestReports.text =
+            if (reports.isEmpty()) {
+                getString(R.string.latest_reports_empty)
+            } else {
+                reports.joinToString(separator = "\n\n") { report ->
+                    getString(
+                        R.string.latest_report_item_format,
+                        report.targetKind.value,
+                        report.displayTargetTitle(),
+                        report.displayTargetSubtitle(),
+                        report.reason,
+                        report.reporterName.ifBlank { report.reporterId }
+                    )
+                }
+            }
+    }
+
+    private fun Report.displayTargetTitle(): String {
+        return targetTitle.ifBlank { targetId }
+    }
+
+    private fun Report.displayTargetSubtitle(): String {
+        return targetSubtitle
+            .ifBlank { targetPreview }
+            .ifBlank { songOwnerId }
+            .ifBlank { targetOwnerId }
+            .ifBlank { getString(R.string.not_updated) }
     }
 
     private fun openHomeForNonAdmin() {

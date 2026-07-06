@@ -1,4 +1,4 @@
-package com.example.music_app.ui.admin
+package com.example.music_app.ui.admin.adminReport
 
 import android.os.Bundle
 import android.view.View
@@ -56,9 +56,6 @@ class AdminReportFragment : Fragment(R.layout.fragment_admin_report) {
             parentFragmentManager.popBackStack()
         }
 
-        binding.btnReload.setOnClickListener {
-            viewModel.loadReports()
-        }
     }
 
     private fun observeViewModel() {

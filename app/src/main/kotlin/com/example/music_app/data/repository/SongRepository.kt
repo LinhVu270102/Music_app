@@ -7,7 +7,6 @@ import com.example.music_app.data.model.enums.ReportStatus
 import com.example.music_app.data.model.enums.ReportTargetType
 import com.example.music_app.data.model.User
 import com.example.music_app.data.model.enums.SongStatus
-import com.example.music_app.data.model.enums.UserRole
 import com.example.music_app.data.firebase.firestore.ReportFirestoreDataSource
 import com.example.music_app.data.firebase.firestore.SongFirestoreDataSource
 import com.example.music_app.data.firebase.firestore.UserFirestoreDataSource
@@ -87,9 +86,9 @@ class SongRepository {
             ?: throw AppException(R.string.user_not_found)
 
         val isOwner = song.uploaderId == userId
-        val isAdmin = currentUser.roleType == UserRole.ADMIN
+        val canModerate = currentUser.roleType.canModerateContent
 
-        if (!isOwner && !isAdmin) {
+        if (!isOwner && !canModerate) {
             throw AppException(R.string.no_permission)
         }
 
@@ -113,9 +112,9 @@ class SongRepository {
             ?: throw AppException(R.string.user_not_found)
 
         val isOwner = song.uploaderId == userId
-        val isAdmin = currentUser.roleType == UserRole.ADMIN
+        val canModerate = currentUser.roleType.canModerateContent
 
-        if (!isOwner && !isAdmin) {
+        if (!isOwner && !canModerate) {
             throw AppException(R.string.no_permission)
         }
 
@@ -179,7 +178,12 @@ class SongRepository {
             ?: throw AppException(R.string.not_logged_in)
 
         val user = userFirestoreDataSource.getById(userId)
-            ?: throw AppException(R.string.user_not_found)
+        val reporterName = user?.displayName
+            ?.takeIf(String::isNotBlank)
+            ?: user?.email?.takeIf(String::isNotBlank)
+            ?: auth.currentUser?.displayName?.takeIf(String::isNotBlank)
+            ?: auth.currentUser?.email?.takeIf(String::isNotBlank)
+            ?: DEFAULT_REPORTER_NAME
 
         val song = songFirestoreDataSource.getSongById(songId)
             ?: throw AppException(R.string.invalid_song)
@@ -191,8 +195,14 @@ class SongRepository {
         val report = Report(
             targetId = songId,
             targetType = ReportTargetType.SONG.value,
+            targetOwnerId = song.uploaderId,
+            songId = song.id,
+            songOwnerId = song.uploaderId,
+            targetTitle = song.title.ifBlank { song.id },
+            targetSubtitle = song.artist.ifBlank { song.uploaderId },
+            targetPreview = song.genre,
             reporterId = userId,
-            reporterName = user.displayName.ifBlank { user.email },
+            reporterName = reporterName,
             reason = reason,
             description = description,
             status = ReportStatus.PENDING.value
@@ -213,6 +223,10 @@ class SongRepository {
         return statusType == SongStatus.APPROVED &&
             !isDeleted &&
             songUrl.isNotBlank()
+    }
+
+    private companion object {
+        private const val DEFAULT_REPORTER_NAME = "Orange Music user"
     }
 
 }

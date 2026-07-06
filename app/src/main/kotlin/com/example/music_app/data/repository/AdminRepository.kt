@@ -9,7 +9,6 @@ import com.example.music_app.data.model.User
 import com.example.music_app.data.model.enums.ReportStatus
 import com.example.music_app.data.model.enums.ReportTargetType
 import com.example.music_app.data.model.enums.SongStatus
-import com.example.music_app.data.model.enums.UserRole
 import com.example.music_app.data.firebase.firestore.CommentFirestoreDataSource
 import com.example.music_app.data.firebase.firestore.ReportFirestoreDataSource
 import com.example.music_app.data.firebase.firestore.SongFirestoreDataSource
@@ -33,20 +32,24 @@ class AdminRepository(
     // ADMIN AUTH GUARD
     // =========================
     suspend fun isCurrentUserAdmin(): Boolean {
+        return isCurrentUserModerationStaff()
+    }
+
+    suspend fun isCurrentUserModerationStaff(): Boolean {
         val userId = currentUserIdOrNull() ?: return false
 
         val user = userFirestoreDataSource.getById(userId) ?: return false
 
-        return user.isAdmin()
+        return user.canModerateContent()
     }
 
-    private suspend fun requireAdmin(): String {
+    private suspend fun requireModerationStaff(): String {
         val userId = currentUserIdOrNull() ?: throw AppException(R.string.not_logged_in)
 
         val user = userFirestoreDataSource.getById(userId)
             ?: throw AppException(R.string.account_not_found)
 
-        if (!user.isAdmin()) {
+        if (!user.canModerateContent()) {
             throw AppException(R.string.no_admin_permission)
         }
 
@@ -58,11 +61,11 @@ class AdminRepository(
     // =========================
 
     suspend fun getDashboardStats(): AdminDashboardStats {
-        requireAdmin()
+        requireModerationStaff()
 
         val songs = songFirestoreDataSource.getAllSongsWithIds()
-        val reports = reportFirestoreDataSource.getPending()
-        val reportedComments = commentFirestoreDataSource.getReported()
+        val reports = runCatching { reportFirestoreDataSource.getPending() }
+            .getOrDefault(emptyList())
 
         return AdminDashboardStats(
             pendingSongs = songs.count { song ->
@@ -81,7 +84,9 @@ class AdminRepository(
             reportedSongs = songs.count { song ->
                 song.isReportedVisible()
             },
-            reportedComments = reportedComments.size
+            reportedComments = reports.count { report ->
+                report.targetKind == ReportTargetType.COMMENT
+            }
         )
     }
 
@@ -90,10 +95,15 @@ class AdminRepository(
     // =========================
 
     suspend fun getPendingSongs(): List<Song> {
-        requireAdmin()
+        requireModerationStaff()
 
-        return songFirestoreDataSource.getSongsByStatus(SongStatus.PENDING.value)
+        val pendingSongs = songFirestoreDataSource.getSongsByStatus(SongStatus.PENDING.value)
+        val legacyPendingSongs = songFirestoreDataSource.getSongsByStatus(SongStatus.PENDING.name)
+
+        return (pendingSongs + legacyPendingSongs)
+            .distinctBy { song -> song.id }
             .filter { song -> song.isVisibleForAdmin() }
+            .sortedByDescending { song -> song.createdAt }
     }
 
     suspend fun approveSong(songId: String) {
@@ -116,11 +126,11 @@ class AdminRepository(
     }
 
     suspend fun hideSong(songId: String) {
-        val adminId = requireAdmin()
+        val moderatorId = requireModerationStaff()
 
         songFirestoreDataSource.softDeleteSong(
             songId = songId,
-            deletedBy = adminId
+            deletedBy = moderatorId
         )
     }
 
@@ -128,7 +138,7 @@ class AdminRepository(
         songId: String,
         allowComments: Boolean
     ) {
-        requireAdmin()
+        requireModerationStaff()
 
         songFirestoreDataSource.updateSongCommentPermission(
             songId = songId,
@@ -141,8 +151,13 @@ class AdminRepository(
     // =========================
 
     suspend fun getPendingReports(): List<Report> {
-        requireAdmin()
+        requireModerationStaff()
         return reportFirestoreDataSource.getPending()
+            .map { report ->
+                runCatching {
+                    enrichReportForDisplay(report)
+                }.getOrDefault(report)
+            }
     }
 
     suspend fun resolveReport(reportId: String) {
@@ -160,12 +175,12 @@ class AdminRepository(
     }
 
     suspend fun hideReportedTarget(report: Report) {
-        val adminId = requireAdmin()
+        val moderatorId = requireModerationStaff()
 
         when (report.targetKind) {
-            ReportTargetType.SONG -> hideReportedSong(report, adminId)
+            ReportTargetType.SONG -> hideReportedSong(report, moderatorId)
 
-            ReportTargetType.COMMENT -> hideReportedComment(report, adminId)
+            ReportTargetType.COMMENT -> hideReportedComment(report, moderatorId)
 
             ReportTargetType.USER -> Unit
         }
@@ -173,7 +188,7 @@ class AdminRepository(
         reportFirestoreDataSource.updateStatus(
             reportId = report.id,
             status = ReportStatus.RESOLVED.value,
-            reviewedBy = adminId
+            reviewedBy = moderatorId
         )
     }
 
@@ -182,17 +197,26 @@ class AdminRepository(
     // =========================
 
     suspend fun getReportedComments(): List<Comment> {
-        requireAdmin()
-        return commentFirestoreDataSource.getReported()
+        requireModerationStaff()
+
+        return reportFirestoreDataSource.getPending()
+            .filter { report -> report.targetKind == ReportTargetType.COMMENT }
+            .map { report ->
+                runCatching {
+                    report.toReportedComment()
+                }.getOrDefault(report.toReportedComment())
+            }
+            .distinctBy { comment -> "${comment.songId}/${comment.id}" }
+            .sortedByDescending { comment -> comment.createdAt }
     }
 
     suspend fun hideComment(comment: Comment) {
-        val adminId = requireAdmin()
+        val moderatorId = requireModerationStaff()
 
         commentFirestoreDataSource.softDelete(
             songId = comment.songId,
             commentId = comment.id,
-            deletedBy = adminId
+            deletedBy = moderatorId
         )
     }
 
@@ -205,12 +229,12 @@ class AdminRepository(
         status: SongStatus,
         rejectReason: String = ""
     ) {
-        val adminId = requireAdmin()
+        val moderatorId = requireModerationStaff()
 
         songFirestoreDataSource.updateSongStatus(
             songId = songId,
             status = status.value,
-            reviewedBy = adminId,
+            reviewedBy = moderatorId,
             rejectReason = rejectReason
         )
     }
@@ -219,30 +243,30 @@ class AdminRepository(
         reportId: String,
         status: ReportStatus
     ) {
-        val adminId = requireAdmin()
+        val moderatorId = requireModerationStaff()
 
         reportFirestoreDataSource.updateStatus(
             reportId = reportId,
             status = status.value,
-            reviewedBy = adminId
+            reviewedBy = moderatorId
         )
     }
 
-    private suspend fun hideReportedSong(report: Report, adminId: String) {
+    private suspend fun hideReportedSong(report: Report, moderatorId: String) {
         songFirestoreDataSource.softDeleteSong(
             songId = report.targetId,
-            deletedBy = adminId
+            deletedBy = moderatorId
         )
     }
 
-    private suspend fun hideReportedComment(report: Report, adminId: String) {
-        val songId = report.commentSongId()
+    private suspend fun hideReportedComment(report: Report, moderatorId: String) {
+        val songId = report.songId.ifBlank { report.commentSongId() }
         if (songId.isBlank()) return
 
         commentFirestoreDataSource.softDelete(
             songId = songId,
             commentId = report.targetId,
-            deletedBy = adminId
+            deletedBy = moderatorId
         )
     }
 
@@ -251,6 +275,84 @@ class AdminRepository(
             .split("|")
             .getOrNull(0)
             .orEmpty()
+    }
+
+    private suspend fun Report.toReportedComment(): Comment {
+        val songId = songId.ifBlank { commentSongId() }
+        val fallbackComment = toFallbackReportedComment(songId)
+
+        if (songId.isBlank() || targetId.isBlank()) return fallbackComment
+
+        return runCatching {
+            commentFirestoreDataSource.getAll(songId)
+                .firstOrNull { comment -> comment.id == targetId }
+                ?.copy(songId = songId)
+        }.getOrNull() ?: fallbackComment
+    }
+
+    private fun Report.toFallbackReportedComment(songId: String): Comment {
+        return Comment(
+            id = targetId,
+            songId = songId,
+            userId = targetOwnerId,
+            displayName = targetTitle.ifBlank { targetOwnerId },
+            content = targetPreview.ifBlank { reportDescriptionText() },
+            reportsCount = 1L,
+            createdAt = createdAt,
+            updatedAt = updatedAt
+        )
+    }
+
+    private fun Report.reportDescriptionText(): String {
+        return description.substringAfter("|", description)
+    }
+
+    private suspend fun enrichReportForDisplay(report: Report): Report {
+        if (
+            report.targetTitle.isNotBlank() &&
+            report.targetPreview.isNotBlank() &&
+            report.songOwnerId.isNotBlank()
+        ) {
+            return report
+        }
+
+        return when (report.targetKind) {
+            ReportTargetType.SONG -> enrichSongReport(report)
+            ReportTargetType.COMMENT -> enrichCommentReport(report)
+            ReportTargetType.USER -> report
+        }
+    }
+
+    private suspend fun enrichSongReport(report: Report): Report {
+        val songId = report.songId.ifBlank { report.targetId }
+        val song = songFirestoreDataSource.getSongById(songId) ?: return report
+
+        return report.copy(
+            targetOwnerId = report.targetOwnerId.ifBlank { song.uploaderId },
+            songId = report.songId.ifBlank { song.id },
+            songOwnerId = report.songOwnerId.ifBlank { song.uploaderId },
+            targetTitle = report.targetTitle.ifBlank { song.title.ifBlank { song.id } },
+            targetSubtitle = report.targetSubtitle.ifBlank { song.artist.ifBlank { song.uploaderId } },
+            targetPreview = report.targetPreview.ifBlank { song.genre }
+        )
+    }
+
+    private suspend fun enrichCommentReport(report: Report): Report {
+        val songId = report.songId.ifBlank { report.commentSongId() }
+        val song = songFirestoreDataSource.getSongById(songId)
+        val comment = commentFirestoreDataSource.getAll(songId)
+            .firstOrNull { comment -> comment.id == report.targetId }
+
+        return report.copy(
+            targetOwnerId = report.targetOwnerId.ifBlank { comment?.userId.orEmpty() },
+            songId = report.songId.ifBlank { songId },
+            songOwnerId = report.songOwnerId.ifBlank { song?.uploaderId.orEmpty() },
+            targetTitle = report.targetTitle.ifBlank {
+                comment?.displayName?.ifBlank { comment.userId }.orEmpty()
+            },
+            targetSubtitle = report.targetSubtitle.ifBlank { song?.title.orEmpty() },
+            targetPreview = report.targetPreview.ifBlank { comment?.content.orEmpty() }
+        )
     }
 
     private fun Song.hasVisibleStatus(status: SongStatus): Boolean {
@@ -265,7 +367,7 @@ class AdminRepository(
         return !isDeleted
     }
 
-    private fun User.isAdmin(): Boolean {
-        return roleType == UserRole.ADMIN
+    private fun User.canModerateContent(): Boolean {
+        return roleType.canModerateContent
     }
 }

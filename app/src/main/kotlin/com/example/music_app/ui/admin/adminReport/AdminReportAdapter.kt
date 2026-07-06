@@ -1,4 +1,4 @@
-package com.example.music_app.ui.admin
+package com.example.music_app.ui.admin.adminReport
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -43,22 +43,40 @@ class AdminReportAdapter(
 
             binding.txtReportReason.text = report.reason
             binding.txtReportDescription.text =
-                report.description.ifBlank {
+                report.displayDescription().ifBlank {
                     context.getString(R.string.no_report_description)
                 }
 
             binding.txtReportTarget.text =
-                context.getString(
-                    R.string.report_target_format,
-                    report.targetKind.value,
-                    report.targetId
-                )
+                if (report.targetTitle.isNotBlank() || report.targetPreview.isNotBlank()) {
+                    context.getString(
+                        R.string.report_target_detail_format,
+                        report.targetKind.value,
+                        report.displayTargetTitle(),
+                        report.displayTargetSubtitle(),
+                        report.targetId
+                    )
+                } else {
+                    context.getString(
+                        R.string.report_target_format,
+                        report.targetKind.value,
+                        report.targetId
+                    )
+                }
 
             binding.txtReporter.text =
-                context.getString(
-                    R.string.reporter_format,
-                    report.reporterId
-                )
+                if (report.reportOwnerId().isNotBlank()) {
+                    context.getString(
+                        R.string.reporter_and_owner_format,
+                        report.reporterId,
+                        report.reportOwnerId()
+                    )
+                } else {
+                    context.getString(
+                        R.string.reporter_format,
+                        report.reporterId
+                    )
+                }
 
             binding.btnResolveReport.setOnClickListener {
                 onResolve(report)
@@ -70,6 +88,29 @@ class AdminReportAdapter(
 
             binding.btnHideReportedTarget.setOnClickListener {
                 onHideTarget(report)
+            }
+        }
+
+        private fun Report.reportOwnerId(): String {
+            return songOwnerId.ifBlank { targetOwnerId }
+        }
+
+        private fun Report.displayTargetTitle(): String {
+            return targetTitle.ifBlank { targetId }
+        }
+
+        private fun Report.displayTargetSubtitle(): String {
+            return targetSubtitle
+                .ifBlank { targetPreview }
+                .ifBlank { songOwnerId }
+                .ifBlank { targetOwnerId }
+        }
+
+        private fun Report.displayDescription(): String {
+            return if (targetKind.value.equals("comment", ignoreCase = true)) {
+                description.substringAfter("|", description)
+            } else {
+                description
             }
         }
     }

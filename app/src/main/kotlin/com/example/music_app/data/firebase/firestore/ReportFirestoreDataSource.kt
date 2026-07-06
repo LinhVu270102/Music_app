@@ -8,7 +8,6 @@ import com.example.music_app.utils.AppException
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 
@@ -31,11 +30,11 @@ class ReportFirestoreDataSource(
     suspend fun getPending(): List<Report> {
         return reports()
             .whereEqualTo("status", ReportStatus.PENDING.value)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
             .get()
             .await()
             .documents
             .mapNotNull { document -> document.toReport() }
+            .sortedByDescending { report -> report.createdAt }
     }
 
     suspend fun updateStatus(

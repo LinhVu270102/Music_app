@@ -17,14 +17,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
 import com.example.music_app.base.BaseActivity
 import com.example.music_app.data.model.enums.FooterTab
-import com.example.music_app.data.model.enums.UserRole
 import com.example.music_app.data.repository.AuthRepository
 import com.example.music_app.data.repository.UserRepository
 import com.example.music_app.player.state.PlayerInteractionState
 import com.example.music_app.databinding.ActivityMainBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.service.MusicService
-import com.example.music_app.ui.admin.AdminDashboardFragment
+import com.example.music_app.ui.admin.adminDashboard.AdminDashboardFragment
 import com.example.music_app.ui.auth.LoginActivity
 import com.example.music_app.ui.comment.CommentFragment
 import com.example.music_app.ui.home.HomeFragment
@@ -36,9 +35,9 @@ import com.example.music_app.ui.search.SearchFragment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.example.music_app.ui.admin.AdminModerationFragment
-import com.example.music_app.ui.admin.AdminReportFragment
-import com.example.music_app.ui.admin.AdminCommentModerationFragment
+import com.example.music_app.ui.admin.adminModeration.AdminModerationFragment
+import com.example.music_app.ui.admin.adminReport.AdminReportFragment
+import com.example.music_app.ui.admin.adminCommentModeration.AdminCommentModerationFragment
 import kotlin.math.max
 
 class MainActivity : BaseActivity<ActivityMainBinding>() {
@@ -107,7 +106,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
                 val user = userRepository.getUserProfile(currentUser.uid).getOrNull()
 
                 withContext(Dispatchers.Main) {
-                    if (user?.roleType == UserRole.ADMIN) {
+                    if (user?.roleType?.canModerateContent == true) {
                         openAdminDashboardFragment()
                     } else {
                         openHomeFragment()
@@ -351,14 +350,14 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
         val isPlayerScreen = currentFragment is PlayerFragment
         val isCommentScreen = currentFragment is CommentFragment
-        val isAdminDashboard = currentFragment is AdminDashboardFragment
+        val isModerationDashboard = currentFragment is AdminDashboardFragment
 
         miniPlayerController.setVisible(
             hasSong &&
                     !isKeyboardVisible &&
                     !isPlayerScreen &&
                     !isCommentScreen &&
-                    !isAdminDashboard
+                    !isModerationDashboard
         )
     }
 

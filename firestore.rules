@@ -13,7 +13,23 @@ service cloud.firestore {
     function isAdmin() {
       return signedIn() &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN'
+        );
+    }
+
+    function isModerator() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'moderator' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'MODERATOR'
+        );
+    }
+
+    function canModerateContent() {
+      return isAdmin() || isModerator();
     }
 
     function isSongOwner(songId) {
@@ -23,7 +39,7 @@ service cloud.firestore {
 
     function canReadSong(songId) {
       return signedIn() && (
-        isAdmin() ||
+        canModerateContent() ||
         isSongOwner(songId) ||
         (
           (
@@ -73,13 +89,13 @@ service cloud.firestore {
     }
 
     // Music uploaded by users. Public listeners can only read approved songs;
-    // the uploader and administrators may also read moderation states.
+    // the uploader and moderation staff may also read moderation states.
     match /songs/{songId} {
       // Use resource.data here so collection queries can prove the same
       // constraints as the app's status + isDeleted query. The helper that
       // reads a parent song remains in use for comment subcollections below.
       allow read: if signedIn() && (
-        isAdmin() ||
+        canModerateContent() ||
         resource.data.uploaderId == request.auth.uid ||
         (
           (
@@ -95,11 +111,11 @@ service cloud.firestore {
         request.resource.data.status == 'pending'
       );
 
-      allow update: if isAdmin() ||
+      allow update: if canModerateContent() ||
         (isSongOwner(songId) && isOwnerSongMaintenance()) ||
         isSongCounterChange();
 
-      allow delete: if isAdmin() || isSongOwner(songId);
+      allow delete: if canModerateContent() || isSongOwner(songId);
 
       match /comments/{commentId} {
         allow read: if canReadSong(songId);
@@ -108,7 +124,7 @@ service cloud.firestore {
           request.resource.data.userId == request.auth.uid &&
           get(/databases/$(database)/documents/songs/$(songId)).data.allowComments == true;
 
-        allow update: if isAdmin() ||
+        allow update: if canModerateContent() ||
           (
             signedIn() &&
             (resource.data.userId == request.auth.uid || isSongOwner(songId)) &&
@@ -132,7 +148,7 @@ service cloud.firestore {
             request.resource.data.reportsCount == resource.data.reportsCount + 1
           );
 
-        allow delete: if isAdmin();
+        allow delete: if canModerateContent();
 
         match /likes/{userId} {
           allow read: if signedIn();
@@ -257,10 +273,10 @@ service cloud.firestore {
       allow create: if signedIn() &&
         request.resource.data.reporterId == request.auth.uid &&
         request.resource.data.status == 'pending';
-      allow read: if isAdmin() || (
+      allow read: if canModerateContent() || (
         signedIn() && resource.data.reporterId == request.auth.uid
       );
-      allow update, delete: if isAdmin();
+      allow update, delete: if canModerateContent();
     }
   }
 }
