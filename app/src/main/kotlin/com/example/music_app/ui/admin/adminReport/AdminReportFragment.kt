@@ -38,6 +38,9 @@ class AdminReportFragment : Fragment(R.layout.fragment_admin_report) {
             onReject = { report ->
                 viewModel.rejectReport(report)
             },
+            onReopen = { report ->
+                viewModel.reopenReport(report)
+            },
             onHideTarget = { report ->
                 viewModel.hideReportedTarget(report)
             }
@@ -52,6 +55,14 @@ class AdminReportFragment : Fragment(R.layout.fragment_admin_report) {
             viewModel.loadReports()
         }
 
+        binding.btnPendingReports.setOnClickListener {
+            viewModel.showPendingReports()
+        }
+
+        binding.btnReviewedReports.setOnClickListener {
+            viewModel.showReviewedReports()
+        }
+
         binding.btnBack.setOnClickListener {
             parentFragmentManager.popBackStack()
         }
@@ -62,8 +73,19 @@ class AdminReportFragment : Fragment(R.layout.fragment_admin_report) {
         viewModel.reports.observe(viewLifecycleOwner) { reports ->
             adapter.submitList(reports)
 
+            binding.txtEmptyReports.text =
+                if (viewModel.isReviewedMode.value == true) {
+                    getString(R.string.no_reviewed_reports)
+                } else {
+                    getString(R.string.no_pending_reports)
+                }
+
             binding.txtEmptyReports.visibility =
                 if (reports.isEmpty()) View.VISIBLE else View.GONE
+        }
+
+        viewModel.isReviewedMode.observe(viewLifecycleOwner) { isReviewedMode ->
+            renderReportFilter(isReviewedMode)
         }
 
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
@@ -79,6 +101,11 @@ class AdminReportFragment : Fragment(R.layout.fragment_admin_report) {
                 binding.swipeRefreshAdminReports.isRefreshing = false
             }
         }
+    }
+
+    private fun renderReportFilter(isReviewedMode: Boolean) {
+        binding.btnPendingReports.alpha = if (isReviewedMode) 0.65f else 1f
+        binding.btnReviewedReports.alpha = if (isReviewedMode) 1f else 0.65f
     }
 
     override fun onDestroyView() {

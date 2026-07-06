@@ -153,11 +153,13 @@ class AdminRepository(
     suspend fun getPendingReports(): List<Report> {
         requireModerationStaff()
         return reportFirestoreDataSource.getPending()
-            .map { report ->
-                runCatching {
-                    enrichReportForDisplay(report)
-                }.getOrDefault(report)
-            }
+            .map { report -> enrichReportSafely(report) }
+    }
+
+    suspend fun getReviewedReports(): List<Report> {
+        requireModerationStaff()
+        return reportFirestoreDataSource.getReviewed()
+            .map { report -> enrichReportSafely(report) }
     }
 
     suspend fun resolveReport(reportId: String) {
@@ -171,6 +173,15 @@ class AdminRepository(
         updateReportStatus(
             reportId = reportId,
             status = ReportStatus.REJECTED
+        )
+    }
+
+    suspend fun reopenReport(reportId: String) {
+        val moderatorId = requireModerationStaff()
+
+        reportFirestoreDataSource.reopen(
+            reportId = reportId,
+            reopenedBy = moderatorId
         )
     }
 
@@ -275,6 +286,12 @@ class AdminRepository(
             .split("|")
             .getOrNull(0)
             .orEmpty()
+    }
+
+    private suspend fun enrichReportSafely(report: Report): Report {
+        return runCatching {
+            enrichReportForDisplay(report)
+        }.getOrDefault(report)
     }
 
     private suspend fun Report.toReportedComment(): Comment {

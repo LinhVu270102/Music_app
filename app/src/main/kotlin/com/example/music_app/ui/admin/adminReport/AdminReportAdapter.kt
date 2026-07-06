@@ -1,17 +1,20 @@
 package com.example.music_app.ui.admin.adminReport
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.music_app.R
 import com.example.music_app.data.model.Report
+import com.example.music_app.data.model.enums.ReportStatus
 import com.example.music_app.databinding.ItemAdminReportBinding
 
 class AdminReportAdapter(
     private val onResolve: (Report) -> Unit,
     private val onReject: (Report) -> Unit,
+    private val onReopen: (Report) -> Unit,
     private val onHideTarget: (Report) -> Unit
 ) : ListAdapter<Report, AdminReportAdapter.AdminReportViewHolder>(DiffCallback) {
 
@@ -78,6 +81,40 @@ class AdminReportAdapter(
                     )
                 }
 
+            binding.txtReportStatus.text = report.displayReviewStatus()
+
+            bindActions(report)
+        }
+
+        private fun bindActions(report: Report) {
+            val context = binding.root.context
+            val isPending = report.statusType == ReportStatus.PENDING
+
+            binding.btnResolveReport.visibility = View.VISIBLE
+            binding.btnRejectReport.visibility = View.VISIBLE
+            binding.btnHideReportedTarget.visibility = View.VISIBLE
+
+            binding.btnResolveReport.text =
+                if (isPending) {
+                    context.getString(R.string.resolve_report)
+                } else {
+                    context.getString(R.string.mark_report_resolved)
+                }
+
+            binding.btnRejectReport.text =
+                if (isPending) {
+                    context.getString(R.string.reject_report)
+                } else {
+                    context.getString(R.string.mark_report_rejected)
+                }
+
+            binding.btnHideReportedTarget.text =
+                if (isPending) {
+                    context.getString(R.string.hide_reported_target)
+                } else {
+                    context.getString(R.string.reopen_report)
+                }
+
             binding.btnResolveReport.setOnClickListener {
                 onResolve(report)
             }
@@ -87,7 +124,11 @@ class AdminReportAdapter(
             }
 
             binding.btnHideReportedTarget.setOnClickListener {
-                onHideTarget(report)
+                if (isPending) {
+                    onHideTarget(report)
+                } else {
+                    onReopen(report)
+                }
             }
         }
 
@@ -111,6 +152,20 @@ class AdminReportAdapter(
                 description.substringAfter("|", description)
             } else {
                 description
+            }
+        }
+
+        private fun Report.displayReviewStatus(): String {
+            val context = binding.root.context
+
+            return if (reviewedBy.isBlank()) {
+                context.getString(R.string.report_status_format, statusType.value)
+            } else {
+                context.getString(
+                    R.string.report_status_reviewed_by_format,
+                    statusType.value,
+                    reviewedBy
+                )
             }
         }
     }
