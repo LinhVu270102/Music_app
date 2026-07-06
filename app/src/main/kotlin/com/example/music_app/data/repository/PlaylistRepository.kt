@@ -4,7 +4,7 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.enums.SongStatus
-import com.example.music_app.data.remote.PlaylistRemoteDataSource
+import com.example.music_app.data.firebase.firestore.PlaylistFirestoreDataSource
 import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -15,7 +15,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 class PlaylistRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val remoteDataSource: PlaylistRemoteDataSource = PlaylistRemoteDataSource(firestore)
+    private val firestoreDataSource: PlaylistFirestoreDataSource = PlaylistFirestoreDataSource(firestore)
 ) {
 
     fun getCurrentUserId(): String = auth.currentUser?.uid.orEmpty()
@@ -31,7 +31,7 @@ class PlaylistRepository(
             throw AppException(R.string.playlist_name_empty)
         }
 
-        return remoteDataSource.create(
+        return firestoreDataSource.create(
             userId = userId,
             name = normalizedName,
             description = description.trim()
@@ -43,7 +43,7 @@ class PlaylistRepository(
         return if (userId.isBlank()) {
             emptyList()
         } else {
-            remoteDataSource.getUserPlaylists(userId)
+            firestoreDataSource.getUserPlaylists(userId)
                 .map { playlist -> playlist.ensureOwner(userId) }
         }
     }
@@ -73,19 +73,19 @@ class PlaylistRepository(
         return if (userId.isBlank()) {
             emptyList()
         } else {
-            remoteDataSource.getRecentlyPlayedPlaylists(userId)
+            firestoreDataSource.getRecentlyPlayedPlaylists(userId)
         }
     }
 
     suspend fun getPublicPlaylistsByUserId(userId: String): List<Playlist> {
         if (userId.isBlank()) return emptyList()
-        return remoteDataSource.getPublicUserPlaylists(userId)
+        return firestoreDataSource.getPublicUserPlaylists(userId)
     }
 
     suspend fun deletePlaylist(playlistId: String) {
         val userId = getCurrentUserId()
         if (userId.isNotBlank()) {
-            remoteDataSource.delete(userId, playlistId)
+            firestoreDataSource.delete(userId, playlistId)
         }
     }
 
@@ -96,12 +96,12 @@ class PlaylistRepository(
         val userId = requireCurrentUserId()
         validatePlaylistSong(playlistId, song)
 
-        val coverUrl = remoteDataSource.firstSongCoverUrlIfPlaylistNeedsCover(
+        val coverUrl = firstSongCoverUrlIfPlaylistNeedsCover(
             userId = userId,
             playlistId = playlistId,
             song = song
         )
-        val wasAdded = remoteDataSource.addUserSong(
+        val wasAdded = firestoreDataSource.addUserSong(
             userId = userId,
             playlistId = playlistId,
             song = song
@@ -109,13 +109,13 @@ class PlaylistRepository(
 
         if (!wasAdded) return
 
-        remoteDataSource.updateUserSongCountSafely(
+        firestoreDataSource.updateUserSongCountSafely(
             userId = userId,
             playlistId = playlistId,
             delta = 1,
             coverUrl = coverUrl
         )
-        remoteDataSource.syncAddedSongToPublicMirrorSafely(
+        firestoreDataSource.syncAddedSongToPublicMirrorSafely(
             userId = userId,
             playlistId = playlistId,
             song = song,
@@ -131,7 +131,7 @@ class PlaylistRepository(
 
         if (playlistId.isBlank() || songId.isBlank()) return
 
-        val wasRemoved = remoteDataSource.removeUserSong(
+        val wasRemoved = firestoreDataSource.removeUserSong(
             userId = userId,
             playlistId = playlistId,
             songId = songId
@@ -139,12 +139,12 @@ class PlaylistRepository(
 
         if (!wasRemoved) return
 
-        remoteDataSource.updateUserSongCountSafely(
+        firestoreDataSource.updateUserSongCountSafely(
             userId = userId,
             playlistId = playlistId,
             delta = -1
         )
-        remoteDataSource.syncRemovedSongFromPublicMirrorSafely(
+        firestoreDataSource.syncRemovedSongFromPublicMirrorSafely(
             userId = userId,
             playlistId = playlistId,
             songId = songId
@@ -156,7 +156,7 @@ class PlaylistRepository(
         return if (userId.isBlank()) {
             emptyList()
         } else {
-            getVisibleSongs(remoteDataSource.getSongs(userId, playlistId))
+            getVisibleSongs(firestoreDataSource.getSongs(userId, playlistId))
         }
     }
 
@@ -167,18 +167,18 @@ class PlaylistRepository(
         val finalOwnerId = ownerId.ifBlank(::getCurrentUserId)
         if (finalOwnerId.isBlank() || playlistId.isBlank()) return emptyList()
 
-        return getVisibleSongs(remoteDataSource.getSongs(finalOwnerId, playlistId))
+        return getVisibleSongs(firestoreDataSource.getSongs(finalOwnerId, playlistId))
     }
 
     suspend fun getRootPlaylistSongs(playlistId: String): List<Song> {
         if (playlistId.isBlank()) return emptyList()
 
-        return getVisibleSongs(remoteDataSource.getRootSongs(playlistId))
+        return getVisibleSongs(firestoreDataSource.getRootSongs(playlistId))
     }
 
     suspend fun isPlaylistLiked(playlistId: String): Boolean {
         val userId = getCurrentUserId()
-        return userId.isNotBlank() && remoteDataSource.isLiked(userId, playlistId)
+        return userId.isNotBlank() && firestoreDataSource.isLiked(userId, playlistId)
     }
 
     suspend fun togglePlaylistLike(playlist: Playlist): Boolean {
@@ -188,17 +188,19 @@ class PlaylistRepository(
             throw AppException(R.string.cannot_like_own_playlist)
         }
 
-        return remoteDataSource.toggleLike(userId, playlist)
+        return firestoreDataSource.toggleLike(userId, playlist)
     }
 
     suspend fun getLikedPlaylists(): List<Playlist> {
         val userId = getCurrentUserId()
-        return if (userId.isBlank()) emptyList() else remoteDataSource.getLikedPlaylists(userId)
+        return if (userId.isBlank()) emptyList() else firestoreDataSource.getLikedPlaylists(userId)
     }
 
     private fun getVisibleSongs(songs: List<Song>): List<Song> {
         return songs.filter { song ->
-            song.statusType == SongStatus.APPROVED && !song.isDeleted
+            song.statusType == SongStatus.APPROVED &&
+                !song.isDeleted &&
+                song.songUrl.isNotBlank()
         }
     }
 
@@ -217,6 +219,25 @@ class PlaylistRepository(
 
     private fun Playlist.ensureOwner(userId: String): Playlist {
         return if (ownerId.isBlank()) copy(ownerId = userId) else this
+    }
+
+    private suspend fun firstSongCoverUrlIfPlaylistNeedsCover(
+        userId: String,
+        playlistId: String,
+        song: Song
+    ): String {
+        if (song.coverUrl.isBlank()) return ""
+
+        val playlist = firestoreDataSource.getUserPlaylist(userId, playlistId)
+            ?: return ""
+
+        if (playlist.coverUrl.isNotBlank()) return ""
+
+        return if (firestoreDataSource.hasUserSongs(userId, playlistId)) {
+            ""
+        } else {
+            song.coverUrl
+        }
     }
 
     private fun requireCurrentUserId(): String {

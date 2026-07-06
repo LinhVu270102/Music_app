@@ -356,6 +356,7 @@
     <string name="song_url_empty">Song URL is empty</string>
 
     <string name="playback_failed">Could not play this song</string>
+    <string name="soundcloud_server_unavailable">SoundCloud server is not running. Start soundcloud-server and try again.</string>
     <string name="player_not_ready">Player is not ready</string>
 
 

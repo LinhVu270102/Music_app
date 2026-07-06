@@ -14,6 +14,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.MusicInteractionRepository
+import com.example.music_app.data.repository.SongRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,6 +37,7 @@ object PlayerManager {
 
     private val playerScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val musicInteractionRepository = MusicInteractionRepository()
+    private val songRepository = SongRepository()
     private val historyRecorder = PlaybackHistoryRecorder(
         repository = musicInteractionRepository,
         scope = playerScope
@@ -323,13 +325,23 @@ object PlayerManager {
 
     fun playNext() {
         val player = exoPlayer ?: return
+        val isAtQueueEnd = playbackQueue.size > 0 &&
+            (playbackQueue.currentIndex >= playbackQueue.size - 1 ||
+                player.currentMediaItemIndex >= player.mediaItemCount - 1)
+
+        if (isAtQueueEnd) {
+            playRandomFallback(
+                excludeIds = playbackQueue.snapshot()
+                    .mapTo(mutableSetOf(), Song::id)
+            )
+            return
+        }
 
         if (player.hasNextMediaItem()) {
             player.seekToNextMediaItem()
             player.play()
-        } else if (_loopMode.value == LoopMode.PLAYLIST && player.mediaItemCount > 0) {
-            player.seekToDefaultPosition(0)
-            player.play()
+        } else {
+            playRandomFallback()
         }
     }
 
@@ -473,17 +485,66 @@ object PlayerManager {
 
         val currentId = _currentSong.value?.id.orEmpty()
 
-        val randomSong = PlaybackSongSelector.selectRandomFallback(
+        val randomSongFromMemory = PlaybackSongSelector.selectRandomFallback(
             songs = _fallbackSongs.value.orEmpty(),
             currentSongId = currentId,
             excludedSongIds = excludeIds
         )
-        if (randomSong == null) {
-            _errorMessageResId.postValue(R.string.could_not_play_this_song)
+
+        if (randomSongFromMemory != null) {
+            playPreparedSong(randomSongFromMemory)
             return
         }
 
-        playPreparedSong(randomSong)
+        playRandomSongFromCatalog(
+            currentSongId = currentId,
+            excludeIds = excludeIds
+        )
+    }
+
+    private fun playRandomSongFromCatalog(
+        currentSongId: String,
+        excludeIds: Set<String>
+    ) {
+        if (isPreparingRandomSong) return
+
+        isPreparingRandomSong = true
+
+        playerScope.launch {
+            try {
+                val randomSong = withContext(Dispatchers.IO) {
+                    val catalogSongs = songRepository.getAllSongs()
+
+                    PlaybackSongSelector.selectRandomFallback(
+                        songs = catalogSongs,
+                        currentSongId = currentSongId,
+                        excludedSongIds = excludeIds
+                    )
+                }
+
+                if (randomSong == null) {
+                    _errorMessageResId.postValue(R.string.could_not_play_this_song)
+                    return@launch
+                }
+
+                val playableSong = withContext(Dispatchers.IO) {
+                    musicInteractionRepository.preparePlayableSong(randomSong)
+                }
+
+                if (playableSong.songUrl.isBlank()) {
+                    Log.e(TAG, "playRandomSongFromCatalog failed: songUrl blank")
+                    _errorMessageResId.value = R.string.song_url_empty
+                    return@launch
+                }
+
+                play(playableSong)
+            } catch (e: Exception) {
+                Log.e(TAG, "playRandomSongFromCatalog failed: ${e.message}", e)
+                _errorMessageResId.value = R.string.playback_failed
+            } finally {
+                isPreparingRandomSong = false
+            }
+        }
     }
     fun playPreparedSong(song: Song) {
         if (isPreparingRandomSong) {

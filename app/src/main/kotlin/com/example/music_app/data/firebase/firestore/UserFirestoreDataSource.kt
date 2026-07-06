@@ -1,4 +1,4 @@
-package com.example.music_app.data.remote
+package com.example.music_app.data.firebase.firestore
 
 import com.example.music_app.data.model.User
 import com.google.firebase.firestore.DocumentSnapshot
@@ -7,7 +7,7 @@ import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 
 /** Low-level Firestore access for public user profiles and user roles. */
-class UserRemoteDataSource(
+class UserFirestoreDataSource(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
 

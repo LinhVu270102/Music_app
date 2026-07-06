@@ -7,8 +7,10 @@ import com.example.music_app.data.model.enums.AppNotificationTargetType
 import com.example.music_app.data.model.enums.AppNotificationType
 import com.example.music_app.data.model.enums.SongStatus
 import com.example.music_app.data.model.User
-import com.example.music_app.data.remote.NotificationRemoteDataSource
-import com.example.music_app.data.remote.SocialRemoteDataSource
+import com.example.music_app.data.firebase.firestore.NotificationFirestoreDataSource
+import com.example.music_app.data.firebase.firestore.SongFirestoreDataSource
+import com.example.music_app.data.firebase.firestore.SocialFirestoreDataSource
+import com.example.music_app.data.firebase.firestore.UserFirestoreDataSource
 import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -20,18 +22,23 @@ import com.google.firebase.firestore.FirebaseFirestore
 class SocialRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val remoteDataSource: SocialRemoteDataSource = SocialRemoteDataSource(firestore),
-    private val notificationRemoteDataSource: NotificationRemoteDataSource =
-        NotificationRemoteDataSource(firestore)
+    private val firestoreDataSource: SocialFirestoreDataSource = SocialFirestoreDataSource(firestore),
+    private val songFirestoreDataSource: SongFirestoreDataSource = SongFirestoreDataSource(firestore),
+    private val userFirestoreDataSource: UserFirestoreDataSource = UserFirestoreDataSource(firestore),
+    private val notificationFirestoreDataSource: NotificationFirestoreDataSource =
+        NotificationFirestoreDataSource(firestore)
 ) {
     suspend fun isSongLiked(songId: String): Boolean {
         val userId = auth.currentUser?.uid ?: return false
-        return remoteDataSource.isSongLiked(userId, songId)
+        return firestoreDataSource.isSongLiked(userId, songId)
     }
 
     suspend fun getLikedSongs(): List<Song> {
         val userId = auth.currentUser?.uid ?: return emptyList()
-        return remoteDataSource.getLikedSongs(userId)
+        return firestoreDataSource.getLikedSongIds(userId)
+            .mapNotNull { songId ->
+                runCatching { songFirestoreDataSource.getSongById(songId) }.getOrNull()
+            }
             .filter { song -> song.isVisibleLikedSong() }
     }
 
@@ -39,19 +46,19 @@ class SocialRepository(
         val userId = auth.currentUser?.uid ?: return false
         if (!song.canBeLiked()) return false
 
-        if (remoteDataSource.isSongLiked(userId, song.id)) {
-            remoteDataSource.unlikeSong(userId, song.id)
+        if (firestoreDataSource.isSongLiked(userId, song.id)) {
+            firestoreDataSource.unlikeSong(userId, song.id)
             return false
         }
 
-        remoteDataSource.likeSong(userId, song.id)
+        firestoreDataSource.likeSong(userId, song.id)
         createSongLikeNotification(userId, song)
         return true
     }
 
     suspend fun isFollowing(targetUserId: String): Boolean {
         val currentUserId = auth.currentUser?.uid ?: return false
-        return remoteDataSource.isFollowing(currentUserId, targetUserId)
+        return firestoreDataSource.isFollowing(currentUserId, targetUserId)
     }
 
     suspend fun toggleFollow(targetUserId: String): Boolean {
@@ -61,23 +68,27 @@ class SocialRepository(
             targetUserId = targetUserId
         )
 
-        if (remoteDataSource.isFollowing(currentUser.uid, targetUserId)) {
-            remoteDataSource.unfollowUser(currentUser.uid, targetUserId)
+        if (firestoreDataSource.isFollowing(currentUser.uid, targetUserId)) {
+            firestoreDataSource.unfollowUser(currentUser.uid, targetUserId)
             return false
         }
 
-        remoteDataSource.followUser(currentUser.uid, targetUserId)
+        firestoreDataSource.followUser(currentUser.uid, targetUserId)
         createFollowNotification(currentUser.uid, targetUserId)
         return true
     }
 
     suspend fun getFollowingUsers(): List<User> {
         val userId = auth.currentUser?.uid ?: return emptyList()
-        return remoteDataSource.getFollowingUsers(userId)
+        return firestoreDataSource.getFollowingUserIds(userId)
+            .mapNotNull { targetUserId ->
+                userFirestoreDataSource.getById(targetUserId)
+                    ?: getSyntheticUserFromUploadedSongs(targetUserId)
+            }
     }
 
     suspend fun getFollowerCount(userId: String): Long {
-        return remoteDataSource.getFollowerCount(userId)
+        return firestoreDataSource.getFollowerCount(userId)
     }
 
     private fun validateFollowTarget(currentUserId: String, targetUserId: String) {
@@ -95,21 +106,23 @@ class SocialRepository(
     }
 
     private fun Song.isVisibleLikedSong(): Boolean {
-        return statusType == SongStatus.APPROVED && !isDeleted
+        return statusType == SongStatus.APPROVED &&
+            !isDeleted &&
+            songUrl.isNotBlank()
     }
 
     private suspend fun createSongLikeNotification(actorId: String, song: Song) {
         val receiverId = song.uploaderId
         if (receiverId.isBlank() || receiverId == actorId) return
 
-        val actor = remoteDataSource.getUser(actorId)
+        val actor = userFirestoreDataSource.getById(actorId)
         val actorName = actor?.displayName?.takeIf(String::isNotBlank)
             ?: actor?.email
             ?: auth.currentUser?.displayName
             ?: auth.currentUser?.email
             ?: "Orange Music user"
 
-        notificationRemoteDataSource.create(
+        notificationFirestoreDataSource.create(
             AppNotification(
                 receiverId = receiverId,
                 actorId = actorId,
@@ -125,13 +138,13 @@ class SocialRepository(
     }
 
     private suspend fun createFollowNotification(actorId: String, receiverId: String) {
-        val actor = remoteDataSource.getUser(actorId)
+        val actor = userFirestoreDataSource.getById(actorId)
         val actorName = actor?.displayName?.takeIf(String::isNotBlank)
             ?: actor?.email
             ?: auth.currentUser?.email
             ?: "Orange Music user"
 
-        notificationRemoteDataSource.create(
+        notificationFirestoreDataSource.create(
             AppNotification(
                 receiverId = receiverId,
                 actorId = actorId,
@@ -144,5 +157,31 @@ class SocialRepository(
                 targetType = AppNotificationTargetType.USER.value
             )
         )
+    }
+
+    private suspend fun getSyntheticUserFromUploadedSongs(userId: String): User? {
+        if (userId.isBlank()) return null
+
+        val songs = getApprovedSongsByUploaderId(userId)
+        val firstSong = songs.firstOrNull() ?: return null
+        val artistName = firstSong.artist.ifBlank { userId }
+
+        return User(
+            uid = userId,
+            displayName = artistName,
+            username = artistName,
+            avatarUrl = firstSong.coverUrl,
+            fullName = artistName,
+            uploadedSongsCount = songs.size.toLong()
+        )
+    }
+
+    private suspend fun getApprovedSongsByUploaderId(userId: String): List<Song> {
+        val normalizedSongs = songFirestoreDataSource.getApprovedSongsByUploaderId(userId)
+        val legacySongs = runCatching {
+            songFirestoreDataSource.getLegacyApprovedSongsByUploaderId(userId)
+        }.getOrDefault(emptyList())
+
+        return (normalizedSongs + legacySongs).distinctBy(Song::id)
     }
 }

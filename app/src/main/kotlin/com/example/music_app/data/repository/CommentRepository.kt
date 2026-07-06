@@ -10,10 +10,10 @@ import com.example.music_app.data.model.enums.AppNotificationType
 import com.example.music_app.data.model.enums.ReportStatus
 import com.example.music_app.data.model.enums.ReportTargetType
 import com.example.music_app.data.model.enums.UserRole
-import com.example.music_app.data.remote.CommentRemoteDataSource
-import com.example.music_app.data.remote.NotificationRemoteDataSource
-import com.example.music_app.data.remote.ReportRemoteDataSource
-import com.example.music_app.data.remote.UserRemoteDataSource
+import com.example.music_app.data.firebase.firestore.CommentFirestoreDataSource
+import com.example.music_app.data.firebase.firestore.NotificationFirestoreDataSource
+import com.example.music_app.data.firebase.firestore.ReportFirestoreDataSource
+import com.example.music_app.data.firebase.firestore.UserFirestoreDataSource
 import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -75,22 +75,22 @@ class CommentRepository private constructor(
 private class FirestoreCommentRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val remoteDataSource: CommentRemoteDataSource =
-        CommentRemoteDataSource(firestore),
-    private val userRemoteDataSource: UserRemoteDataSource =
-        UserRemoteDataSource(firestore),
-    private val notificationRemoteDataSource: NotificationRemoteDataSource =
-        NotificationRemoteDataSource(firestore),
-    private val reportRemoteDataSource: ReportRemoteDataSource =
-        ReportRemoteDataSource(firestore)
+    private val firestoreDataSource: CommentFirestoreDataSource =
+        CommentFirestoreDataSource(firestore),
+    private val userFirestoreDataSource: UserFirestoreDataSource =
+        UserFirestoreDataSource(firestore),
+    private val notificationFirestoreDataSource: NotificationFirestoreDataSource =
+        NotificationFirestoreDataSource(firestore),
+    private val reportFirestoreDataSource: ReportFirestoreDataSource =
+        ReportFirestoreDataSource(firestore)
 ) {
 
     fun getCurrentUserId(): String = auth.currentUser?.uid.orEmpty()
 
-    suspend fun getSong(songId: String): Song? = remoteDataSource.getSong(songId)
+    suspend fun getSong(songId: String): Song? = firestoreDataSource.getSong(songId)
 
     suspend fun getComments(songId: String): List<Comment> =
-        remoteDataSource.getAll(songId, getCurrentUserId())
+        firestoreDataSource.getAll(songId, getCurrentUserId())
 
     suspend fun addComment(
         songId: String,
@@ -100,10 +100,10 @@ private class FirestoreCommentRepository(
         val normalizedContent = content.trim()
         val song = requireCommentableSong(songId, normalizedContent)
         val userId = requireCurrentUserId()
-        val user = userRemoteDataSource.getById(userId)
+        val user = userFirestoreDataSource.getById(userId)
             ?: throw AppException(R.string.user_not_found)
 
-        return remoteDataSource.add(
+        return firestoreDataSource.add(
             songId = song.id,
             user = user,
             content = normalizedContent,
@@ -118,10 +118,10 @@ private class FirestoreCommentRepository(
         description: String = ""
     ): Report {
         val userId = requireCurrentUserId()
-        val user = userRemoteDataSource.getById(userId)
+        val user = userFirestoreDataSource.getById(userId)
             ?: throw AppException(R.string.user_not_found)
 
-        return reportRemoteDataSource.create(
+        return reportFirestoreDataSource.create(
             Report(
                 targetId = commentId,
                 targetType = ReportTargetType.COMMENT.value,
@@ -139,12 +139,12 @@ private class FirestoreCommentRepository(
         commentId: String
     ) {
         val userId = requireCurrentUserId()
-        val currentUser = userRemoteDataSource.getById(userId)
+        val currentUser = userFirestoreDataSource.getById(userId)
             ?: throw AppException(R.string.user_not_found)
-        val comment = remoteDataSource.getAll(songId)
+        val comment = firestoreDataSource.getAll(songId)
             .firstOrNull { item -> item.id == commentId }
             ?: throw AppException(R.string.comment_not_found)
-        val song = remoteDataSource.getSong(songId)
+        val song = firestoreDataSource.getSong(songId)
             ?: throw AppException(R.string.invalid_song)
 
         val canHide = comment.userId == userId ||
@@ -155,15 +155,15 @@ private class FirestoreCommentRepository(
             throw AppException(R.string.no_permission)
         }
 
-        remoteDataSource.softDelete(songId, commentId, userId)
+        firestoreDataSource.softDelete(songId, commentId, userId)
     }
 
     suspend fun toggleCommentLike(songId: String, comment: Comment): Boolean {
         val actorId = requireCurrentUserId()
-        val isLiked = remoteDataSource.toggleLike(songId, comment.id, actorId)
+        val isLiked = firestoreDataSource.toggleLike(songId, comment.id, actorId)
 
         if (isLiked && comment.userId.isNotBlank() && comment.userId != actorId) {
-            val actor = userRemoteDataSource.getById(actorId)
+            val actor = userFirestoreDataSource.getById(actorId)
             val actorName = actor?.displayName?.takeIf(String::isNotBlank)
                 ?: actor?.email
                 ?: auth.currentUser?.displayName
@@ -174,7 +174,7 @@ private class FirestoreCommentRepository(
             // notification write problem must not make the UI report the
             // successful like as a failed action or prevent a later unlike.
             runCatching {
-                notificationRemoteDataSource.create(
+                notificationFirestoreDataSource.create(
                     AppNotification(
                         receiverId = comment.userId,
                         actorId = actorId,
@@ -203,7 +203,7 @@ private class FirestoreCommentRepository(
         if (songId.isBlank()) throw AppException(R.string.invalid_song)
         if (content.isBlank()) throw AppException(R.string.comment_content_empty)
 
-        val song = remoteDataSource.getSong(songId)
+        val song = firestoreDataSource.getSong(songId)
             ?: throw AppException(R.string.invalid_song)
 
         if (song.isDeleted) throw AppException(R.string.song_deleted)

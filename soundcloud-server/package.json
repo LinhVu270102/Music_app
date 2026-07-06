@@ -10,7 +10,8 @@
     "populate:playlists": "node scripts/populate-api-playlists-with-random-songs.js",
     "seed:catalog": "node scripts/seed-soundcloud-catalog.js",
     "verify:catalog": "node scripts/verify-soundcloud-catalog.js",
-    "migrate:catalog": "node scripts/migrate-catalog-songs.js"
+    "migrate:catalog": "node scripts/migrate-catalog-songs.js",
+    "backfill:songurl": "node scripts/backfill-songurl-from-soundcloud.js"
   },
   "keywords": [],
   "author": "",

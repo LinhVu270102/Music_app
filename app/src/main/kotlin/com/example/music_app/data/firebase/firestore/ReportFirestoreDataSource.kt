@@ -1,4 +1,4 @@
-package com.example.music_app.data.remote
+package com.example.music_app.data.firebase.firestore
 
 import com.example.music_app.R
 import com.example.music_app.data.model.Report
@@ -13,7 +13,7 @@ import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 
 /** Low-level Firestore access for moderation reports and their review status. */
-class ReportRemoteDataSource(
+class ReportFirestoreDataSource(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
 

@@ -46,7 +46,7 @@ data class Song(
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
 
-    // songUrl is resolved from Firebase Storage or the temporary legacy streaming proxy.
+    // Stable audio URL used directly by the Android player.
 ) {
     @get:Exclude
     val statusType: SongStatus

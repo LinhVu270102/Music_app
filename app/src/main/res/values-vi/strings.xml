@@ -356,6 +356,7 @@
     <string name="song_url_empty">Không có đường dẫn phát nhạc</string>
 
     <string name="playback_failed">Không thể phát bài hát này</string>
+    <string name="soundcloud_server_unavailable">SoundCloud server chưa chạy. Hãy chạy soundcloud-server rồi thử lại.</string>
     <string name="player_not_ready">Trình phát chưa sẵn sàng</string>
 
 

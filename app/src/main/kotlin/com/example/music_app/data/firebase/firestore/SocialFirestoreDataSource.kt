@@ -1,15 +1,12 @@
-package com.example.music_app.data.remote
+package com.example.music_app.data.firebase.firestore
 
-import com.example.music_app.data.model.Song
-import com.example.music_app.data.model.User
-import com.example.music_app.data.model.enums.SongStatus
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 
 /** Low-level Firestore access for song likes and user-follow relationships. */
-class SocialRemoteDataSource(
+class SocialFirestoreDataSource(
     private val firestore: FirebaseFirestore
 ) {
 
@@ -48,10 +45,10 @@ class SocialRemoteDataSource(
         return userId.isNotBlank() && songId.isNotBlank() && likedSong(userId, songId).get().await().exists()
     }
 
-    suspend fun getLikedSongs(userId: String): List<Song> {
+    suspend fun getLikedSongIds(userId: String): List<String> {
         if (userId.isBlank()) return emptyList()
 
-        val songIds = firestore.collection("users")
+        return firestore.collection("users")
             .document(userId)
             .collection("likedSongs")
             .orderBy("likedAt", Query.Direction.DESCENDING)
@@ -59,10 +56,6 @@ class SocialRemoteDataSource(
             .await()
             .documents
             .mapNotNull { document -> document.getString("songId") }
-
-        return songIds.mapNotNull { songId ->
-            runCatching { getSong(songId) }.getOrNull()
-        }
     }
 
     suspend fun followUser(currentUserId: String, targetUserId: String) {
@@ -90,10 +83,10 @@ class SocialRemoteDataSource(
             following(currentUserId, targetUserId).get().await().exists()
     }
 
-    suspend fun getFollowingUsers(userId: String): List<User> {
+    suspend fun getFollowingUserIds(userId: String): List<String> {
         if (userId.isBlank()) return emptyList()
 
-        val userIds = firestore.collection("users")
+        return firestore.collection("users")
             .document(userId)
             .collection("following")
             .orderBy("followedAt", Query.Direction.DESCENDING)
@@ -101,10 +94,6 @@ class SocialRemoteDataSource(
             .await()
             .documents
             .mapNotNull { document -> document.getString("userId") }
-
-        return userIds.mapNotNull { targetUserId ->
-            getUser(targetUserId) ?: getSyntheticUserFromUploadedSongs(targetUserId)
-        }
     }
 
     suspend fun getFollowerCount(userId: String): Long {
@@ -117,65 +106,6 @@ class SocialRemoteDataSource(
             .await()
             .size()
             .toLong()
-    }
-
-    suspend fun getUser(userId: String): User? {
-        if (userId.isBlank()) return null
-
-        val document = firestore.collection("users").document(userId).get().await()
-        return document.toObject(User::class.java)?.copy(uid = document.id)
-    }
-
-    private suspend fun getSong(songId: String): Song? {
-        if (songId.isBlank()) return null
-
-        val document = firestore.collection("songs").document(songId).get().await()
-        return document.toObject(Song::class.java)?.copy(id = document.id)
-    }
-
-    private suspend fun getSyntheticUserFromUploadedSongs(userId: String): User? {
-        if (userId.isBlank()) return null
-
-        val songs = getApprovedSongsByUploaderId(userId)
-        val firstSong = songs.firstOrNull() ?: return null
-        val artistName = firstSong.artist.ifBlank { userId }
-
-        return User(
-            uid = userId,
-            displayName = artistName,
-            username = artistName,
-            avatarUrl = firstSong.coverUrl,
-            fullName = artistName,
-            uploadedSongsCount = songs.size.toLong()
-        )
-    }
-
-    private suspend fun getApprovedSongsByUploaderId(userId: String): List<Song> {
-        val normalizedSongs = firestore.collection("songs")
-            .whereEqualTo("uploaderId", userId)
-            .whereEqualTo("status", SongStatus.APPROVED.value)
-            .whereEqualTo("isDeleted", false)
-            .get()
-            .await()
-            .documents
-            .mapNotNull { document ->
-                document.toObject(Song::class.java)?.copy(id = document.id)
-            }
-
-        val legacySongs = runCatching {
-            firestore.collection("songs")
-                .whereEqualTo("uploaderId", userId)
-                .whereEqualTo("status", "APPROVED")
-                .whereEqualTo("isDeleted", false)
-                .get()
-                .await()
-                .documents
-                .mapNotNull { document ->
-                    document.toObject(Song::class.java)?.copy(id = document.id)
-                }
-        }.getOrDefault(emptyList())
-
-        return (normalizedSongs + legacySongs).distinctBy(Song::id)
     }
 
     private fun likedSong(userId: String, songId: String) = firestore.collection("users")

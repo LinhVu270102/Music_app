@@ -1,4 +1,4 @@
-package com.example.music_app.data.remote
+package com.example.music_app.data.firebase.firestore
 
 import android.util.Log
 import com.example.music_app.data.model.Playlist
@@ -10,7 +10,7 @@ import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 
 /** Low-level Firestore operations for user playlists and saved public playlists. */
-class PlaylistRemoteDataSource(
+class PlaylistFirestoreDataSource(
     private val firestore: FirebaseFirestore
 ) {
 
@@ -52,6 +52,16 @@ class PlaylistRemoteDataSource(
             .await()
             .documents
             .mapNotNull(::toPlaylist)
+    }
+
+    suspend fun getUserPlaylist(userId: String, playlistId: String): Playlist? {
+        if (userId.isBlank() || playlistId.isBlank()) return null
+
+        val document = userPlaylist(userId, playlistId)
+            .get()
+            .await()
+
+        return toPlaylist(document)
     }
 
     suspend fun getPublicUserPlaylists(userId: String): List<Playlist> {
@@ -196,6 +206,17 @@ class PlaylistRemoteDataSource(
             }
     }
 
+    suspend fun hasUserSongs(userId: String, playlistId: String): Boolean {
+        if (userId.isBlank() || playlistId.isBlank()) return false
+
+        return playlistSongs(userId, playlistId)
+            .limit(1)
+            .get()
+            .await()
+            .documents
+            .isNotEmpty()
+    }
+
     suspend fun getRootSongs(playlistId: String): List<Song> {
         if (playlistId.isBlank()) return emptyList()
 
@@ -325,30 +346,6 @@ class PlaylistRemoteDataSource(
         }
     }
 
-    suspend fun firstSongCoverUrlIfPlaylistNeedsCover(
-        userId: String,
-        playlistId: String,
-        song: Song
-    ): String {
-        if (song.coverUrl.isBlank()) return ""
-
-        return runCatching {
-            val playlistSnapshot = userPlaylist(userId, playlistId).get().await()
-            val currentCoverUrl = playlistSnapshot.getString("coverUrl").orEmpty()
-
-            if (currentCoverUrl.isNotBlank()) return@runCatching ""
-
-            val hasExistingSongs = playlistSongs(userId, playlistId)
-                .limit(1)
-                .get()
-                .await()
-                .documents
-                .isNotEmpty()
-
-            if (hasExistingSongs) "" else song.coverUrl
-        }.getOrDefault("")
-    }
-
     private fun userPlaylist(userId: String, playlistId: String) = firestore.collection("users")
         .document(userId)
         .collection("playlists")
@@ -403,7 +400,7 @@ class PlaylistRemoteDataSource(
     }
 
     private companion object {
-        const val TAG = "PlaylistRemoteDataSource"
+        const val TAG = "PlaylistFirestoreDataSource"
         const val RECENTLY_PLAYED_PLAYLIST_LIMIT = 20L
     }
 }

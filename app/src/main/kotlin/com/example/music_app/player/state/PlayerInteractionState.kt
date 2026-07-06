@@ -3,26 +3,7 @@ package com.example.music_app.player.state
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 
-/** Shared UI state between the full player and the mini player. */
-data class SongLikeState(
-    val songId: String,
-    val liked: Boolean,
-    val likesCount: Long? = null,
-    val commentsCount: Long? = null,
-    val changedByUser: Boolean = false
-)
-
-data class SongCommentState(
-    val songId: String,
-    val commentsCount: Long
-)
-
-data class ArtistFollowState(
-    val userId: String,
-    val followed: Boolean,
-    val followerCount: Long? = null
-)
-
+/** Shared UI state bus between the full player, mini player, and related screens. */
 object PlayerInteractionState {
     private val songStates = mutableMapOf<String, SongLikeState>()
     private val songCommentCounts = mutableMapOf<String, Long>()

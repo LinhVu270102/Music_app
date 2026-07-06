@@ -8,9 +8,9 @@ import com.example.music_app.data.model.enums.ReportTargetType
 import com.example.music_app.data.model.User
 import com.example.music_app.data.model.enums.SongStatus
 import com.example.music_app.data.model.enums.UserRole
-import com.example.music_app.data.remote.ReportRemoteDataSource
-import com.example.music_app.data.remote.SongRemoteDataSource
-import com.example.music_app.data.remote.UserRemoteDataSource
+import com.example.music_app.data.firebase.firestore.ReportFirestoreDataSource
+import com.example.music_app.data.firebase.firestore.SongFirestoreDataSource
+import com.example.music_app.data.firebase.firestore.UserFirestoreDataSource
 import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -19,9 +19,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 class SongRepository {
 
     private val db = FirebaseFirestore.getInstance()
-    private val songRemoteDataSource = SongRemoteDataSource(db)
-    private val userRemoteDataSource = UserRemoteDataSource(db)
-    private val reportRemoteDataSource = ReportRemoteDataSource(db)
+    private val songFirestoreDataSource = SongFirestoreDataSource(db)
+    private val userFirestoreDataSource = UserFirestoreDataSource(db)
+    private val reportFirestoreDataSource = ReportFirestoreDataSource(db)
     private val auth = FirebaseAuth.getInstance()
 
     fun getCurrentUserId(): String = auth.currentUser?.uid.orEmpty()
@@ -31,17 +31,17 @@ class SongRepository {
     // =========================
 
     suspend fun getSong(songId: String): Song? {
-        return songRemoteDataSource.getSongById(songId)
+        return songFirestoreDataSource.getSongById(songId)
     }
 
     suspend fun getAllSongs(): List<Song> {
         // Firestore rules only allow a public query that explicitly constrains
         // the catalog to approved, non-deleted songs.
-        val approvedSongs = songRemoteDataSource.getApprovedSongs()
+        val approvedSongs = songFirestoreDataSource.getApprovedSongs()
         // Do not let a legacy query denied by an older deployed rule hide the
         // already-readable, normalized catalog.
         val legacySongs = runCatching {
-            songRemoteDataSource.getLegacyApprovedSongs()
+            songFirestoreDataSource.getLegacyApprovedSongs()
         }.getOrDefault(emptyList())
 
         return (approvedSongs + legacySongs)
@@ -50,13 +50,13 @@ class SongRepository {
     }
 
     suspend fun upsertSong(song: Song) {
-        songRemoteDataSource.upsertSong(song)
+        songFirestoreDataSource.upsertSong(song)
     }
 
     suspend fun getRecentlyPlayedSongs(): List<Song> {
         val userId = auth.currentUser?.uid ?: return emptyList()
 
-        return songRemoteDataSource.getRecentlyPlayedSongs(userId)
+        return songFirestoreDataSource.getRecentlyPlayedSongs(userId)
             .filter { song -> song.isApprovedVisible() }
     }
 
@@ -66,13 +66,13 @@ class SongRepository {
 
     suspend fun getCurrentUserProfile(): User? {
         val userId = auth.currentUser?.uid ?: return null
-        return userRemoteDataSource.getById(userId)
+        return userFirestoreDataSource.getById(userId)
     }
 
 
     suspend fun getMyUploadedSongs(): List<Song> {
         val userId = auth.currentUser?.uid ?: return emptyList()
-        return songRemoteDataSource.getSongsByUploaderId(userId)
+        return songFirestoreDataSource.getSongsByUploaderId(userId)
     }
 
 
@@ -80,10 +80,10 @@ class SongRepository {
         val userId = auth.currentUser?.uid
             ?: throw AppException(R.string.not_logged_in)
 
-        val song = songRemoteDataSource.getSongById(songId)
+        val song = songFirestoreDataSource.getSongById(songId)
             ?: throw AppException(R.string.invalid_song)
 
-        val currentUser = userRemoteDataSource.getById(userId)
+        val currentUser = userFirestoreDataSource.getById(userId)
             ?: throw AppException(R.string.user_not_found)
 
         val isOwner = song.uploaderId == userId
@@ -93,7 +93,7 @@ class SongRepository {
             throw AppException(R.string.no_permission)
         }
 
-        songRemoteDataSource.softDeleteSong(
+        songFirestoreDataSource.softDeleteSong(
             songId = songId,
             deletedBy = userId
         )
@@ -106,10 +106,10 @@ class SongRepository {
         val userId = auth.currentUser?.uid
             ?: throw AppException(R.string.not_logged_in)
 
-        val song = songRemoteDataSource.getSongById(songId)
+        val song = songFirestoreDataSource.getSongById(songId)
             ?: throw AppException(R.string.invalid_song)
 
-        val currentUser = userRemoteDataSource.getById(userId)
+        val currentUser = userFirestoreDataSource.getById(userId)
             ?: throw AppException(R.string.user_not_found)
 
         val isOwner = song.uploaderId == userId
@@ -119,7 +119,7 @@ class SongRepository {
             throw AppException(R.string.no_permission)
         }
 
-        songRemoteDataSource.updateSongCommentPermission(
+        songFirestoreDataSource.updateSongCommentPermission(
             songId = songId,
             allowComments = allowComments
         )
@@ -127,7 +127,14 @@ class SongRepository {
 
 
     suspend fun getSongsByUserId(userId: String): List<Song> {
-        return songRemoteDataSource.getApprovedSongsByUploaderId(userId)
+        val approvedSongs = songFirestoreDataSource.getApprovedSongsByUploaderId(userId)
+        val legacySongs = runCatching {
+            songFirestoreDataSource.getLegacyApprovedSongsByUploaderId(userId)
+        }.getOrDefault(emptyList())
+
+        return (approvedSongs + legacySongs)
+            .distinctBy(Song::id)
+            .filter { song -> song.isApprovedVisible() }
     }
 
     suspend fun getSongsByArtistName(artistName: String): List<Song> {
@@ -140,12 +147,12 @@ class SongRepository {
     }
 
     suspend fun getUserById(userId: String): User? {
-        return userRemoteDataSource.getById(userId)
+        return userFirestoreDataSource.getById(userId)
     }
 
     suspend fun resubmitMyRejectedSong(songId: String) {
         val userId = auth.currentUser?.uid ?: throw AppException(R.string.not_logged_in)
-        val song = songRemoteDataSource.getSongById(songId) ?: throw AppException(R.string.invalid_song)
+        val song = songFirestoreDataSource.getSongById(songId) ?: throw AppException(R.string.invalid_song)
 
         if (song.uploaderId != userId) {
             throw AppException(R.string.no_permission)
@@ -155,7 +162,7 @@ class SongRepository {
             throw AppException(R.string.only_rejected_song_can_resubmit)
         }
 
-        songRemoteDataSource.resubmitSongForReview(songId)
+        songFirestoreDataSource.resubmitSongForReview(songId)
     }
 
     // =========================
@@ -171,10 +178,10 @@ class SongRepository {
         val userId = auth.currentUser?.uid
             ?: throw AppException(R.string.not_logged_in)
 
-        val user = userRemoteDataSource.getById(userId)
+        val user = userFirestoreDataSource.getById(userId)
             ?: throw AppException(R.string.user_not_found)
 
-        val song = songRemoteDataSource.getSongById(songId)
+        val song = songFirestoreDataSource.getSongById(songId)
             ?: throw AppException(R.string.invalid_song)
 
         if (song.isDeleted) {
@@ -191,7 +198,7 @@ class SongRepository {
             status = ReportStatus.PENDING.value
         )
 
-        return reportRemoteDataSource.create(report)
+        return reportFirestoreDataSource.create(report)
     }
 
     private fun normalizeArtistName(value: String): String {
@@ -203,7 +210,9 @@ class SongRepository {
     }
 
     private fun Song.isApprovedVisible(): Boolean {
-        return statusType == SongStatus.APPROVED && !isDeleted
+        return statusType == SongStatus.APPROVED &&
+            !isDeleted &&
+            songUrl.isNotBlank()
     }
 
 }

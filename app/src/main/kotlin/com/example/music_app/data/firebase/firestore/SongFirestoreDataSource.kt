@@ -1,4 +1,4 @@
-package com.example.music_app.data.remote
+package com.example.music_app.data.firebase.firestore
 
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
@@ -11,7 +11,7 @@ import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 
 /** Low-level Firestore access for songs, moderation fields, and listening history. */
-class SongRemoteDataSource(
+class SongFirestoreDataSource(
     private val firestore: FirebaseFirestore
 ) {
 
@@ -39,9 +39,7 @@ class SongRemoteDataSource(
             .get()
             .await()
 
-        return snapshot.documents.mapNotNull { doc ->
-            doc.toObject(Song::class.java)?.copy(id = doc.id)
-        }
+        return snapshot.documents.mapNotNull(::toPlayableSong)
     }
 
     suspend fun upsertSong(song: Song) {
@@ -63,9 +61,7 @@ class SongRemoteDataSource(
             .get()
             .await()
 
-        return snapshot.documents.mapNotNull { doc ->
-            doc.toObject(Song::class.java)?.copy(id = doc.id)
-        }
+        return snapshot.documents.mapNotNull(::toPlayableSong)
     }
 
     suspend fun getApprovedSongsByUploaderId(userId: String): List<Song> {
@@ -74,6 +70,19 @@ class SongRemoteDataSource(
         val snapshot = firestore.collection("songs")
             .whereEqualTo("uploaderId", userId)
             .whereEqualTo("status", SongStatus.APPROVED.value)
+            .whereEqualTo("isDeleted", false)
+            .get()
+            .await()
+
+        return snapshot.documents.mapNotNull(::toPlayableSong)
+    }
+
+    suspend fun getLegacyApprovedSongsByUploaderId(userId: String): List<Song> {
+        if (userId.isBlank()) return emptyList()
+
+        val snapshot = firestore.collection("songs")
+            .whereEqualTo("uploaderId", userId)
+            .whereEqualTo("status", "APPROVED")
             .whereEqualTo("isDeleted", false)
             .get()
             .await()
@@ -111,9 +120,7 @@ class SongRemoteDataSource(
             .get()
             .await()
 
-        return snapshot.documents.mapNotNull { document ->
-            document.toObject(Song::class.java)?.copy(id = document.id)
-        }
+        return snapshot.documents.mapNotNull(::toPlayableSong)
     }
 
     suspend fun getSongsByStatus(status: String): List<Song> {
@@ -250,9 +257,7 @@ class SongRemoteDataSource(
                     .await()
             }.getOrNull() ?: return@forEach
 
-            val batchSongs = songSnapshot.documents.mapNotNull { document ->
-                document.toObject(Song::class.java)?.copy(id = document.id)
-            }
+            val batchSongs = songSnapshot.documents.mapNotNull(::toPlayableSong)
 
             songs.addAll(batchSongs)
         }
@@ -268,18 +273,27 @@ class SongRemoteDataSource(
             }
     }
 
+    private fun toPlayableSong(
+        document: com.google.firebase.firestore.DocumentSnapshot
+    ): Song? {
+        return document.toObject(Song::class.java)
+            ?.copy(id = document.id)
+            ?.takeIf { song -> song.songUrl.isNotBlank() }
+    }
+
     private fun com.google.firebase.firestore.DocumentSnapshot.toRecentSong(): Song? {
         val songId = getString("songId") ?: id
         val title = getString("title").orEmpty()
+        val songUrl = getString("songUrl").orEmpty()
 
-        if (songId.isBlank() || title.isBlank()) return null
+        if (songId.isBlank() || title.isBlank() || songUrl.isBlank()) return null
 
         return Song(
             id = songId,
             title = title,
             artist = getString("artist").orEmpty(),
             coverUrl = getString("coverUrl").orEmpty(),
-            songUrl = getString("songUrl").orEmpty(),
+            songUrl = songUrl,
             duration = (getLong("duration") ?: 0L).toInt(),
             uploaderId = getString("uploaderId").orEmpty(),
             genre = getString("genre").orEmpty(),

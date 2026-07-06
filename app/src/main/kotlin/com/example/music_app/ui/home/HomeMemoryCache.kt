@@ -25,14 +25,10 @@ object HomeMemoryCache {
 
     fun isValid(): Boolean {
         val currentData = data ?: return false
+        val songs = currentData.allSongs()
 
-        val hasData =
-            currentData.relatedTracks.isNotEmpty() ||
-                    currentData.moreLike.isNotEmpty() ||
-                    currentData.hotForYou.isNotEmpty() ||
-                    currentData.trendingByGenre.isNotEmpty()
-
-        if (!hasData) return false
+        if (songs.isEmpty()) return false
+        if (songs.any { song -> !song.isPlayableHomeSong() }) return false
 
         return System.currentTimeMillis() - cachedAt < CACHE_TTL_MS
     }
@@ -40,5 +36,13 @@ object HomeMemoryCache {
     fun clear() {
         data = null
         cachedAt = 0L
+    }
+
+    private fun HomeData.allSongs(): List<Song> {
+        return relatedTracks + moreLike + hotForYou + trendingByGenre
+    }
+
+    private fun Song.isPlayableHomeSong(): Boolean {
+        return id.isNotBlank() && songUrl.isNotBlank() && !isDeleted
     }
 }

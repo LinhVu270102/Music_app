@@ -1,4 +1,4 @@
-package com.example.music_app.data.remote
+package com.example.music_app.data.firebase.firestore
 
 import com.example.music_app.R
 import com.example.music_app.data.model.Comment
@@ -12,7 +12,7 @@ import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
 
 /** Low-level Firestore access for comments and comment-moderation queries. */
-class CommentRemoteDataSource(
+class CommentFirestoreDataSource(
     private val firestore: FirebaseFirestore
 ) {
 

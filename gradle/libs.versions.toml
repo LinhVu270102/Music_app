@@ -17,15 +17,9 @@ firebaseFirestore = "25.1.2"
 firebaseFirestoreKtx = "26.2.0"
 glide = "4.16.0"
 media3Exoplayer = "1.10.0"
-retrofit = "2.11.0"
-okhttp = "4.12.0"
 
 [libraries]
 # ... (các thư viện khác giữ nguyên)
-retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
-retrofit-gson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
-okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
-okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

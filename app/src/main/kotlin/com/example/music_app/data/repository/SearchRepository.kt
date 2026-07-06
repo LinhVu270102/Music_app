@@ -65,6 +65,7 @@ class SearchRepository(
             .mapNotNull { doc ->
                 doc.toObject(Song::class.java)?.copy(id = doc.id)
             }
+            .filter { song -> song.songUrl.isNotBlank() }
     }
 
     private suspend fun searchProfiles(keyword: String): List<User> {
@@ -109,7 +110,7 @@ class SearchRepository(
     private suspend fun fetchPublicPlaylists(): List<Playlist> = safeSearch(
         label = "fetchPublicPlaylists"
     ) {
-        // PlaylistRemoteDataSource keeps a public root mirror specifically for search.
+        // PlaylistFirestoreDataSource keeps a public root mirror specifically for search.
         // Querying that mirror avoids a collection-group index dependency and includes
         // catalog playlists and public user playlists.
         firestore.collection("playlists")
