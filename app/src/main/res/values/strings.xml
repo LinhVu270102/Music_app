@@ -404,6 +404,7 @@
     <string name="notification_new_follower">New follower</string>
     <string name="notification_new_like">New like</string>
     <string name="notification_new_comment">New comment</string>
+    <string name="notification_new_reply">New reply</string>
     <string name="notification_default_message">You have a new notification.</string>
     <string name="notification_actor_avatar">Notification sender avatar</string>
     <string name="upload_music">Upload music</string>

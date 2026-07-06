@@ -122,7 +122,7 @@ private class FirestoreCommentRepository(
         val userId = requireCurrentUserId()
         val user = getCurrentUserProfile(userId)
 
-        return firestoreDataSource.add(
+        val createdComment = firestoreDataSource.add(
             songId = song.id,
             user = user,
             content = normalizedContent,
@@ -131,6 +131,17 @@ private class FirestoreCommentRepository(
             replyToUserId = replyToUserId,
             replyToDisplayName = replyToDisplayName
         )
+
+        runCatching {
+            createCommentNotification(
+                actor = user,
+                song = song,
+                comment = createdComment,
+                replyReceiverId = replyToUserId
+            )
+        }
+
+        return createdComment
     }
 
     suspend fun reportComment(
@@ -196,12 +207,8 @@ private class FirestoreCommentRepository(
         val isLiked = firestoreDataSource.toggleLike(songId, comment.id, actorId)
 
         if (isLiked && comment.userId.isNotBlank() && comment.userId != actorId) {
-            val actor = userFirestoreDataSource.getById(actorId)
-            val actorName = actor?.displayName?.takeIf(String::isNotBlank)
-                ?: actor?.email
-                ?: auth.currentUser?.displayName
-                ?: auth.currentUser?.email
-                ?: "Orange Music user"
+            val actor = getCurrentUserProfile(actorId)
+            val actorName = actor.displayName.ifBlank { actor.email }.ifBlank { DEFAULT_COMMENTER_NAME }
 
             // The like transaction is already committed. A temporary
             // notification write problem must not make the UI report the
@@ -212,12 +219,13 @@ private class FirestoreCommentRepository(
                         receiverId = comment.userId,
                         actorId = actorId,
                         actorName = actorName,
-                        actorAvatarUrl = actor?.avatarUrl.orEmpty(),
+                        actorAvatarUrl = actor.avatarUrl,
                         type = AppNotificationType.NEW_LIKE.value,
                         title = "New comment like",
                         message = "$actorName liked your comment",
                         targetId = comment.id,
-                        targetType = AppNotificationTargetType.COMMENT.value
+                        targetType = AppNotificationTargetType.COMMENT.value,
+                        relatedSongId = songId
                     )
                 )
             }
@@ -250,6 +258,78 @@ private class FirestoreCommentRepository(
                 ?.substringBefore("@")
                 ?.takeIf(String::isNotBlank)
             ?: DEFAULT_COMMENTER_NAME
+    }
+
+    private suspend fun createCommentNotification(
+        actor: User,
+        song: Song,
+        comment: Comment,
+        replyReceiverId: String
+    ) {
+        val actorName = actor.displayName.ifBlank { actor.email }.ifBlank { DEFAULT_COMMENTER_NAME }
+        val isReply = comment.parentCommentId.isNotBlank()
+
+        if (isReply) {
+            createSocialNotification(
+                receiverId = replyReceiverId,
+                actor = actor,
+                actorName = actorName,
+                type = AppNotificationType.NEW_REPLY,
+                title = "New reply",
+                message = "$actorName replied to your comment",
+                targetId = comment.id,
+                targetType = AppNotificationTargetType.COMMENT,
+                relatedSongId = song.id
+            )
+        }
+
+        val shouldNotifySongOwner =
+            song.uploaderId.isNotBlank() &&
+                song.uploaderId != actor.uid &&
+                song.uploaderId != replyReceiverId
+
+        if (shouldNotifySongOwner) {
+            createSocialNotification(
+                receiverId = song.uploaderId,
+                actor = actor,
+                actorName = actorName,
+                type = AppNotificationType.NEW_COMMENT,
+                title = "New comment",
+                message = "$actorName commented on ${song.title}",
+                targetId = comment.id,
+                targetType = AppNotificationTargetType.COMMENT,
+                relatedSongId = song.id
+            )
+        }
+    }
+
+    private suspend fun createSocialNotification(
+        receiverId: String,
+        actor: User,
+        actorName: String,
+        type: AppNotificationType,
+        title: String,
+        message: String,
+        targetId: String,
+        targetType: AppNotificationTargetType,
+        relatedSongId: String = ""
+    ) {
+        if (receiverId.isBlank() || receiverId == actor.uid) return
+
+        notificationFirestoreDataSource.create(
+            AppNotification(
+                receiverId = receiverId,
+                actorId = actor.uid,
+                actorName = actorName,
+                actorAvatarUrl = actor.avatarUrl,
+                type = type.value,
+                title = title,
+                message = message,
+                targetId = targetId,
+                targetType = targetType.value,
+                relatedSongId = relatedSongId
+            )
+        )
     }
 
     private suspend fun requireCommentableSong(songId: String, content: String): Song {

@@ -13,6 +13,7 @@ class NotificationFirestoreDataSource(
 
     suspend fun create(notification: AppNotification): AppNotification {
         if (notification.receiverId.isBlank()) return notification
+        if (notification.receiverId == notification.actorId) return notification
 
         val reference = notifications(notification.receiverId).document()
 

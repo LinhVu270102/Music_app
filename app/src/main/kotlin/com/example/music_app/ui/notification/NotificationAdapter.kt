@@ -36,6 +36,8 @@ class NotificationAdapter(
                     context.getString(R.string.notification_new_like)
                 AppNotificationType.NEW_COMMENT ->
                     context.getString(R.string.notification_new_comment)
+                AppNotificationType.NEW_REPLY ->
+                    context.getString(R.string.notification_new_reply)
                 else -> item.title.ifBlank {
                     context.getString(R.string.notifications)
                 }

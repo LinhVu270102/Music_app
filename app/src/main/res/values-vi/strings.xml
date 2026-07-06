@@ -404,6 +404,7 @@
     <string name="notification_new_follower">Người theo dõi mới</string>
     <string name="notification_new_like">Lượt thích mới</string>
     <string name="notification_new_comment">Bình luận mới</string>
+    <string name="notification_new_reply">Phản hồi mới</string>
     <string name="notification_default_message">Bạn có một thông báo mới.</string>
     <string name="notification_actor_avatar">Ảnh đại diện người gửi thông báo</string>
     <string name="upload_music">Tải nhạc lên</string>

@@ -116,40 +116,40 @@ class SocialRepository(
         if (receiverId.isBlank() || receiverId == actorId) return
 
         val actor = userFirestoreDataSource.getById(actorId)
-        val actorName = actor?.displayName?.takeIf(String::isNotBlank)
-            ?: actor?.email
-            ?: auth.currentUser?.displayName
-            ?: auth.currentUser?.email
-            ?: "Orange Music user"
+        val actorName = actor.displayName()
+        val actorAvatarUrl = actor?.avatarUrl
+            ?: auth.currentUser?.photoUrl?.toString()
+            ?: ""
 
         notificationFirestoreDataSource.create(
             AppNotification(
                 receiverId = receiverId,
                 actorId = actorId,
                 actorName = actorName,
-                actorAvatarUrl = actor?.avatarUrl.orEmpty(),
+                actorAvatarUrl = actorAvatarUrl,
                 type = AppNotificationType.NEW_LIKE.value,
                 title = "New like",
                 message = "$actorName liked ${song.title}",
                 targetId = song.id,
-                targetType = AppNotificationTargetType.SONG.value
+                targetType = AppNotificationTargetType.SONG.value,
+                relatedSongId = song.id
             )
         )
     }
 
     private suspend fun createFollowNotification(actorId: String, receiverId: String) {
         val actor = userFirestoreDataSource.getById(actorId)
-        val actorName = actor?.displayName?.takeIf(String::isNotBlank)
-            ?: actor?.email
-            ?: auth.currentUser?.email
-            ?: "Orange Music user"
+        val actorName = actor.displayName()
+        val actorAvatarUrl = actor?.avatarUrl
+            ?: auth.currentUser?.photoUrl?.toString()
+            ?: ""
 
         notificationFirestoreDataSource.create(
             AppNotification(
                 receiverId = receiverId,
                 actorId = actorId,
                 actorName = actorName,
-                actorAvatarUrl = actor?.avatarUrl.orEmpty(),
+                actorAvatarUrl = actorAvatarUrl,
                 type = AppNotificationType.NEW_FOLLOWER.value,
                 title = "New follower",
                 message = "$actorName started following you",
@@ -157,6 +157,14 @@ class SocialRepository(
                 targetType = AppNotificationTargetType.USER.value
             )
         )
+    }
+
+    private fun User?.displayName(): String {
+        return this?.displayName?.takeIf(String::isNotBlank)
+            ?: this?.email?.takeIf(String::isNotBlank)
+            ?: auth.currentUser?.displayName?.takeIf(String::isNotBlank)
+            ?: auth.currentUser?.email?.takeIf(String::isNotBlank)
+            ?: "Orange Music user"
     }
 
     private suspend fun getSyntheticUserFromUploadedSongs(userId: String): User? {

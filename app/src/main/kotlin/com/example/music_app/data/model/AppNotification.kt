@@ -23,6 +23,7 @@ data class AppNotification(
     // Liên kết tới dữ liệu liên quan
     val targetId: String = "",
     val targetType: String = AppNotificationTargetType.NONE.value,
+    val relatedSongId: String = "",
 
     // Trạng thái
     val isRead: Boolean = false,

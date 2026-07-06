@@ -6,6 +6,7 @@ enum class AppNotificationType(val value: String) {
     SONG_REJECTED("song_rejected"),
     NEW_FOLLOWER("new_follower"),
     NEW_COMMENT("new_comment"),
+    NEW_REPLY("new_reply"),
     NEW_LIKE("new_like"),
     REPORT_RESOLVED("report_resolved");
 
