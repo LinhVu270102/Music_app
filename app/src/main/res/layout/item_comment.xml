@@ -86,6 +86,16 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/txtReplyContext"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/replying_to_placeholder"
+            android:textColor="@color/gray_light"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <TextView
             android:id="@+id/txtCommentContent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -122,6 +132,7 @@
                 android:textStyle="bold" />
 
             <FrameLayout
+                android:id="@+id/songOwnerLikeBadge"
                 android:layout_width="34dp"
                 android:layout_height="34dp"
                 android:layout_marginStart="28dp">

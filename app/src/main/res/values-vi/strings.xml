@@ -228,6 +228,10 @@
     <string name="comment_time_ago_placeholder">2 năm</string>
     <string name="comment_content_placeholder">Nội dung bình luận</string>
     <string name="reply">Trả lời</string>
+    <string name="replying_to_placeholder">Đang trả lời bình luận</string>
+    <string name="replying_to_format">Đang trả lời %1$s</string>
+    <string name="reply_to_comment_hint">Trả lời %1$s...</string>
+    <string name="cancel_reply">Hủy</string>
     <string name="more_options">...</string>
     <string name="heart">❤</string>
     <string name="like_comment">Thích bình luận</string>

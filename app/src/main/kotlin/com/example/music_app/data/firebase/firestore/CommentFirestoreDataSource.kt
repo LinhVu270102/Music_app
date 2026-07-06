@@ -23,7 +23,15 @@ class CommentFirestoreDataSource(
         return document.toObject(Song::class.java)?.copy(id = document.id)
     }
 
-    suspend fun add(songId: String, user: User, content: String, timelinePositionMs: Long): Comment {
+    suspend fun add(
+        songId: String,
+        user: User,
+        content: String,
+        timelinePositionMs: Long,
+        parentCommentId: String = "",
+        replyToUserId: String = "",
+        replyToDisplayName: String = ""
+    ): Comment {
         val commentRef = comments(songId).document()
         val now = System.currentTimeMillis()
         val comment = Comment(
@@ -33,6 +41,9 @@ class CommentFirestoreDataSource(
             displayName = user.displayName.ifBlank { user.email },
             avatarUrl = user.avatarUrl,
             content = content,
+            parentCommentId = parentCommentId,
+            replyToUserId = replyToUserId,
+            replyToDisplayName = replyToDisplayName,
             timelinePositionMs = timelinePositionMs,
             createdAt = now,
             updatedAt = now
@@ -62,18 +73,40 @@ class CommentFirestoreDataSource(
                 document.toObject(Comment::class.java)?.copy(id = document.id)
             }
             .filterNot(Comment::isDeleted)
+            .arrangeThreaded()
+    }
+
+    suspend fun getVisibleCount(songId: String): Long {
+        if (songId.isBlank()) return 0L
+
+        return comments(songId)
+            .get()
+            .await()
+            .documents
+            .count { document ->
+                document.getBoolean("isDeleted") != true
+            }
+            .toLong()
     }
 
     suspend fun getAll(songId: String, currentUserId: String): List<Comment> {
         val comments = getAll(songId)
-        if (currentUserId.isBlank()) return comments
+        val songOwnerId = getSong(songId)?.uploaderId.orEmpty()
+        val songOwnerAvatarUrl = getUserAvatarUrl(songOwnerId)
 
         return comments.map { comment ->
             comment.copy(
-                isLikedByCurrentUser = commentLike(songId, comment.id, currentUserId)
-                    .get()
-                    .await()
-                    .exists()
+                isLikedByCurrentUser = isCommentLikedBy(
+                    songId = songId,
+                    commentId = comment.id,
+                    userId = currentUserId
+                ),
+                isLikedBySongOwner = isCommentLikedBy(
+                    songId = songId,
+                    commentId = comment.id,
+                    userId = songOwnerId
+                ),
+                songOwnerAvatarUrl = songOwnerAvatarUrl
             )
         }
     }
@@ -82,9 +115,21 @@ class CommentFirestoreDataSource(
         if (songId.isBlank() || commentId.isBlank() || deletedBy.isBlank()) return
 
         val now = System.currentTimeMillis()
-        firestore.batch().apply {
-            set(
-                comments(songId).document(commentId),
+        val songRef = firestore.collection("songs").document(songId)
+        val commentRef = comments(songId).document(commentId)
+
+        firestore.runTransaction { transaction ->
+            val commentSnapshot = transaction.get(commentRef)
+
+            if (!commentSnapshot.exists() || commentSnapshot.getBoolean("isDeleted") == true) {
+                return@runTransaction
+            }
+
+            val songSnapshot = transaction.get(songRef)
+            val currentCount = songSnapshot.getLong("commentsCount") ?: 0L
+
+            transaction.set(
+                commentRef,
                 mapOf(
                     "isDeleted" to true,
                     "deletedAt" to now,
@@ -93,12 +138,8 @@ class CommentFirestoreDataSource(
                 ),
                 SetOptions.merge()
             )
-            update(
-                firestore.collection("songs").document(songId),
-                "commentsCount",
-                FieldValue.increment(-1)
-            )
-        }.commit().await()
+            transaction.update(songRef, "commentsCount", (currentCount - 1L).coerceAtLeast(0L))
+        }.await()
     }
 
     suspend fun toggleLike(songId: String, commentId: String, userId: String): Boolean {
@@ -159,4 +200,58 @@ class CommentFirestoreDataSource(
         .document(commentId)
         .collection("likes")
         .document(userId)
+
+    private suspend fun isCommentLikedBy(
+        songId: String,
+        commentId: String,
+        userId: String
+    ): Boolean {
+        if (songId.isBlank() || commentId.isBlank() || userId.isBlank()) return false
+
+        return runCatching {
+            commentLike(songId, commentId, userId)
+                .get()
+                .await()
+                .exists()
+        }.getOrDefault(false)
+    }
+
+    private suspend fun getUserAvatarUrl(userId: String): String {
+        if (userId.isBlank()) return ""
+
+        return runCatching {
+            firestore.collection("users")
+                .document(userId)
+                .get()
+                .await()
+                .getString("avatarUrl")
+                .orEmpty()
+        }.getOrDefault("")
+    }
+
+    private fun List<Comment>.arrangeThreaded(): List<Comment> {
+        val rootComments = filter { comment -> comment.parentCommentId.isBlank() }
+            .sortedByDescending { comment -> comment.createdAt }
+        val rootCommentIds = rootComments.map { comment -> comment.id }.toSet()
+        val repliesByParent = filter { comment -> comment.parentCommentId.isNotBlank() }
+            .groupBy { comment -> comment.parentCommentId }
+
+        return buildList {
+            rootComments.forEach { rootComment ->
+                add(rootComment)
+                addAll(
+                    repliesByParent[rootComment.id]
+                        .orEmpty()
+                        .sortedBy { reply -> reply.createdAt }
+                )
+            }
+
+            addAll(
+                filter { comment ->
+                    comment.parentCommentId.isNotBlank() &&
+                        comment.parentCommentId !in rootCommentIds
+                }.sortedByDescending { comment -> comment.createdAt }
+            )
+        }
+    }
 }

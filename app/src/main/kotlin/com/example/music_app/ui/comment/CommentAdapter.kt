@@ -15,6 +15,7 @@ import java.util.Locale
 class CommentAdapter(
     private var currentUserId: String = "",
     private val onLikeClick: (Comment) -> Unit,
+    private val onReplyClick: (Comment) -> Unit,
     private val onMoreClick: (Comment, View) -> Unit,
     private val onTimelineClick: (Comment) -> Unit
 ) : ListAdapter<Comment, CommentAdapter.CommentViewHolder>(CommentDiffCallback) {
@@ -38,6 +39,14 @@ class CommentAdapter(
             val context = binding.root.context
 
             val isOwner = comment.userId == currentUserId
+            val isReply = comment.parentCommentId.isNotBlank()
+
+            binding.commentItemRoot.setPaddingRelative(
+                if (isReply) REPLY_START_PADDING_DP.toPx() else ROOT_START_PADDING_DP.toPx(),
+                ROOT_VERTICAL_PADDING_DP.toPx(),
+                ROOT_END_PADDING_DP.toPx(),
+                ROOT_VERTICAL_PADDING_DP.toPx()
+            )
 
             binding.txtCommentUser.text =
                 comment.displayName.ifBlank {
@@ -45,6 +54,15 @@ class CommentAdapter(
                 }
 
             binding.txtCommentContent.text = comment.content
+
+            binding.txtReplyContext.visibility = if (isReply) View.VISIBLE else View.GONE
+            binding.txtReplyContext.text =
+                context.getString(
+                    R.string.replying_to_format,
+                    comment.replyToDisplayName.ifBlank {
+                        context.getString(R.string.unknown_user)
+                    }
+                )
 
             binding.txtCommentSongTime.text =
                 formatTimelinePosition(comment.timelinePositionMs)
@@ -80,12 +98,19 @@ class CommentAdapter(
                 .circleCrop()
                 .into(binding.imgCommentAvatar)
 
-            Glide.with(context)
-                .load(comment.avatarUrl)
-                .placeholder(R.drawable.music_orange)
-                .error(R.drawable.music_orange)
-                .circleCrop()
-                .into(binding.imgSmallAvatar)
+            binding.songOwnerLikeBadge.visibility =
+                if (comment.isLikedBySongOwner) View.VISIBLE else View.GONE
+
+            if (comment.isLikedBySongOwner) {
+                Glide.with(context)
+                    .load(comment.songOwnerAvatarUrl)
+                    .placeholder(R.drawable.music_orange)
+                    .error(R.drawable.music_orange)
+                    .circleCrop()
+                    .into(binding.imgSmallAvatar)
+            } else {
+                Glide.with(context).clear(binding.imgSmallAvatar)
+            }
 
             binding.btnLikeComment.setOnClickListener {
                 onLikeClick(comment)
@@ -93,6 +118,10 @@ class CommentAdapter(
 
             binding.txtReply.setOnClickListener {
                 // Reply sẽ làm sau
+            }
+
+            binding.txtReply.setOnClickListener {
+                onReplyClick(comment)
             }
 
             binding.txtMore.setOnClickListener { view ->
@@ -168,5 +197,16 @@ class CommentAdapter(
         override fun areContentsTheSame(oldItem: Comment, newItem: Comment): Boolean {
             return oldItem == newItem
         }
+    }
+
+    private companion object {
+        private const val ROOT_START_PADDING_DP = 12
+        private const val ROOT_END_PADDING_DP = 12
+        private const val ROOT_VERTICAL_PADDING_DP = 10
+        private const val REPLY_START_PADDING_DP = 52
+    }
+
+    private fun Int.toPx(): Int {
+        return (this * android.content.res.Resources.getSystem().displayMetrics.density).toInt()
     }
 }

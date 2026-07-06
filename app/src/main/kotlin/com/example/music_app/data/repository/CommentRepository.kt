@@ -5,6 +5,7 @@ import com.example.music_app.data.model.AppNotification
 import com.example.music_app.data.model.Comment
 import com.example.music_app.data.model.Report
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.model.User
 import com.example.music_app.data.model.enums.AppNotificationTargetType
 import com.example.music_app.data.model.enums.AppNotificationType
 import com.example.music_app.data.model.enums.ReportStatus
@@ -38,12 +39,26 @@ class CommentRepository private constructor(
         return firebaseComments.getComments(songId)
     }
 
+    suspend fun getCommentCount(songId: String): Long {
+        return firebaseComments.getCommentCount(songId)
+    }
+
     suspend fun addComment(
         songId: String,
         content: String,
-        timelinePositionMs: Long = 0L
+        timelinePositionMs: Long = 0L,
+        parentCommentId: String = "",
+        replyToUserId: String = "",
+        replyToDisplayName: String = ""
     ) {
-        firebaseComments.addComment(songId, content, timelinePositionMs)
+        firebaseComments.addComment(
+            songId = songId,
+            content = content,
+            timelinePositionMs = timelinePositionMs,
+            parentCommentId = parentCommentId,
+            replyToUserId = replyToUserId,
+            replyToDisplayName = replyToDisplayName
+        )
     }
 
     suspend fun reportComment(
@@ -91,22 +106,30 @@ private class FirestoreCommentRepository(
     suspend fun getComments(songId: String): List<Comment> =
         firestoreDataSource.getAll(songId, getCurrentUserId())
 
+    suspend fun getCommentCount(songId: String): Long =
+        firestoreDataSource.getVisibleCount(songId)
+
     suspend fun addComment(
         songId: String,
         content: String,
-        timelinePositionMs: Long = 0L
+        timelinePositionMs: Long = 0L,
+        parentCommentId: String = "",
+        replyToUserId: String = "",
+        replyToDisplayName: String = ""
     ): Comment {
         val normalizedContent = content.trim()
         val song = requireCommentableSong(songId, normalizedContent)
         val userId = requireCurrentUserId()
-        val user = userFirestoreDataSource.getById(userId)
-            ?: throw AppException(R.string.user_not_found)
+        val user = getCurrentUserProfile(userId)
 
         return firestoreDataSource.add(
             songId = song.id,
             user = user,
             content = normalizedContent,
-            timelinePositionMs = timelinePositionMs
+            timelinePositionMs = timelinePositionMs,
+            parentCommentId = parentCommentId,
+            replyToUserId = replyToUserId,
+            replyToDisplayName = replyToDisplayName
         )
     }
 
@@ -150,8 +173,7 @@ private class FirestoreCommentRepository(
         commentId: String
     ) {
         val userId = requireCurrentUserId()
-        val currentUser = userFirestoreDataSource.getById(userId)
-            ?: throw AppException(R.string.user_not_found)
+        val currentUser = getCurrentUserProfile(userId)
         val comment = firestoreDataSource.getAll(songId)
             .firstOrNull { item -> item.id == commentId }
             ?: throw AppException(R.string.comment_not_found)
@@ -210,6 +232,26 @@ private class FirestoreCommentRepository(
         }
     }
 
+    private suspend fun getCurrentUserProfile(userId: String): User {
+        val firebaseUser = auth.currentUser
+
+        return userFirestoreDataSource.getById(userId)
+            ?: User(
+                uid = userId,
+                email = firebaseUser?.email.orEmpty(),
+                displayName = authDisplayName(),
+                avatarUrl = firebaseUser?.photoUrl?.toString().orEmpty()
+            )
+    }
+
+    private fun authDisplayName(): String {
+        return auth.currentUser?.displayName?.takeIf(String::isNotBlank)
+            ?: auth.currentUser?.email
+                ?.substringBefore("@")
+                ?.takeIf(String::isNotBlank)
+            ?: DEFAULT_COMMENTER_NAME
+    }
+
     private suspend fun requireCommentableSong(songId: String, content: String): Song {
         if (songId.isBlank()) throw AppException(R.string.invalid_song)
         if (content.isBlank()) throw AppException(R.string.comment_content_empty)
@@ -225,5 +267,6 @@ private class FirestoreCommentRepository(
 
     private companion object {
         private const val DEFAULT_REPORTER_NAME = "Orange Music user"
+        private const val DEFAULT_COMMENTER_NAME = "Orange Music user"
     }
 }

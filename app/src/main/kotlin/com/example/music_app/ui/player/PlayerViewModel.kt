@@ -7,12 +7,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.repository.CommentRepository
 import com.example.music_app.data.repository.PlaylistRepository
 import com.example.music_app.data.repository.SocialRepository
 import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.player.state.ArtistFollowState
 import com.example.music_app.player.state.PlayerInteractionState
+import com.example.music_app.player.state.SongCommentState
 import com.example.music_app.player.state.SongLikeState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
@@ -20,6 +22,7 @@ import kotlinx.coroutines.launch
 /** Full-player state and interactions. The Fragment only observes this ViewModel. */
 class PlayerViewModel(
     private val repository: SongRepository = SongRepository(),
+    private val commentRepository: CommentRepository = CommentRepository(),
     private val playlistRepository: PlaylistRepository = PlaylistRepository(),
     private val socialRepository: SocialRepository = SocialRepository()
 ) : ViewModel() {
@@ -66,15 +69,24 @@ class PlayerViewModel(
 
     fun loadLikeState(song: Song) {
         viewModelScope.launch {
+            val cached = PlayerInteractionState.songState(song.id)
+            val commentsCount = loadCurrentCommentCount(song, cached)
+
             runCatching {
-                val cached = PlayerInteractionState.songState(song.id)
                 SongLikeState(
                     song.id,
                     socialRepository.isSongLiked(song.id),
                     cached?.likesCount ?: song.likes,
-                    cached?.commentsCount ?: song.commentsCount
+                    commentsCount
                 )
             }.getOrNull()?.let(PlayerInteractionState::publishSongLike)
+
+            PlayerInteractionState.publishSongComments(
+                SongCommentState(
+                    songId = song.id,
+                    commentsCount = commentsCount
+                )
+            )
         }
     }
 
@@ -309,5 +321,14 @@ class PlayerViewModel(
 
     private fun publishSuccess(messageResId: Int) {
         _successMessageResId.value = messageResId
+    }
+
+    private suspend fun loadCurrentCommentCount(
+        song: Song,
+        cached: SongLikeState?
+    ): Long {
+        return runCatching {
+            commentRepository.getCommentCount(song.id)
+        }.getOrDefault(cached?.commentsCount ?: song.commentsCount)
     }
 }

@@ -228,6 +228,10 @@
     <string name="comment_time_ago_placeholder">2y</string>
     <string name="comment_content_placeholder">Comment content</string>
     <string name="reply">Reply</string>
+    <string name="replying_to_placeholder">Replying to comment</string>
+    <string name="replying_to_format">Replying to %1$s</string>
+    <string name="reply_to_comment_hint">Reply to %1$s...</string>
+    <string name="cancel_reply">Cancel</string>
     <string name="more_options">...</string>
     <string name="heart">❤</string>
     <string name="like_comment">Like comment</string>

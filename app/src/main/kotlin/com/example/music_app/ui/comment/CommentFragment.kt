@@ -29,6 +29,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
 
     private var songId: String = ""
     private var currentSong: Song? = null
+    private var replyTarget: Comment? = null
 
     private var activeUserId: String = ""
 
@@ -94,6 +95,9 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
             onLikeClick = { comment ->
                 viewModel.toggleCommentLike(songId, comment)
             },
+            onReplyClick = { comment ->
+                startReply(comment)
+            },
             onMoreClick = { comment, _ ->
                 dialogController.showOptions(comment)
             },
@@ -116,6 +120,7 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         }
 
         binding.btnSendComment.setOnClickListener { submitComment() }
+        binding.tvCancelReply.setOnClickListener { clearReplyTarget() }
     }
 
     private fun observeViewModel() {
@@ -180,10 +185,41 @@ class CommentFragment : Fragment(R.layout.fragment_comment) {
         viewModel.addComment(
             songId = songId,
             content = content,
-            timelinePositionMs = currentTimelinePosition()
+            timelinePositionMs = currentTimelinePosition(),
+            parentCommentId = rootParentCommentId(),
+            replyToUserId = replyTarget?.userId.orEmpty(),
+            replyToDisplayName = replyTarget?.displayName.orEmpty()
         )
 
         binding.edtComment.text?.clear()
+        clearReplyTarget()
+    }
+
+    private fun startReply(comment: Comment) {
+        replyTarget = comment
+        binding.replyPreviewContainer.isVisible = true
+        binding.tvReplyPreview.text = getString(
+            R.string.replying_to_format,
+            comment.displayName.ifBlank { getString(R.string.unknown_user) }
+        )
+        binding.edtComment.hint = getString(
+            R.string.reply_to_comment_hint,
+            comment.displayName.ifBlank { getString(R.string.unknown_user) }
+        )
+        binding.edtComment.requestFocus()
+    }
+
+    private fun clearReplyTarget() {
+        replyTarget = null
+        binding.replyPreviewContainer.isVisible = false
+        binding.tvReplyPreview.text = getString(R.string.replying_to_placeholder)
+        binding.edtComment.hint = getString(R.string.write_comment)
+    }
+
+    private fun rootParentCommentId(): String {
+        val target = replyTarget ?: return ""
+
+        return target.parentCommentId.ifBlank { target.id }
     }
 
     private fun currentTimelinePosition(): Long {

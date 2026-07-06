@@ -59,14 +59,20 @@ class CommentViewModel(
     fun addComment(
         songId: String,
         content: String,
-        timelinePositionMs: Long = 0L
+        timelinePositionMs: Long = 0L,
+        parentCommentId: String = "",
+        replyToUserId: String = "",
+        replyToDisplayName: String = ""
     ) {
         viewModelScope.launch {
             try {
                 commentRepository.addComment(
                     songId = songId,
                     content = content,
-                    timelinePositionMs = timelinePositionMs
+                    timelinePositionMs = timelinePositionMs,
+                    parentCommentId = parentCommentId,
+                    replyToUserId = replyToUserId,
+                    replyToDisplayName = replyToDisplayName
                 )
 
                 publishSuccess(R.string.comment_added_success)
