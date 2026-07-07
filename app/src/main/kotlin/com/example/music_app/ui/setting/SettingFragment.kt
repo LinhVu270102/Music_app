@@ -14,11 +14,12 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.media3.common.util.UnstableApi
 import com.example.music_app.R
+import com.example.music_app.core.localization.AppLanguage
+import com.example.music_app.core.localization.LanguageManager
 import com.example.music_app.databinding.FragmentSettingBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.service.MusicService
 import com.example.music_app.ui.auth.LoginActivity
-import com.example.music_app.utils.LanguageManager
 
 class SettingFragment : Fragment() {
 
@@ -47,9 +48,8 @@ class SettingFragment : Fragment() {
         val currentLanguage = LanguageManager.getSavedLanguage(requireContext())
 
         val selectedPosition = when (currentLanguage) {
-            LanguageManager.LANGUAGE_VI -> 0
-            LanguageManager.LANGUAGE_EN -> 1
-            else -> 1
+            AppLanguage.VIETNAMESE -> 0
+            AppLanguage.ENGLISH -> 1
         }
 
         binding.languageSpinner.setSelection(selectedPosition, false)
@@ -68,13 +68,7 @@ class SettingFragment : Fragment() {
                 ) {
                     if (!isLanguageSpinnerReady) return
 
-                    val languageCode = when (position) {
-                        0 -> LanguageManager.LANGUAGE_VI
-                        1 -> LanguageManager.LANGUAGE_EN
-                        else -> LanguageManager.LANGUAGE_EN
-                    }
-
-                    changeLanguage(languageCode)
+                    changeLanguage(AppLanguage.fromSpinnerPosition(position))
                 }
 
                 override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -95,13 +89,13 @@ class SettingFragment : Fragment() {
         }
     }
 
-    private fun changeLanguage(languageCode: String) {
+    private fun changeLanguage(language: AppLanguage) {
         val currentLanguage = LanguageManager.getSavedLanguage(requireContext())
 
-        if (currentLanguage == languageCode) return
+        if (currentLanguage == language) return
 
-        LanguageManager.saveLanguage(requireContext(), languageCode)
-        LanguageManager.applyLanguage(languageCode)
+        LanguageManager.saveLanguage(requireContext(), language)
+        LanguageManager.applyLanguage(language)
     }
 
     private fun toggleAccountOptions() {
