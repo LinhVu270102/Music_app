@@ -7,8 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.User
 import com.example.music_app.data.repository.SocialRepository
-import com.example.music_app.player.state.ArtistFollowState
-import com.example.music_app.player.state.PlayerInteractionState
+import com.example.music_app.core.interaction.ArtistFollowState
+import com.example.music_app.core.interaction.InteractionStateStore
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -27,7 +27,7 @@ class FollowingViewModel(
     }
 
     init {
-        PlayerInteractionState.artistFollowUpdates.observeForever(followObserver)
+        InteractionStateStore.artistFollowUpdates.observeForever(followObserver)
     }
 
     fun loadFollowingUsers() {
@@ -49,7 +49,7 @@ class FollowingViewModel(
     }
 
     override fun onCleared() {
-        PlayerInteractionState.artistFollowUpdates.removeObserver(followObserver)
+        InteractionStateStore.artistFollowUpdates.removeObserver(followObserver)
         super.onCleared()
     }
 

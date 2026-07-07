@@ -8,9 +8,9 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.AuthRepository
 import com.example.music_app.data.repository.SocialRepository
-import com.example.music_app.player.state.ArtistFollowState
-import com.example.music_app.player.state.PlayerInteractionState
-import com.example.music_app.player.state.SongLikeState
+import com.example.music_app.core.interaction.ArtistFollowState
+import com.example.music_app.core.interaction.InteractionStateStore
+import com.example.music_app.core.interaction.SongLikeState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -32,14 +32,14 @@ class MiniPlayerViewModel(
     fun loadLikeState(song: Song) {
         viewModelScope.launch {
             runCatching {
-                val cached = PlayerInteractionState.songState(song.id)
+                val cached = InteractionStateStore.songState(song.id)
                 SongLikeState(
                     songId = song.id,
                     liked = socialRepository.isSongLiked(song.id),
                     likesCount = cached?.likesCount ?: song.likes,
                     commentsCount = cached?.commentsCount ?: song.commentsCount
                 )
-            }.getOrNull()?.let(PlayerInteractionState::publishSongLike)
+            }.getOrNull()?.let(InteractionStateStore::publishSongLike)
         }
     }
 
@@ -47,7 +47,7 @@ class MiniPlayerViewModel(
         viewModelScope.launch {
             try {
                 val liked = socialRepository.toggleSongLike(song)
-                val cached = PlayerInteractionState.songState(song.id)
+                val cached = InteractionStateStore.songState(song.id)
                 val count = cached?.likesCount ?: song.likes
                 val state = SongLikeState(
                     songId = song.id,
@@ -57,7 +57,7 @@ class MiniPlayerViewModel(
                     changedByUser = true
                 )
 
-                PlayerInteractionState.publishSongLike(state)
+                InteractionStateStore.publishSongLike(state)
                 publishSuccess(if (state.liked) {
                     R.string.added_to_your_likes
                 } else {
@@ -91,7 +91,7 @@ class MiniPlayerViewModel(
                         socialRepository.getFollowerCount(uploaderId)
                     }.getOrNull()
                 )
-            }.getOrNull()?.let(PlayerInteractionState::publishArtistFollow)
+            }.getOrNull()?.let(InteractionStateStore::publishArtistFollow)
         }
     }
 
@@ -117,7 +117,7 @@ class MiniPlayerViewModel(
                 val followerCount = runCatching {
                     socialRepository.getFollowerCount(uploaderId)
                 }.getOrNull()
-                PlayerInteractionState.publishArtistFollow(
+                InteractionStateStore.publishArtistFollow(
                     ArtistFollowState(
                         userId = uploaderId,
                         followed = followed,

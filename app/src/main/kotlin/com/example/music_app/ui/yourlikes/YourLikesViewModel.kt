@@ -7,8 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SocialRepository
-import com.example.music_app.player.state.PlayerInteractionState
-import com.example.music_app.player.state.SongLikeState
+import com.example.music_app.core.interaction.InteractionStateStore
+import com.example.music_app.core.interaction.SongLikeState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -27,7 +27,7 @@ class YourLikesViewModel(
     }
 
     init {
-        PlayerInteractionState.songLikeUpdates.observeForever(likeObserver)
+        InteractionStateStore.songLikeUpdates.observeForever(likeObserver)
     }
 
     fun loadLikedSongs() {
@@ -47,7 +47,7 @@ class YourLikesViewModel(
     }
 
     override fun onCleared() {
-        PlayerInteractionState.songLikeUpdates.removeObserver(likeObserver)
+        InteractionStateStore.songLikeUpdates.removeObserver(likeObserver)
         super.onCleared()
     }
 

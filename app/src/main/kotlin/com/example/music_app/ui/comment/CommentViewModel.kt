@@ -8,8 +8,8 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Comment
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.CommentRepository
-import com.example.music_app.player.state.PlayerInteractionState
-import com.example.music_app.player.state.SongCommentState
+import com.example.music_app.core.interaction.InteractionStateStore
+import com.example.music_app.core.interaction.SongCommentState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -156,7 +156,7 @@ class CommentViewModel(
     }
 
     private fun publishCommentCount(songId: String, comments: List<Comment>) {
-        PlayerInteractionState.publishSongComments(
+        InteractionStateStore.publishSongComments(
             SongCommentState(
                 songId = songId,
                 commentsCount = comments.size.toLong()

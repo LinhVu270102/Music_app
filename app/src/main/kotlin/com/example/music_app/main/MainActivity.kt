@@ -19,7 +19,7 @@ import com.example.music_app.base.BaseActivity
 import com.example.music_app.data.model.enums.FooterTab
 import com.example.music_app.data.repository.AuthRepository
 import com.example.music_app.data.repository.UserRepository
-import com.example.music_app.player.state.PlayerInteractionState
+import com.example.music_app.core.interaction.InteractionStateStore
 import com.example.music_app.databinding.ActivityMainBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.service.MusicService
@@ -272,8 +272,8 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
 
             miniPlayerController.renderSong(
                 song = song,
-                isLiked = PlayerInteractionState.songState(song.id)?.liked ?: false,
-                isFollowed = PlayerInteractionState.artistState(song.uploaderId)?.followed ?: false,
+                isLiked = InteractionStateStore.songState(song.id)?.liked ?: false,
+                isFollowed = InteractionStateStore.artistState(song.uploaderId)?.followed ?: false,
                 currentIndex = PlayerManager.currentIndex.value ?: -1
             )
 
@@ -307,13 +307,13 @@ class MainActivity : BaseActivity<ActivityMainBinding>() {
             miniPlayerController.setFollowButtonVisible(visible)
         }
 
-        PlayerInteractionState.songLikeUpdates.observe(this) { state ->
+        InteractionStateStore.songLikeUpdates.observe(this) { state ->
             if (!miniPlayerController.isShowingSong(state.songId)) return@observe
 
             miniPlayerController.renderLikeState(state.liked)
         }
 
-        PlayerInteractionState.artistFollowUpdates.observe(this) { state ->
+        InteractionStateStore.artistFollowUpdates.observe(this) { state ->
             if (!miniPlayerController.isShowingUploader(state.userId)) return@observe
 
             miniPlayerController.setFollowButtonVisible(true)

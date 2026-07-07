@@ -13,6 +13,7 @@ import androidx.fragment.app.viewModels
 import com.example.music_app.R
 import com.example.music_app.databinding.FragmentUploadMusicBinding
 import com.example.music_app.ui.profile.ProfileFragment
+import com.example.music_app.ui.yourupload.state.UploadMusicUiState
 
 class UploadMusicFragment : Fragment(R.layout.fragment_upload_music) {
 

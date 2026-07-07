@@ -12,7 +12,7 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.User
 import com.example.music_app.databinding.FragmentArtistProfileBinding
-import com.example.music_app.player.state.PlayerInteractionState
+import com.example.music_app.core.interaction.InteractionStateStore
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
 
@@ -130,11 +130,11 @@ class ArtistProfileFragment : Fragment(R.layout.fragment_artist_profile) {
             renderFollowButton(isFollowing)
         }
 
-        PlayerInteractionState.artistFollowUpdates.observe(viewLifecycleOwner) { state ->
+        InteractionStateStore.artistFollowUpdates.observe(viewLifecycleOwner) { state ->
             viewModel.applySharedFollowState(state)
         }
 
-        PlayerInteractionState.songLikeUpdates.observe(viewLifecycleOwner) { state ->
+        InteractionStateStore.songLikeUpdates.observe(viewLifecycleOwner) { state ->
             viewModel.applySharedSongLikeState(state)
         }
     }

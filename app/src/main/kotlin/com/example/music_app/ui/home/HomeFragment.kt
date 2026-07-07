@@ -15,7 +15,7 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentHomeBinding
 import com.example.music_app.player.PlayerManager
-import com.example.music_app.player.state.PlayerInteractionState
+import com.example.music_app.core.interaction.InteractionStateStore
 import com.example.music_app.ui.notification.NotificationFragment
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
@@ -181,7 +181,7 @@ class HomeFragment : Fragment() {
     }
 
     private fun observeLikeChanges() {
-        PlayerInteractionState.songLikeUpdates.observe(viewLifecycleOwner) { state ->
+        InteractionStateStore.songLikeUpdates.observe(viewLifecycleOwner) { state ->
             if (state.changedByUser) {
                 viewModel.refreshHomeDataAfterLikeChanged()
             }

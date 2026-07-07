@@ -9,9 +9,9 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.User
 import com.example.music_app.data.repository.SocialRepository
 import com.example.music_app.data.repository.SongRepository
-import com.example.music_app.player.state.ArtistFollowState
-import com.example.music_app.player.state.PlayerInteractionState
-import com.example.music_app.player.state.SongLikeState
+import com.example.music_app.core.interaction.ArtistFollowState
+import com.example.music_app.core.interaction.InteractionStateStore
+import com.example.music_app.core.interaction.SongLikeState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -78,7 +78,7 @@ class ArtistProfileViewModel(
                     loadSongLikeStates(artistSongs)
                     _canFollow.value = followable
                     _isFollowing.value = if (followable) {
-                        val cachedState = PlayerInteractionState.artistState(resolvedArtistId)
+                        val cachedState = InteractionStateStore.artistState(resolvedArtistId)
                         cachedState?.followed ?: socialRepository.isFollowing(resolvedArtistId)
                     } else {
                         false
@@ -110,7 +110,7 @@ class ArtistProfileViewModel(
                     userId != currentUserId
                 _canFollow.value = followable
                 _isFollowing.value = if (followable) {
-                    val cachedState = PlayerInteractionState.artistState(userId)
+                    val cachedState = InteractionStateStore.artistState(userId)
                     cachedState?.followed ?: socialRepository.isFollowing(userId)
                 } else {
                     false
@@ -134,7 +134,7 @@ class ArtistProfileViewModel(
         viewModelScope.launch {
             val likeStates = songs.associate { song ->
                 song.id to runCatching {
-                    PlayerInteractionState.songState(song.id)?.liked
+                    InteractionStateStore.songState(song.id)?.liked
                         ?: socialRepository.isSongLiked(song.id)
                 }.getOrDefault(false)
             }
@@ -142,9 +142,9 @@ class ArtistProfileViewModel(
             _songLikeStates.value = likeStates
 
             songs.forEach { song ->
-                val cachedState = PlayerInteractionState.songState(song.id)
+                val cachedState = InteractionStateStore.songState(song.id)
 
-                PlayerInteractionState.publishSongLike(
+                InteractionStateStore.publishSongLike(
                     SongLikeState(
                         songId = song.id,
                         liked = likeStates[song.id] == true,
@@ -160,7 +160,7 @@ class ArtistProfileViewModel(
         if (song.id.isBlank()) return
         if (song.id in pendingSongLikeIds) return
 
-        val previousState = PlayerInteractionState.songState(song.id)
+        val previousState = InteractionStateStore.songState(song.id)
         val wasLiked = _songLikeStates.value.orEmpty()[song.id]
             ?: previousState?.liked
             ?: false
@@ -174,7 +174,7 @@ class ArtistProfileViewModel(
         )
 
         pendingSongLikeIds += song.id
-        PlayerInteractionState.publishSongLike(optimisticState)
+        InteractionStateStore.publishSongLike(optimisticState)
         applySharedSongLikeState(optimisticState)
 
         viewModelScope.launch {
@@ -192,7 +192,7 @@ class ArtistProfileViewModel(
                     changedByUser = true
                 )
 
-                PlayerInteractionState.publishSongLike(state)
+                InteractionStateStore.publishSongLike(state)
                 applySharedSongLikeState(state)
             } catch (error: AppException) {
                 revertSongLike(song, wasLiked, baseLikes, previousState)
@@ -223,7 +223,7 @@ class ArtistProfileViewModel(
                 }.getOrNull()
 
                 _isFollowing.value = followed
-                PlayerInteractionState.publishArtistFollow(
+                InteractionStateStore.publishArtistFollow(
                     ArtistFollowState(
                         userId = artistId,
                         followed = followed,
@@ -250,7 +250,7 @@ class ArtistProfileViewModel(
             socialRepository.getFollowerCount(userId)
         }.getOrNull()
 
-        PlayerInteractionState.publishArtistFollow(
+        InteractionStateStore.publishArtistFollow(
             ArtistFollowState(
                 userId = userId,
                 followed = followed,
@@ -273,7 +273,7 @@ class ArtistProfileViewModel(
             changedByUser = true
         )
 
-        PlayerInteractionState.publishSongLike(revertedState)
+        InteractionStateStore.publishSongLike(revertedState)
         applySharedSongLikeState(revertedState)
     }
 

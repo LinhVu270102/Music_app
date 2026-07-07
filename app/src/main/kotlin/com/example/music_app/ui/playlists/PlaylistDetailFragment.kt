@@ -15,7 +15,7 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.DialogConfirmActionBinding
 import com.example.music_app.databinding.FragmentPlaylistDetailBinding
 import com.example.music_app.player.PlayerManager
-import com.example.music_app.player.state.PlayerInteractionState
+import com.example.music_app.core.interaction.InteractionStateStore
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
 import com.example.music_app.ui.common.showCustomDialog
@@ -174,7 +174,7 @@ class PlaylistDetailFragment : Fragment(R.layout.fragment_playlist_detail) {
             adapter.setLikedSongIds(viewModel.likedSongIds)
         }
 
-        PlayerInteractionState.songLikeUpdates.observe(viewLifecycleOwner) { state ->
+        InteractionStateStore.songLikeUpdates.observe(viewLifecycleOwner) { state ->
             viewModel.applySharedSongLikeState(state)
         }
 

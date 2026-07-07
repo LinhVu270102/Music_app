@@ -16,7 +16,7 @@ import androidx.palette.graphics.Palette
 import com.bumptech.glide.Glide
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
-import com.example.music_app.player.state.PlayerInteractionState
+import com.example.music_app.core.interaction.InteractionStateStore
 import com.example.music_app.databinding.FragmentPlayerBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
@@ -227,7 +227,7 @@ class PlayerFragment : Fragment() {
             viewModel.consumePlaylistPickerState()
         }
 
-        PlayerInteractionState.songLikeUpdates.observe(viewLifecycleOwner) { state ->
+        InteractionStateStore.songLikeUpdates.observe(viewLifecycleOwner) { state ->
             if (displayedSong()?.id != state.songId) return@observe
 
             isCurrentSongLiked = state.liked
@@ -236,13 +236,13 @@ class PlayerFragment : Fragment() {
             updateLikeIcon()
         }
 
-        PlayerInteractionState.songCommentUpdates.observe(viewLifecycleOwner) { state ->
+        InteractionStateStore.songCommentUpdates.observe(viewLifecycleOwner) { state ->
             if (displayedSong()?.id != state.songId) return@observe
 
             binding.tvCommentCount.text = formatCount(state.commentsCount)
         }
 
-        PlayerInteractionState.artistFollowUpdates.observe(viewLifecycleOwner) { state ->
+        InteractionStateStore.artistFollowUpdates.observe(viewLifecycleOwner) { state ->
             if (displayedSong()?.uploaderId != state.userId) return@observe
 
             isCurrentArtistFollowed = state.followed
@@ -266,11 +266,11 @@ class PlayerFragment : Fragment() {
     }
 
     private fun bindSongSocialState(song: Song) {
-        val cachedLikeState = PlayerInteractionState.songState(song.id)
+        val cachedLikeState = InteractionStateStore.songState(song.id)
         isCurrentSongLiked = cachedLikeState?.liked ?: false
         binding.tvLikeCount.text = formatCount(cachedLikeState?.likesCount ?: song.likes)
         binding.tvCommentCount.text = formatCount(
-            PlayerInteractionState.commentCount(song.id)
+            InteractionStateStore.commentCount(song.id)
                 ?: cachedLikeState?.commentsCount
                 ?: song.commentsCount
         )
@@ -335,7 +335,7 @@ class PlayerFragment : Fragment() {
         binding.btnFollow.isEnabled = true
         binding.btnFollow.alpha = 1f
 
-        PlayerInteractionState.artistState(targetUserId)?.let { cachedState ->
+        InteractionStateStore.artistState(targetUserId)?.let { cachedState ->
             isCurrentArtistFollowed = cachedState.followed
             cachedState.followerCount?.let { count ->
                 binding.tvFollowCount.text = formatCount(count)

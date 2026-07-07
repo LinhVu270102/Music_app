@@ -12,8 +12,8 @@ import com.example.music_app.data.repository.PlaylistRepository
 import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.data.repository.SocialRepository
 import com.example.music_app.data.repository.UserRepository
-import com.example.music_app.player.state.ArtistFollowState
-import com.example.music_app.player.state.PlayerInteractionState
+import com.example.music_app.core.interaction.ArtistFollowState
+import com.example.music_app.core.interaction.InteractionStateStore
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -106,7 +106,7 @@ class ProfileViewModel(
                 )
 
                 if (!isOwn && targetUserId.isNotBlank()) {
-                    PlayerInteractionState.publishArtistFollow(
+                    InteractionStateStore.publishArtistFollow(
                         ArtistFollowState(
                             userId = targetUserId,
                             followed = following,
@@ -133,7 +133,7 @@ class ProfileViewModel(
                     socialRepository.getFollowerCount(userId)
                 }.getOrNull()
 
-                PlayerInteractionState.publishArtistFollow(
+                InteractionStateStore.publishArtistFollow(
                     ArtistFollowState(
                         userId = userId,
                         followed = following,

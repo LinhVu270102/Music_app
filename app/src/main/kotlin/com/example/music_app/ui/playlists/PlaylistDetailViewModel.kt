@@ -9,8 +9,8 @@ import com.example.music_app.data.model.Playlist
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.repository.SocialRepository
 import com.example.music_app.domain.usecase.PlaylistUseCase
-import com.example.music_app.player.state.PlayerInteractionState
-import com.example.music_app.player.state.SongLikeState
+import com.example.music_app.core.interaction.InteractionStateStore
+import com.example.music_app.core.interaction.SongLikeState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -138,14 +138,14 @@ class PlaylistDetailViewModel(
         viewModelScope.launch {
             val likeStates = songs.associate { song ->
                 song.id to runCatching {
-                    PlayerInteractionState.songState(song.id)?.liked
+                    InteractionStateStore.songState(song.id)?.liked
                         ?: socialRepository.isSongLiked(song.id)
                 }.getOrDefault(false)
             }
             _songLikeStates.value = likeStates
 
             songs.forEach { song ->
-                PlayerInteractionState.publishSongLike(
+                InteractionStateStore.publishSongLike(
                     SongLikeState(
                         songId = song.id,
                         liked = likeStates[song.id] == true,
@@ -161,7 +161,7 @@ class PlaylistDetailViewModel(
         if (song.id.isBlank()) return
         if (song.id in pendingSongLikeIds) return
 
-        val previousState = PlayerInteractionState.songState(song.id)
+        val previousState = InteractionStateStore.songState(song.id)
         val wasLiked = _songLikeStates.value.orEmpty()[song.id]
             ?: previousState?.liked
             ?: false
@@ -175,7 +175,7 @@ class PlaylistDetailViewModel(
         )
 
         pendingSongLikeIds += song.id
-        PlayerInteractionState.publishSongLike(optimisticState)
+        InteractionStateStore.publishSongLike(optimisticState)
         applySharedSongLikeState(optimisticState)
 
         viewModelScope.launch {
@@ -193,7 +193,7 @@ class PlaylistDetailViewModel(
                     changedByUser = true
                 )
 
-                PlayerInteractionState.publishSongLike(state)
+                InteractionStateStore.publishSongLike(state)
                 applySharedSongLikeState(state)
             } catch (e: AppException) {
                 revertSongLike(song, wasLiked, baseLikes, previousState)
@@ -227,7 +227,7 @@ class PlaylistDetailViewModel(
             changedByUser = true
         )
 
-        PlayerInteractionState.publishSongLike(revertedState)
+        InteractionStateStore.publishSongLike(revertedState)
         applySharedSongLikeState(revertedState)
     }
 

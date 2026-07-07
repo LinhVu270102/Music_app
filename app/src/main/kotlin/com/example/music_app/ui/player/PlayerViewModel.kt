@@ -12,10 +12,10 @@ import com.example.music_app.data.repository.PlaylistRepository
 import com.example.music_app.data.repository.SocialRepository
 import com.example.music_app.data.repository.SongRepository
 import com.example.music_app.player.PlayerManager
-import com.example.music_app.player.state.ArtistFollowState
-import com.example.music_app.player.state.PlayerInteractionState
-import com.example.music_app.player.state.SongCommentState
-import com.example.music_app.player.state.SongLikeState
+import com.example.music_app.core.interaction.ArtistFollowState
+import com.example.music_app.core.interaction.InteractionStateStore
+import com.example.music_app.core.interaction.SongCommentState
+import com.example.music_app.core.interaction.SongLikeState
 import com.example.music_app.utils.AppException
 import kotlinx.coroutines.launch
 
@@ -69,7 +69,7 @@ class PlayerViewModel(
 
     fun loadLikeState(song: Song) {
         viewModelScope.launch {
-            val cached = PlayerInteractionState.songState(song.id)
+            val cached = InteractionStateStore.songState(song.id)
             val commentsCount = loadCurrentCommentCount(song, cached)
 
             runCatching {
@@ -79,9 +79,9 @@ class PlayerViewModel(
                     cached?.likesCount ?: song.likes,
                     commentsCount
                 )
-            }.getOrNull()?.let(PlayerInteractionState::publishSongLike)
+            }.getOrNull()?.let(InteractionStateStore::publishSongLike)
 
-            PlayerInteractionState.publishSongComments(
+            InteractionStateStore.publishSongComments(
                 SongCommentState(
                     songId = song.id,
                     commentsCount = commentsCount
@@ -94,7 +94,7 @@ class PlayerViewModel(
         viewModelScope.launch {
             try {
                 val liked = socialRepository.toggleSongLike(song)
-                val cached = PlayerInteractionState.songState(song.id)
+                val cached = InteractionStateStore.songState(song.id)
                 val count = cached?.likesCount ?: song.likes
                 val state = SongLikeState(
                     song.id,
@@ -104,7 +104,7 @@ class PlayerViewModel(
                     changedByUser = true
                 )
 
-                PlayerInteractionState.publishSongLike(state)
+                InteractionStateStore.publishSongLike(state)
                 publishSuccess(if (state.liked) {
                     R.string.added_to_your_likes
                 } else {
@@ -131,7 +131,7 @@ class PlayerViewModel(
                         socialRepository.getFollowerCount(userId)
                     }.getOrNull()
                 )
-            }.getOrNull()?.let(PlayerInteractionState::publishArtistFollow)
+            }.getOrNull()?.let(InteractionStateStore::publishArtistFollow)
         }
     }
 
@@ -147,7 +147,7 @@ class PlayerViewModel(
                 val followerCount = runCatching {
                     socialRepository.getFollowerCount(userId)
                 }.getOrNull()
-                PlayerInteractionState.publishArtistFollow(
+                InteractionStateStore.publishArtistFollow(
                     ArtistFollowState(
                         userId = userId,
                         followed = followed,
