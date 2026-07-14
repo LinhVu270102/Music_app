@@ -12,6 +12,7 @@ const COLLECTION_SONGS = "songs";
 const COLLECTION_AUDIO_FINGERPRINTS = "audioFingerprints";
 
 const FINGERPRINT_STATUS = {
+  PENDING: "pending",
   PROCESSING: "processing",
   UNIQUE: "unique",
   DUPLICATE: "duplicate",

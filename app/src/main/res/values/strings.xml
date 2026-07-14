@@ -593,4 +593,15 @@
     <string name="edit_profile_social_hint">Choose a photo that helps people recognize you.</string>
     <string name="profile_about_section">About you</string>
     <string name="profile_music_section">Your music taste</string>
+    <string name="fingerprint_status_placeholder">Audio check: pending</string>
+    <string name="fingerprint_status_format">Audio check: %1$s</string>
+    <string name="fingerprint_pending">Pending</string>
+    <string name="fingerprint_processing">Processing</string>
+    <string name="fingerprint_unique">Unique</string>
+    <string name="fingerprint_duplicate">Possible duplicate</string>
+    <string name="fingerprint_failed">Failed</string>
+    <string name="fingerprint_duplicate_format">Possible duplicate of %1$s • Score: %2$s</string>
+    <string name="fingerprint_duplicate_unknown">Possible duplicate detected.</string>
+    <string name="fingerprint_error_placeholder">Fingerprint error</string>
+    <string name="fingerprint_error_format">Fingerprint error: %1$s</string>
 </resources>

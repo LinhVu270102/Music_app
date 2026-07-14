@@ -11,7 +11,8 @@
     "seed:catalog": "node scripts/seed-soundcloud-catalog.js",
     "verify:catalog": "node scripts/verify-soundcloud-catalog.js",
     "migrate:catalog": "node scripts/migrate-catalog-songs.js",
-    "backfill:songurl": "node scripts/backfill-songurl-from-soundcloud.js"
+    "backfill:songurl": "node scripts/backfill-songurl-from-soundcloud.js",
+    "backfill:fingerprints": "node scripts/backfill-audio-fingerprints.js"
   },
   "keywords": [],
   "author": "",

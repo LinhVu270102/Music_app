@@ -593,4 +593,15 @@
     <string name="edit_profile_social_hint">Chọn ảnh giúp mọi người dễ nhận ra bạn.</string>
     <string name="profile_about_section">Thông tin về bạn</string>
     <string name="profile_music_section">Gu âm nhạc của bạn</string>
+    <string name="fingerprint_status_placeholder">Kiểm tra âm thanh: đang chờ</string>
+    <string name="fingerprint_status_format">Kiểm tra âm thanh: %1$s</string>
+    <string name="fingerprint_pending">Đang chờ</string>
+    <string name="fingerprint_processing">Đang xử lý</string>
+    <string name="fingerprint_unique">Không trùng</string>
+    <string name="fingerprint_duplicate">Có thể bị trùng</string>
+    <string name="fingerprint_failed">Thất bại</string>
+    <string name="fingerprint_duplicate_format">Có thể trùng với %1$s • Điểm: %2$s</string>
+    <string name="fingerprint_duplicate_unknown">Phát hiện khả năng trùng bài.</string>
+    <string name="fingerprint_error_placeholder">Lỗi fingerprint</string>
+    <string name="fingerprint_error_format">Lỗi fingerprint: %1$s</string>
 </resources>

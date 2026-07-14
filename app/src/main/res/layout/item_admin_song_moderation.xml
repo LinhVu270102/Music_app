@@ -53,6 +53,35 @@
         android:textColor="#AFAFAF"
         android:textSize="13sp" />
 
+    <TextView
+        android:id="@+id/txtFingerprintStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/fingerprint_status_placeholder"
+        android:textColor="#90CAF9"
+        android:textSize="13sp" />
+
+    <TextView
+        android:id="@+id/txtFingerprintDuplicate"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:text="@string/fingerprint_duplicate_unknown"
+        android:textColor="#FFB74D"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/txtFingerprintError"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:text="@string/fingerprint_error_placeholder"
+        android:textColor="#EF9A9A"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
