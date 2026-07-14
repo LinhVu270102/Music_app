@@ -604,4 +604,11 @@
     <string name="fingerprint_duplicate_unknown">Phát hiện khả năng trùng bài.</string>
     <string name="fingerprint_error_placeholder">Lỗi fingerprint</string>
     <string name="fingerprint_error_format">Lỗi fingerprint: %1$s</string>
+    <string name="approve_blocked_audio_check_pending">Hãy chờ kiểm tra âm thanh hoàn tất trước khi duyệt bài hát này.</string>
+    <string name="approve_duplicate_warning_title">Có thể bị trùng bài</string>
+    <string name="approve_duplicate_warning_message">Bài hát này có thể trùng với %1$s, điểm trùng %2$s. Vẫn duyệt chứ?</string>
+    <string name="approve_failed_warning_title">Kiểm tra âm thanh thất bại</string>
+    <string name="approve_failed_warning_message">Kiểm tra fingerprint thất bại: %1$s\nBạn vẫn muốn duyệt thủ công bài hát này chứ?</string>
+    <string name="approve_anyway">Vẫn duyệt</string>
+    <string name="fingerprint_duplicate_unknown_target">một bài hát khác</string>
 </resources>

@@ -604,4 +604,11 @@
     <string name="fingerprint_duplicate_unknown">Possible duplicate detected.</string>
     <string name="fingerprint_error_placeholder">Fingerprint error</string>
     <string name="fingerprint_error_format">Fingerprint error: %1$s</string>
+    <string name="approve_blocked_audio_check_pending">Wait until the audio check finishes before approving this song.</string>
+    <string name="approve_duplicate_warning_title">Possible duplicate</string>
+    <string name="approve_duplicate_warning_message">This song may duplicate %1$s with score %2$s. Approve anyway?</string>
+    <string name="approve_failed_warning_title">Audio check failed</string>
+    <string name="approve_failed_warning_message">The audio fingerprint check failed: %1$s\nApprove this song manually anyway?</string>
+    <string name="approve_anyway">Approve anyway</string>
+    <string name="fingerprint_duplicate_unknown_target">another song</string>
 </resources>
