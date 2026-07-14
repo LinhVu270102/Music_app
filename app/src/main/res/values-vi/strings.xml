@@ -488,6 +488,14 @@
     <string name="comment_song_placeholder">Bài hát</string>
     <string name="hide_comment">Ẩn bình luận</string>
     <string name="search_failed">Tìm kiếm thất bại.</string>
+    <string name="audio_search">Tìm bằng âm thanh</string>
+    <string name="audio_search_listening">Đang nghe trong 8 giây…</string>
+    <string name="audio_search_searching">Đang tìm bài hát khớp…</string>
+    <string name="audio_search_results">Kết quả nhận diện âm thanh</string>
+    <string name="audio_search_no_match">Không tìm thấy bài hát khớp.</string>
+    <string name="audio_search_failed">Không thể tìm bằng âm thanh.</string>
+    <string name="audio_search_permission_required">Cần quyền micro để tìm bằng âm thanh.</string>
+    <string name="audio_search_recording_failed">Không thể ghi mẫu âm thanh.</string>
     <string name="search_result_count">%1$d kết quả</string>
     <string name="search_result_count_placeholder">0 kết quả</string>
     <string name="playlist_songs_count">%1$d bài hát</string>

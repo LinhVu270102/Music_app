@@ -488,6 +488,14 @@
     <string name="comment_song_placeholder">Song</string>
     <string name="hide_comment">Hide comment</string>
     <string name="search_failed">Search failed.</string>
+    <string name="audio_search">Search by audio</string>
+    <string name="audio_search_listening">Listening for 8 seconds…</string>
+    <string name="audio_search_searching">Finding matching songs…</string>
+    <string name="audio_search_results">Audio matches</string>
+    <string name="audio_search_no_match">No matching song found.</string>
+    <string name="audio_search_failed">Could not search by audio.</string>
+    <string name="audio_search_permission_required">Microphone permission is required for audio search.</string>
+    <string name="audio_search_recording_failed">Could not record audio sample.</string>
     <string name="search_result_count">%1$d results</string>
     <string name="search_result_count_placeholder">0 results</string>
     <string name="playlist_songs_count">%1$d songs</string>

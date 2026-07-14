@@ -50,6 +50,17 @@
                 android:textColorHint="#BDBDBD"
                 android:textSize="18sp" />
 
+            <ImageButton
+                android:id="@+id/btnAudioSearch"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="6dp"
+                android:background="@android:color/transparent"
+                android:contentDescription="@string/audio_search"
+                android:padding="8dp"
+                android:src="@drawable/ic_mic"
+                app:tint="#BDBDBD" />
+
         </LinearLayout>
 
         <ImageButton

@@ -1,14 +1,21 @@
 package com.example.music_app.ui.search
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.media.MediaRecorder
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Base64
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
@@ -27,9 +34,13 @@ import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.playlists.PlaylistDetailFragment
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.profile.ArtistProfileFragment
+import com.example.music_app.ui.search.state.AudioSearchUiState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 class SearchFragment : Fragment(R.layout.fragment_search) {
 
@@ -37,6 +48,14 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     private val binding get() = _binding!!
 
     private val viewModel: SearchViewModel by viewModels()
+    private val audioPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                startAudioSearchRecording()
+            } else {
+                showToast(getString(R.string.audio_search_permission_required))
+            }
+        }
 
     private val searchHistoryStore by lazy {
         SearchHistoryStore(requireContext())
@@ -50,6 +69,10 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     private var currentTab = SearchTab.ALL
 
     private var searchJob: Job? = null
+    private var audioRecordingJob: Job? = null
+    private var audioRecorder: MediaRecorder? = null
+    private var audioSampleFile: File? = null
+
     private var isRestoringLatestSearch = false
     private var isApplyingRecentQuery = false
 
@@ -133,6 +156,10 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         binding.btnCancel.setOnClickListener {
             clearSearchInputAndShowRecent()
         }
+
+        binding.btnAudioSearch.setOnClickListener {
+            handleAudioSearchClick()
+        }
     }
 
     private fun setupTabs() {
@@ -201,6 +228,9 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             binding.swipeRefreshSearch.isRefreshing = isLoading
         }
 
+        viewModel.audioSearchState.observe(viewLifecycleOwner) { state ->
+            renderAudioSearchState(state)
+        }
     }
 
     private fun submitEditorSearch(): Boolean {
@@ -254,6 +284,193 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         submitSearch(keyword)
     }
 
+    private fun handleAudioSearchClick() {
+        hideKeyboard()
+        binding.edtSearch.clearFocus()
+
+        if (audioRecorder != null) {
+            completeAudioSearchRecording(cancelTimer = true)
+            return
+        }
+
+        val hasRecordPermission = ContextCompat.checkSelfPermission(
+            requireContext(),
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (hasRecordPermission) {
+            startAudioSearchRecording()
+        } else {
+            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    private fun startAudioSearchRecording() {
+        if (audioRecorder != null) return
+
+        val outputFile = File(
+            requireContext().cacheDir,
+            "$AUDIO_SAMPLE_FILE_PREFIX${System.currentTimeMillis()}.$AUDIO_SAMPLE_FILE_EXTENSION"
+        )
+
+        try {
+            audioRecorder = createAudioRecorder(outputFile).also { recorder ->
+                recorder.prepare()
+                recorder.start()
+            }
+            audioSampleFile = outputFile
+            showAudioRecordingMode()
+
+            audioRecordingJob = viewLifecycleOwner.lifecycleScope.launch {
+                delay(AUDIO_SAMPLE_DURATION_MS)
+                completeAudioSearchRecording(cancelTimer = false)
+            }
+        } catch (error: Exception) {
+            Log.w(TAG, "start audio search recording failed: ${error.message}", error)
+            releaseAudioRecorder(stopRecorder = false)
+            audioSampleFile = null
+            outputFile.delete()
+            binding.swipeRefreshSearch.isRefreshing = false
+            setAudioSearchButtonRecording(false)
+            showToast(getString(R.string.audio_search_recording_failed))
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun createAudioRecorder(outputFile: File): MediaRecorder {
+        return MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setAudioSamplingRate(AUDIO_SAMPLE_RATE)
+            setAudioEncodingBitRate(AUDIO_ENCODING_BIT_RATE)
+            setOutputFile(outputFile.absolutePath)
+        }
+    }
+
+    private fun completeAudioSearchRecording(cancelTimer: Boolean) {
+        if (cancelTimer) {
+            audioRecordingJob?.cancel()
+        }
+        audioRecordingJob = null
+
+        val sampleFile = audioSampleFile
+        audioSampleFile = null
+
+        val stoppedSuccessfully = releaseAudioRecorder(stopRecorder = true)
+        setAudioSearchButtonRecording(false)
+
+        if (!stoppedSuccessfully || sampleFile == null || sampleFile.length() == 0L) {
+            sampleFile?.delete()
+            binding.swipeRefreshSearch.isRefreshing = false
+            showToast(getString(R.string.audio_search_recording_failed))
+            return
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val audioBase64 = withContext(Dispatchers.IO) {
+                Base64.encodeToString(sampleFile.readBytes(), Base64.NO_WRAP)
+            }
+            withContext(Dispatchers.IO) {
+                sampleFile.delete()
+            }
+
+            viewModel.searchByAudioSample(
+                audioBase64 = audioBase64,
+                fileExtension = AUDIO_SAMPLE_FILE_EXTENSION
+            )
+        }
+    }
+
+    private fun releaseAudioRecorder(stopRecorder: Boolean): Boolean {
+        val recorder = audioRecorder ?: return false
+        audioRecorder = null
+
+        val stoppedSuccessfully = if (stopRecorder) {
+            runCatching {
+                recorder.stop()
+            }.onFailure { error ->
+                Log.w(TAG, "stop audio search recording failed: ${error.message}", error)
+            }.isSuccess
+        } else {
+            false
+        }
+
+        runCatching { recorder.reset() }
+        runCatching { recorder.release() }
+
+        return stoppedSuccessfully || !stopRecorder
+    }
+
+    private fun renderAudioSearchState(state: AudioSearchUiState) {
+        when (state) {
+            AudioSearchUiState.Idle -> Unit
+            AudioSearchUiState.Searching -> {
+                binding.btnAudioSearch.isEnabled = false
+                binding.tvSearchSectionTitle.text = getString(R.string.audio_search_searching)
+                binding.swipeRefreshSearch.isRefreshing = true
+            }
+
+            is AudioSearchUiState.Success -> {
+                binding.btnAudioSearch.isEnabled = true
+                showAudioSearchResults(state.songs)
+                viewModel.clearAudioSearchState()
+            }
+
+            AudioSearchUiState.NoMatch -> {
+                binding.btnAudioSearch.isEnabled = true
+                showAudioSearchResults(emptyList())
+                showToast(getString(R.string.audio_search_no_match))
+                viewModel.clearAudioSearchState()
+            }
+
+            is AudioSearchUiState.Error -> {
+                binding.btnAudioSearch.isEnabled = true
+                binding.swipeRefreshSearch.isRefreshing = false
+                showToast(getString(state.messageResId))
+                viewModel.clearAudioSearchState()
+            }
+        }
+    }
+
+    private fun showAudioRecordingMode() {
+        searchJob?.cancel()
+        searchResults = SearchResultBundle()
+        currentSearchSongs = emptyList()
+        searchAdapter.setData(emptyList())
+        PlayerManager.setFallbackSongs(emptyList())
+
+        binding.btnCancel.isVisible = true
+        binding.tabContainer.isVisible = false
+        binding.tvSearchSectionTitle.text = getString(R.string.audio_search_listening)
+        binding.swipeRefreshSearch.isRefreshing = true
+        setAudioSearchButtonRecording(true)
+    }
+
+    private fun showAudioSearchResults(songs: List<Song>) {
+        searchResults = SearchResultBundle(tracks = songs)
+        currentSearchSongs = songs
+
+        binding.btnCancel.isVisible = true
+        binding.tabContainer.isVisible = false
+        binding.tvSearchSectionTitle.text = getString(R.string.audio_search_results)
+        binding.swipeRefreshSearch.isRefreshing = false
+
+        searchAdapter.setData(songs.map(SearchResultItem::Track))
+        PlayerManager.setFallbackSongs(songs)
+    }
+
+    private fun setAudioSearchButtonRecording(isRecording: Boolean) {
+        val iconColor = if (isRecording) {
+            Color.parseColor(AUDIO_RECORDING_ICON_COLOR)
+        } else {
+            Color.parseColor(AUDIO_IDLE_ICON_COLOR)
+        }
+
+        binding.btnAudioSearch.setColorFilter(iconColor)
+        binding.btnAudioSearch.isSelected = isRecording
+    }
+
     private fun restoreLatestSearchInSession() {
         val latestQuery = sessionLatestQuery
 
@@ -300,6 +517,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
     private fun clearSearchInputAndShowRecent() {
         searchJob?.cancel()
+        cancelAudioSearch()
         sessionLatestQuery = ""
 
         binding.edtSearch.text.clear()
@@ -483,6 +701,19 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         viewModel.clearSearchResult()
     }
 
+    private fun cancelAudioSearch() {
+        audioRecordingJob?.cancel()
+        audioRecordingJob = null
+        releaseAudioRecorder(stopRecorder = false)
+        audioSampleFile?.delete()
+        audioSampleFile = null
+
+        binding.btnAudioSearch.isEnabled = true
+        binding.swipeRefreshSearch.isRefreshing = false
+        setAudioSearchButtonRecording(false)
+        viewModel.cancelAudioSearch()
+    }
+
     private fun hideKeyboard() {
         val imm =
             requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
@@ -496,13 +727,26 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
 
     override fun onDestroyView() {
         searchJob?.cancel()
+        audioRecordingJob?.cancel()
+        audioRecordingJob = null
+        releaseAudioRecorder(stopRecorder = true)
+        audioSampleFile?.delete()
+        audioSampleFile = null
         super.onDestroyView()
         _binding = null
     }
 
     companion object {
+        private const val TAG = "SearchFragment"
         private const val ARTIST_PROFILE_PREFIX = "artist:"
         private const val SEARCH_DEBOUNCE_MS = 500L
+        private const val AUDIO_SAMPLE_DURATION_MS = 8_000L
+        private const val AUDIO_SAMPLE_RATE = 44_100
+        private const val AUDIO_ENCODING_BIT_RATE = 128_000
+        private const val AUDIO_SAMPLE_FILE_PREFIX = "audio_search_"
+        private const val AUDIO_SAMPLE_FILE_EXTENSION = "m4a"
+        private const val AUDIO_IDLE_ICON_COLOR = "#BDBDBD"
+        private const val AUDIO_RECORDING_ICON_COLOR = "#FF9800"
         private var sessionLatestQuery: String = ""
     }
 }

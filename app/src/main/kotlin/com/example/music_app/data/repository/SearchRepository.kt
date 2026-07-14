@@ -7,6 +7,7 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.User
 import com.example.music_app.data.model.enums.SongStatus
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.tasks.await
@@ -129,6 +130,8 @@ class SearchRepository(
     ): List<T> {
         return try {
             block()
+        } catch (error: CancellationException) {
+            throw error
         } catch (error: Exception) {
             Log.e(TAG, "$label failed: ${error.message}", error)
             emptyList()
