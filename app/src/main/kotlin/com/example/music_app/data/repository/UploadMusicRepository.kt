@@ -1,10 +1,13 @@
 package com.example.music_app.data.repository
 
 import android.net.Uri
+import android.util.Log
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.UploadMusicRequest
+import com.example.music_app.data.model.enums.FingerprintStatus
 import com.example.music_app.data.model.enums.SongStatus
+import com.example.music_app.data.remote.fingerprint.FingerprintRemoteDataSource
 import com.example.music_app.utils.AppException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -15,7 +18,9 @@ import kotlinx.coroutines.tasks.await
 class UploadMusicRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
+    private val storage: FirebaseStorage = FirebaseStorage.getInstance(),
+    private val fingerprintRemoteDataSource: FingerprintRemoteDataSource =
+        FingerprintRemoteDataSource()
 ) {
 
     // Public data operation
@@ -48,6 +53,7 @@ class UploadMusicRepository(
             genre = request.genre,
             tags = request.tags,
             status = SongStatus.PENDING.value,
+            fingerprintStatus = FingerprintStatus.PENDING.value,
             createdAt = now,
             updatedAt = now
         )
@@ -57,7 +63,17 @@ class UploadMusicRepository(
             .set(song)
             .await()
 
+        enqueueFingerprintProcessing(songId)
+
         return song
+    }
+
+    private suspend fun enqueueFingerprintProcessing(songId: String) {
+        val enqueued = fingerprintRemoteDataSource.enqueueSongFingerprintProcessing(songId)
+
+        if (!enqueued) {
+            Log.w(TAG, "Fingerprint processing was not enqueued for songId=$songId")
+        }
     }
 
     private suspend fun uploadFile(
@@ -67,5 +83,9 @@ class UploadMusicRepository(
         val reference = storage.reference.child(path)
         reference.putFile(uri).await()
         return reference.downloadUrl.await().toString()
+    }
+
+    private companion object {
+        private const val TAG = "UploadMusicRepository"
     }
 }

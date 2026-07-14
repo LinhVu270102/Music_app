@@ -5,11 +5,13 @@ const axios = require("axios");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
+const { createFingerprintRouter } = require("./fingerprint/fingerprintRoutes");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use("/fingerprint", createFingerprintRouter());
 
 const PORT = process.env.PORT || 3000;
 const SOUNDCLOUD_CLIENT_ID = process.env.SOUNDCLOUD_CLIENT_ID;
@@ -677,6 +679,8 @@ app.get("/", (req, res) => {
       "/searchSoundCloudTracks?q=lofi&limit=10",
       "/getStreamUrl?trackId=123456789",
       "/debug/buffering-test?trackId=123456789&bytes=1048576",
+      "/fingerprint/health",
+      "/fingerprint/songs/{songId}/process",
 
       "/getSoundCloudArtistProfile?artist=Alan%20Walker&limit=20",
       "/getSoundCloudArtistTracks?artist=Alan%20Walker&limit=20",

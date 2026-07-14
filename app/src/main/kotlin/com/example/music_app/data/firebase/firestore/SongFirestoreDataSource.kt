@@ -2,6 +2,7 @@ package com.example.music_app.data.firebase.firestore
 
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
+import com.example.music_app.data.model.enums.FingerprintStatus
 import com.example.music_app.data.model.enums.SongStatus
 import com.example.music_app.utils.AppException
 import com.google.firebase.firestore.FieldPath
@@ -191,6 +192,34 @@ class SongFirestoreDataSource(
             .set(
                 mapOf(
                     "allowComments" to allowComments,
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                SetOptions.merge()
+            )
+            .await()
+    }
+
+    suspend fun updateFingerprintSummary(
+        songId: String,
+        status: FingerprintStatus,
+        algorithm: String = "",
+        version: Int = 1,
+        duplicateOfSongId: String = "",
+        duplicateScore: Double = 0.0,
+        errorMessage: String = ""
+    ) {
+        if (songId.isBlank()) return
+
+        firestore.collection("songs")
+            .document(songId)
+            .set(
+                mapOf(
+                    "fingerprintStatus" to status.value,
+                    "fingerprintAlgorithm" to algorithm,
+                    "fingerprintVersion" to version,
+                    "duplicateOfSongId" to duplicateOfSongId,
+                    "duplicateScore" to duplicateScore,
+                    "fingerprintError" to errorMessage,
                     "updatedAt" to System.currentTimeMillis()
                 ),
                 SetOptions.merge()
