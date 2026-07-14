@@ -10,7 +10,7 @@ const { createFingerprintRouter } = require("./fingerprint/fingerprintRoutes");
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "25mb" }));
 app.use("/fingerprint", createFingerprintRouter());
 
 const PORT = process.env.PORT || 3000;
@@ -681,6 +681,7 @@ app.get("/", (req, res) => {
       "/debug/buffering-test?trackId=123456789&bytes=1048576",
       "/fingerprint/health",
       "/fingerprint/songs/{songId}/process",
+      "/fingerprint/search",
 
       "/getSoundCloudArtistProfile?artist=Alan%20Walker&limit=20",
       "/getSoundCloudArtistTracks?artist=Alan%20Walker&limit=20",

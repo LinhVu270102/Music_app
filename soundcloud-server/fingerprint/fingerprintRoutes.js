@@ -1,6 +1,10 @@
 const express = require("express");
 
-const { processSongFingerprint, getFpcalcPath } = require("./fingerprintService");
+const {
+  processSongFingerprint,
+  searchAudioFingerprint,
+  getFpcalcPath
+} = require("./fingerprintService");
 const { resolveServiceAccountPath } = require("./firebaseAdmin");
 
 function createFingerprintRouter() {
@@ -40,6 +44,18 @@ function createFingerprintRouter() {
     } catch (error) {
       return res.status(error.statusCode || 500).json({
         message: error.message || "Fingerprint processing failed.",
+        detail: error.detail || ""
+      });
+    }
+  });
+
+  router.post("/search", async (req, res) => {
+    try {
+      const result = await searchAudioFingerprint(req.body || {});
+      return res.status(200).json(result);
+    } catch (error) {
+      return res.status(error.statusCode || 500).json({
+        message: error.message || "Audio fingerprint search failed.",
         detail: error.detail || ""
       });
     }

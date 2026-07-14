@@ -9,6 +9,7 @@ data class AudioFingerprint(
     val songId: String = "",
     val uploaderId: String = "",
     val fingerprint: String = "",
+    val fingerprintHash: String = "",
     val algorithm: String = "",
     val version: Int = 1,
     val duration: Int = 0,
