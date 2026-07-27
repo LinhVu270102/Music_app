@@ -67,7 +67,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
-                android:background="@drawable/bg_genre_chip_selected"
+                android:background="@drawable/bg_edit_profile_button"
                 android:clickable="true"
                 android:focusable="true"
                 android:paddingStart="16dp"
@@ -75,7 +75,7 @@
                 android:paddingEnd="16dp"
                 android:paddingBottom="8dp"
                 android:text="@string/change_profile_photo"
-                android:textColor="@color/white"
+                android:textColor="@color/orange"
                 android:textStyle="bold" />
 
             <TextView
@@ -223,14 +223,17 @@
             android:textColor="@android:color/white"
             android:textColorHint="@android:color/darker_gray" />
 
-        <Button
+        <TextView
             android:id="@+id/btnSaveProfile"
             android:layout_width="match_parent"
             android:layout_height="52dp"
             android:layout_marginTop="24dp"
-            android:backgroundTint="@color/orange"
+            android:background="@drawable/bg_edit_profile_button"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
             android:text="@string/save"
-            android:textColor="@android:color/white"
+            android:textColor="@color/orange"
             android:textStyle="bold" />
 
     </LinearLayout>
