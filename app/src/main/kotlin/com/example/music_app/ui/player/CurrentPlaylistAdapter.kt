@@ -8,6 +8,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.ItemCurrentPlaylistSongBinding
+import com.example.music_app.ui.common.SongTitleDisplay
+import com.example.music_app.ui.common.setShortSongTitle
 
 class CurrentPlaylistAdapter(
     private val onItemClick: (index: Int, song: Song) -> Unit
@@ -69,7 +71,10 @@ class CurrentPlaylistAdapter(
                     "${index + 1}"
                 }
 
-            binding.txtSongTitle.text = song.title
+            binding.txtSongTitle.setShortSongTitle(
+                song.title,
+                SongTitleDisplay.LIST_MAX_LENGTH
+            )
             binding.txtSongArtist.text = song.artist
 
             binding.txtSongTitle.setTextColor(

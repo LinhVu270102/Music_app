@@ -16,7 +16,7 @@
         android:background="@android:color/transparent"
         android:contentDescription="@string/back"
         android:src="@drawable/ic_return"
-        app:tint="@color/black" />
+        app:tint="@color/white" />
 
     <ScrollView
         android:layout_width="match_parent"

@@ -21,6 +21,8 @@ import com.example.music_app.databinding.FragmentPlayerBinding
 import com.example.music_app.main.MainActivity
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.ui.comment.CommentFragment
+import com.example.music_app.ui.common.SongTitleDisplay
+import com.example.music_app.ui.common.setShortSongTitle
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -261,7 +263,10 @@ class PlayerFragment : Fragment() {
     }
 
     private fun bindSongInfo(song: Song) {
-        binding.playerSongTitle.text = song.title
+        binding.playerSongTitle.setShortSongTitle(
+            song.title,
+            SongTitleDisplay.PLAYER_MAX_LENGTH
+        )
         binding.playerArtist.text = song.artist
     }
 

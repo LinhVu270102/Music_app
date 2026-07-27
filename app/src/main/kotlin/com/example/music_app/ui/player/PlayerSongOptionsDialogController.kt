@@ -8,6 +8,8 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.DialogConfirmActionBinding
 import com.example.music_app.databinding.DialogReportSongBinding
 import com.example.music_app.databinding.DialogSongOptionsBinding
+import com.example.music_app.ui.common.SongTitleDisplay
+import com.example.music_app.ui.common.setShortSongTitle
 import com.example.music_app.ui.common.showCustomDialog
 
 /** Owns song-option dialogs while PlayerViewModel performs the selected action. */
@@ -24,7 +26,10 @@ class PlayerSongOptionsDialogController(
             .setView(binding.root)
             .create()
 
-        binding.txtOptionsSongTitle.text = song.title
+        binding.txtOptionsSongTitle.setShortSongTitle(
+            song.title,
+            SongTitleDisplay.DIALOG_MAX_LENGTH
+        )
         binding.txtOptionsSongArtist.text = song.artist
 
         val isOwner = canManageSong(song)

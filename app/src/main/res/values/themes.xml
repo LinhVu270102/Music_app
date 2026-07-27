@@ -9,7 +9,7 @@
 
     <style name="Theme.Music_app" parent="Theme.MaterialComponents.Light.NoActionBar">
         <!-- Window settings -->
-        <item name="android:windowBackground">@color/black</item>
+        <item name="android:windowBackground">@drawable/bg_app_background</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowFullscreen">true</item>
     </style>

@@ -8,7 +8,7 @@
         android:id="@+id/profileFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@android:color/black"
+        android:background="@drawable/bg_app_background"
         android:fillViewport="true">
 
         <LinearLayout
@@ -68,15 +68,18 @@
             android:textColor="@color/gray_light"
             android:textSize="14sp" />
 
-        <Button
+        <TextView
             android:id="@+id/btnEditProfile"
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginTop="18dp"
             android:layout_marginBottom="0dp"
-            android:backgroundTint="@color/orange"
+            android:background="@drawable/bg_edit_profile_button"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
             android:text="@string/edit_profile"
-            android:textColor="@android:color/white"
+            android:textColor="@color/orange"
             android:textStyle="bold" />
 
         <ImageButton

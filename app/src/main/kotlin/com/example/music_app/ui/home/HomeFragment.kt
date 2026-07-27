@@ -16,6 +16,7 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.FragmentHomeBinding
 import com.example.music_app.player.PlayerManager
 import com.example.music_app.core.interaction.InteractionStateStore
+import com.example.music_app.ui.common.SongTitleDisplay
 import com.example.music_app.ui.notification.NotificationFragment
 import com.example.music_app.ui.player.PlaybackLauncher
 import com.example.music_app.ui.song.SongAdapter
@@ -115,7 +116,8 @@ class HomeFragment : Fragment() {
         trendingAdapter = SongAdapter(
             onItemClick = { song ->
                 openPlayer(song, trendingSongs)
-            }
+            },
+            titleMaxLength = SongTitleDisplay.TRENDING_GENRE_MAX_LENGTH
         )
 
         setupHorizontalSongList(binding.rvRelatedTracks, relatedAdapter)

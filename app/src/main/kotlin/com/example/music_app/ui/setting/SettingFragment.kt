@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.core.content.edit
@@ -46,12 +47,20 @@ class SettingFragment : Fragment() {
 
     private fun setupLanguageSpinner() {
         val currentLanguage = LanguageManager.getSavedLanguage(requireContext())
+        val adapter = ArrayAdapter.createFromResource(
+            requireContext(),
+            R.array.language_options,
+            R.layout.item_language_spinner
+        ).apply {
+            setDropDownViewResource(R.layout.item_language_spinner_dropdown)
+        }
 
         val selectedPosition = when (currentLanguage) {
             AppLanguage.VIETNAMESE -> 0
             AppLanguage.ENGLISH -> 1
         }
 
+        binding.languageSpinner.adapter = adapter
         binding.languageSpinner.setSelection(selectedPosition, false)
 
         binding.languageSpinner.post {

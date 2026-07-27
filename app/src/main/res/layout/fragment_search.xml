@@ -4,7 +4,7 @@
     android:id="@+id/searchFragment"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/black"
+    android:background="@drawable/bg_app_background"
     android:orientation="vertical"
     android:paddingStart="20dp"
     android:paddingTop="20dp"

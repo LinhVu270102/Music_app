@@ -10,6 +10,8 @@ import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.enums.FingerprintStatus
 import com.example.music_app.databinding.ItemAdminSongModerationBinding
+import com.example.music_app.ui.common.SongTitleDisplay
+import com.example.music_app.ui.common.setShortSongTitle
 import java.util.Locale
 
 class AdminSongModerationAdapter(
@@ -45,7 +47,10 @@ class AdminSongModerationAdapter(
         fun bind(song: Song) {
             val context = binding.root.context
 
-            binding.txtSongTitle.text = song.title
+            binding.txtSongTitle.setShortSongTitle(
+                song.title,
+                SongTitleDisplay.ADMIN_MAX_LENGTH
+            )
             binding.txtSongArtist.text = song.artist
             binding.txtSongGenre.text = song.genre.ifBlank {
                 context.getString(R.string.unknown_genre)

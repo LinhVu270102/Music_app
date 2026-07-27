@@ -13,6 +13,8 @@ import com.example.music_app.data.model.Song
 import com.example.music_app.data.model.User
 import com.example.music_app.databinding.ItemSearchResultBinding
 import com.example.music_app.databinding.ItemSearchSectionHeaderBinding
+import com.example.music_app.ui.common.SongTitleDisplay
+import com.example.music_app.ui.common.setShortSongTitle
 
 class SearchAdapter(
     private val onTrackClick: (Song) -> Unit,
@@ -104,7 +106,8 @@ class SearchAdapter(
             bindSearchResult(
                 title = song.title,
                 subtitle = song.artist,
-                coverUrl = song.coverUrl
+                coverUrl = song.coverUrl,
+                titleMaxLength = SongTitleDisplay.LIST_MAX_LENGTH
             ) {
                 onTrackClick(song)
             }
@@ -162,16 +165,26 @@ class SearchAdapter(
             title: String,
             subtitle: String,
             coverUrl: String,
+            titleMaxLength: Int? = null,
             onClick: () -> Unit
         ) {
             resetCoverImage()
-            bindTitleSubtitle(title, subtitle)
+            bindTitleSubtitle(title, subtitle, titleMaxLength)
             loadCover(coverUrl)
             bindClick(onClick)
         }
 
-        private fun bindTitleSubtitle(title: String, subtitle: String) {
-            binding.txtTitle.text = title
+        private fun bindTitleSubtitle(
+            title: String,
+            subtitle: String,
+            titleMaxLength: Int? = null
+        ) {
+            if (titleMaxLength == null) {
+                binding.txtTitle.text = title
+                binding.txtTitle.contentDescription = title
+            } else {
+                binding.txtTitle.setShortSongTitle(title, titleMaxLength)
+            }
             binding.txtArtist.text = subtitle
         }
 

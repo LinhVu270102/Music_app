@@ -2,7 +2,8 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/mainLayout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_app_background">
 
     <!-- CONTAINER -->
     <FrameLayout
@@ -41,7 +42,7 @@
         android:id="@+id/appFooter"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="@color/gray"
+        android:background="@drawable/bg_footer_navigation"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="12dp"

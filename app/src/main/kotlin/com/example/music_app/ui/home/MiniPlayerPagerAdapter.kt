@@ -9,6 +9,8 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.ItemMiniPlayerPageBinding
+import com.example.music_app.ui.common.SongTitleDisplay
+import com.example.music_app.ui.common.setShortSongTitle
 import kotlin.math.abs
 
 class MiniPlayerPagerAdapter(
@@ -49,7 +51,10 @@ class MiniPlayerPagerAdapter(
 
         @SuppressLint("ClickableViewAccessibility")
         fun bind(song: Song) {
-            binding.txtTitle.text = song.title
+            binding.txtTitle.setShortSongTitle(
+                song.title,
+                SongTitleDisplay.MINI_PLAYER_MAX_LENGTH
+            )
             binding.txtArtist.text = song.artist
 
             binding.root.setOnTouchListener { view, event ->

@@ -10,6 +10,8 @@ import com.bumptech.glide.Glide
 import com.example.music_app.R
 import com.example.music_app.data.model.Song
 import com.example.music_app.databinding.ItemSongBinding
+import com.example.music_app.ui.common.SongTitleDisplay
+import com.example.music_app.ui.common.setShortSongTitle
 
 class SongAdapter(
     private val onItemClick: (Song) -> Unit,
@@ -17,7 +19,8 @@ class SongAdapter(
     private val onMoreClick: ((Song, View) -> Unit)? = null,
     private val onLikeClick: ((Song) -> Unit)? = null,
     private val isSongLiked: (Song) -> Boolean = { false },
-    private val useFullWidth: Boolean = false
+    private val useFullWidth: Boolean = false,
+    private val titleMaxLength: Int = SongTitleDisplay.LIST_MAX_LENGTH
 ) : ListAdapter<Song, SongAdapter.SongViewHolder>(DiffCallback) {
 
     private var likedSongIds: Set<String> = emptySet()
@@ -48,7 +51,7 @@ class SongAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(song: Song) {
-            binding.txtTitle.text = song.title
+            binding.txtTitle.setShortSongTitle(song.title, titleMaxLength)
             binding.txtArtist.text = song.artist
 
             Glide.with(binding.root)
