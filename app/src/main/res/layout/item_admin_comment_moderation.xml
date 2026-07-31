@@ -35,14 +35,17 @@
         android:textColor="#D0D0D0"
         android:textSize="14sp" />
 
-    <Button
+    <TextView
         android:id="@+id/btnHideComment"
         android:layout_width="match_parent"
         android:layout_height="44dp"
         android:layout_marginTop="12dp"
-        android:backgroundTint="#B71C1C"
+        android:background="@drawable/bg_admin_button_danger"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
         android:text="@string/hide_comment"
-        android:textAllCaps="false"
-        android:textColor="@color/white" />
+        android:textColor="@color/white"
+        android:textStyle="bold" />
 
 </LinearLayout>

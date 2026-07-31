@@ -41,27 +41,31 @@
         android:layout_marginTop="14dp"
         android:orientation="horizontal">
 
-        <Button
+        <TextView
             android:id="@+id/btnPendingReports"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_marginEnd="6dp"
             android:layout_weight="1"
-            android:backgroundTint="@color/orange"
+            android:background="@drawable/bg_admin_button_primary"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
             android:text="@string/pending_reports"
-            android:textAllCaps="false"
             android:textColor="@color/white"
             android:textStyle="bold" />
 
-        <Button
+        <TextView
             android:id="@+id/btnReviewedReports"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_marginStart="6dp"
             android:layout_weight="1"
-            android:backgroundTint="#424242"
+            android:background="@drawable/bg_admin_button_neutral"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
             android:text="@string/reviewed_reports"
-            android:textAllCaps="false"
             android:textColor="@color/white"
             android:textStyle="bold" />
 
